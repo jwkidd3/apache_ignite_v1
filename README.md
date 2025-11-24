@@ -1,0 +1,507 @@
+# Apache Ignite - 3-Day Training Course
+
+Professional training course for Apache Ignite, covering fundamentals through production deployment with hands-on labs.
+
+## Course Overview
+
+**Duration:** 3 Days (24 hours)
+**Format:** Instructor-led with hands-on labs
+**Level:** Intermediate to Advanced
+**Apache Ignite Version:** 2.16.0
+
+## What You'll Learn
+
+- In-memory computing fundamentals and Apache Ignite architecture
+- Cluster setup, configuration, and management
+- Cache operations, data modeling, and persistence
+- SQL queries, indexing, and transactions
+- Distributed computing and MapReduce operations
+- Integration with Spring, Kafka, and Hibernate
+- Performance tuning and production deployment
+- Docker and Kubernetes deployment
+
+## Prerequisites
+
+- **Java 8+** programming experience
+- Basic understanding of **databases and SQL**
+- **Maven or Gradle** knowledge
+- Development environment with **8GB+ RAM**
+- Familiarity with distributed systems (helpful but not required)
+
+## Course Structure
+
+### Day 1: Fundamentals and Basic Operations
+
+**Module 1: Introduction to In-Memory Computing (90 min)**
+- What is in-memory computing and why it matters
+- Traditional database limitations
+- Apache Ignite overview and comparisons
+- **Lab 1:** Environment setup and first cluster
+
+**Module 2: Ignite Architecture Deep Dive (90 min)**
+- Cluster topology and node types
+- Data distribution and partitioning
+- Memory architecture (on-heap, off-heap, persistence)
+- Discovery mechanisms and baseline topology
+- **Lab 2:** Multi-node cluster setup
+
+**Module 3: Basic Cache Operations (90 min)**
+- Cache API and CRUD operations
+- Cache modes: PARTITIONED, REPLICATED, LOCAL
+- Synchronous vs asynchronous operations
+- Batch operations
+- **Lab 3:** Implementing cache operations
+
+**Module 4: Configuration and Deployment (120 min)**
+- XML vs programmatic configuration
+- Spring Boot integration
+- Monitoring and logging setup
+- **Lab 4:** Configuration and Spring Boot integration
+
+### Day 2: Data Management and Advanced Features
+
+**Module 5: Data Modeling and Persistence (105 min)**
+- Data modeling best practices
+- Affinity keys and colocation strategies
+- Native persistence layer
+- Write-through, write-behind patterns
+- **Lab 5:** Data models with persistence
+
+**Module 6: SQL and Indexing (120 min)**
+- SQL support (DDL, DML, DQL)
+- Creating and managing indexes
+- Query optimization
+- JDBC driver and distributed joins
+- **Lab 6:** SQL queries and indexing
+
+**Module 7: Transactions and ACID Properties (90 min)**
+- Transaction models (PESSIMISTIC, OPTIMISTIC)
+- Isolation levels
+- Deadlock detection and resolution
+- **Lab 7:** Transactional operations
+
+**Module 8: Advanced Caching Patterns (120 min)**
+- Near caches and client-side caching
+- Expiry policies and eviction strategies
+- Cache entry processors
+- Continuous queries
+- **Lab 8:** Advanced caching patterns
+
+### Day 3: Distributed Computing and Production
+
+**Module 9: Compute Grid Fundamentals (105 min)**
+- Distributed computing concepts
+- Compute closures and jobs
+- Affinity-aware computing
+- MapReduce operations
+- **Lab 9:** Distributed computing tasks
+
+**Module 10: Integration and Connectivity (120 min)**
+- REST API usage
+- Spring Framework integration
+- Kafka connector
+- Hibernate L2 cache
+- **Lab 10:** Integration with external systems
+
+**Module 11: Performance Tuning and Monitoring (105 min)**
+- JVM tuning for Ignite workloads
+- Memory management and GC
+- Performance metrics and monitoring
+- Benchmarking strategies
+- **Lab 11:** Performance analysis and tuning
+
+**Module 12: Production Deployment (120 min)**
+- Security configuration (SSL/TLS, authentication)
+- Backup and disaster recovery
+- Rolling updates
+- Docker and Kubernetes deployment
+- **Lab 12:** Production-ready cluster deployment
+
+## Repository Structure
+
+```
+apache_ignite_v1/
+├── README.md                    # This file
+├── .gitignore                   # Git ignore rules
+├── GITIGNORE_GUIDE.md          # Detailed gitignore documentation
+├── init-git.sh                 # Git repository setup script
+├── labs/                       # All 12 hands-on labs
+│   ├── README.md
+│   ├── lab01_environment_setup.md
+│   ├── lab02_multinode_cluster.md
+│   ├── lab03_basic_cache_operations.md
+│   ├── lab04_configuration_deployment.md
+│   ├── lab05_data_modeling_persistence.md
+│   ├── lab06_sql_indexing.md
+│   ├── lab07_transactions_acid.md
+│   ├── lab08_advanced_caching.md
+│   ├── lab09_compute_grid.md
+│   ├── lab10_integration_connectivity.md
+│   ├── lab11_performance_tuning.md
+│   └── lab12_production_deployment.md
+└── presentations/              # Presentation content
+    ├── README.md
+    ├── module01_intro_inmemory_computing.md
+    ├── module02_architecture_deep_dive.md
+    └── module03_basic_cache_operations.md
+```
+
+## Getting Started
+
+### 1. Clone or Download Repository
+
+```bash
+cd /path/to/your/workspace
+# If using git:
+git clone <repository-url>
+cd apache_ignite_v1
+```
+
+### 2. Install Prerequisites
+
+```bash
+# Verify Java installation
+java -version   # Should be 8 or higher
+
+# Verify Maven or Gradle
+mvn -version
+# or
+gradle -version
+```
+
+### 3. Download Apache Ignite
+
+Add to your Maven `pom.xml`:
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.apache.ignite</groupId>
+        <artifactId>ignite-core</artifactId>
+        <version>2.16.0</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.ignite</groupId>
+        <artifactId>ignite-spring</artifactId>
+        <version>2.16.0</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.ignite</groupId>
+        <artifactId>ignite-indexing</artifactId>
+        <version>2.16.0</version>
+    </dependency>
+</dependencies>
+```
+
+Or download binary: https://ignite.apache.org/download.cgi
+
+### 4. Start with Lab 1
+
+```bash
+cd labs
+# Read and follow lab01_environment_setup.md
+```
+
+## Labs Overview
+
+Each lab includes:
+- **Clear objectives** - What you'll learn
+- **Prerequisites** - Required setup and knowledge
+- **Step-by-step exercises** - Detailed instructions with code
+- **Verification steps** - How to check your work
+- **Lab questions** - Test your understanding (with answers)
+- **Common issues** - Troubleshooting guide
+- **Next steps** - Preview of upcoming content
+
+**Estimated Time:** 30-60 minutes per lab
+
+## Presentation Materials
+
+The `presentations/` directory contains detailed slide content for all modules:
+
+- **26-30 slides per module** with full content
+- **Code examples** ready to copy and demonstrate
+- **Diagrams and visual aids** (ASCII art)
+- **Instructor notes** with timing and key points
+- **Common questions** and discussion prompts
+
+Perfect for self-study or instructor-led delivery.
+
+## Daily Schedule
+
+**Typical Day Structure:**
+```
+9:00 AM  - Morning Module 1 (Presentation + Lab)
+10:30 AM - Break
+10:45 AM - Morning Module 2 (Presentation + Lab)
+12:00 PM - Lunch
+1:00 PM  - Afternoon Module 1 (Presentation + Lab)
+2:30 PM  - Break
+2:45 PM  - Afternoon Module 2 (Presentation + Lab)
+4:30 PM  - Wrap-up and Q&A
+5:00 PM  - End
+```
+
+## Version Control Setup
+
+### Initialize Git Repository
+
+**Automated:**
+```bash
+./init-git.sh
+```
+
+**Manual:**
+```bash
+git init
+git add .
+git commit -m "Initial commit: Apache Ignite training materials"
+git branch -M main
+```
+
+### What's Ignored (.gitignore)
+
+The `.gitignore` file excludes:
+- **Ignite runtime files:** work/, ignite-data/, ignite-wal/, *.log
+- **Build artifacts:** target/, build/, *.class
+- **IDE files:** .idea/, *.iml, .vscode/
+- **macOS files:** .DS_Store, ._*
+- **Credentials:** *.jks, *.key, *.pem
+
+See `GITIGNORE_GUIDE.md` for detailed explanations.
+
+### Connect to Remote Repository
+
+```bash
+# GitHub
+git remote add origin https://github.com/username/apache-ignite-training.git
+git push -u origin main
+
+# GitLab
+git remote add origin https://gitlab.com/username/apache-ignite-training.git
+git push -u origin main
+```
+
+## Learning Outcomes
+
+After completing this course, you will be able to:
+
+✅ Understand in-memory computing concepts and benefits
+✅ Set up and configure Apache Ignite clusters
+✅ Perform efficient cache operations and data modeling
+✅ Execute SQL queries and optimize with indexes
+✅ Implement distributed transactions with ACID properties
+✅ Use advanced caching patterns (near caches, entry processors)
+✅ Implement distributed computing and MapReduce operations
+✅ Integrate Ignite with Spring, Kafka, and Hibernate
+✅ Tune JVM and optimize performance
+✅ Deploy production-ready clusters with security
+✅ Deploy on Docker and Kubernetes
+✅ Troubleshoot common issues
+
+## Key Topics Covered
+
+### Core Concepts
+- In-memory computing fundamentals
+- Cluster architecture and topology
+- Data distribution and partitioning
+- Memory management (on-heap, off-heap, persistence)
+
+### Data Operations
+- Cache modes (PARTITIONED, REPLICATED, LOCAL)
+- CRUD operations and batch processing
+- SQL queries (ANSI-99)
+- Transactions and isolation levels
+- Data modeling with affinity keys
+
+### Advanced Features
+- Near caches and expiry policies
+- Entry processors for atomic operations
+- Continuous queries for real-time updates
+- Distributed computing and MapReduce
+- Affinity-aware computing
+
+### Integration
+- Spring Boot and Spring Framework
+- Apache Kafka streaming
+- Hibernate L2 cache
+- REST API
+- JDBC connectivity
+
+### Production
+- JVM and garbage collection tuning
+- Performance optimization and benchmarking
+- Monitoring and metrics collection
+- Security (SSL/TLS, authentication)
+- Docker and Kubernetes deployment
+- Backup and disaster recovery
+- Rolling updates and maintenance
+
+## Tips for Success
+
+### For Students
+1. **Follow sequentially** - Labs build on each other
+2. **Type the code** - Don't just copy-paste
+3. **Read the output** - Understand what's happening
+4. **Complete questions** - Test your knowledge
+5. **Experiment** - Try variations of examples
+6. **Ask questions** - Use Q&A sections
+
+### For Instructors
+1. **Review all materials** before class
+2. **Test lab exercises** in advance
+3. **Set up demo environment** with monitoring
+4. **Adjust timing** based on audience
+5. **Encourage questions** throughout
+6. **Share real-world examples** from experience
+
+### For Self-Study
+1. **Read presentations** as study guides
+2. **Complete all labs** independently
+3. **Answer lab questions** without looking
+4. **Join Apache Ignite community** for support
+5. **Practice with real projects** after course
+
+## Troubleshooting
+
+### Common Setup Issues
+
+**Issue: Java not found**
+```bash
+# Install Java 8 or higher
+brew install openjdk@11  # macOS
+# or download from https://adoptium.net/
+```
+
+**Issue: Maven not found**
+```bash
+# Install Maven
+brew install maven  # macOS
+```
+
+**Issue: Port conflicts**
+```bash
+# Ignite uses ports 47500-47509, 47100-47199
+# Check if ports are available:
+lsof -i :47500
+```
+
+**Issue: Out of memory**
+```bash
+# Increase JVM heap size
+export JVM_OPTS="-Xms2g -Xmx2g"
+```
+
+### Lab-Specific Help
+
+Each lab includes a "Common Issues" section with solutions. If stuck:
+1. Check the lab's troubleshooting section
+2. Review the lab questions and answers
+3. Consult Apache Ignite documentation
+4. Check logs for error messages
+
+## Additional Resources
+
+### Official Documentation
+- **Apache Ignite:** https://ignite.apache.org/
+- **Documentation:** https://ignite.apache.org/docs/latest/
+- **API Docs:** https://ignite.apache.org/releases/latest/javadoc/
+- **Examples:** https://github.com/apache/ignite/tree/master/examples
+
+### Community
+- **GitHub:** https://github.com/apache/ignite
+- **Mailing Lists:** https://ignite.apache.org/community/resources.html
+- **Stack Overflow:** [apache-ignite] tag
+- **Slack:** Join the Apache Ignite community
+
+### Videos and Tutorials
+- Apache Ignite YouTube Channel
+- Conference presentations (ApacheCon, etc.)
+- Webinars and online tutorials
+
+### Books
+- "High-Performance in-Memory Computing with Apache Ignite"
+- Online guides and tutorials
+
+## Contributing
+
+Found an issue or want to improve the course materials?
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+Or simply open an issue to discuss improvements.
+
+## Customization
+
+### For Different Time Constraints
+
+**Half-Day (4 hours):**
+- Modules 1, 2, 3 (condensed)
+- Labs 1, 3 only
+
+**One-Day (8 hours):**
+- Modules 1-6 (condensed)
+- Labs 1, 3, 5, 6
+
+**Two-Day:**
+- Modules 1-10
+- All labs except 12
+
+### For Different Audiences
+
+**Developers:**
+- Focus on code examples
+- Deep technical dives
+- Optimization techniques
+
+**Architects:**
+- Design patterns
+- Trade-off decisions
+- Integration strategies
+
+**Operations:**
+- Deployment procedures
+- Monitoring setup
+- Troubleshooting
+
+## License
+
+Apache Ignite is licensed under **Apache License 2.0**.
+
+These training materials are provided for educational purposes.
+
+## Support
+
+### For Course Questions
+- Review lab Q&A sections
+- Check presentation materials
+- Consult Apache Ignite documentation
+
+### For Technical Issues
+- Apache Ignite mailing lists
+- Stack Overflow
+- GitHub issues
+
+### For Course Materials Issues
+- Open an issue in this repository
+- Submit a pull request with improvements
+
+---
+
+## Quick Start Checklist
+
+- [ ] Java 8+ installed and verified
+- [ ] Maven or Gradle installed
+- [ ] IDE configured (IntelliJ, Eclipse, or VS Code)
+- [ ] Apache Ignite dependencies added to project
+- [ ] Cloned/downloaded course materials
+- [ ] Read Lab 1 instructions
+- [ ] Ready to start learning!
+
+---
+
+**Ready to master Apache Ignite?** Start with **Lab 1: Environment Setup** 🚀
+
+For questions, issues, or contributions, please open an issue on GitHub.
