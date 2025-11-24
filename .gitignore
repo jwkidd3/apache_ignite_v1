@@ -1,0 +1,424 @@
+# Apache Ignite .gitignore for macOS Development
+
+# ===================================
+# Java
+# ===================================
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Package Files
+*.nar
+
+# Virtual machine crash logs
+hs_err_pid*
+replay_pid*
+
+# ===================================
+# Maven
+# ===================================
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ===================================
+# Gradle
+# ===================================
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ===================================
+# Apache Ignite Specific
+# ===================================
+
+# Ignite work directory
+work/
+**/work/
+
+# Ignite persistence
+ignite-data/
+ignite-wal/
+ignite-wal-archive/
+**/ignite-data/
+**/ignite-wal/
+**/ignite-wal-archive/
+
+# Ignite binary storage
+binary_meta/
+marshaller/
+cp/
+db/
+
+# Ignite logs
+*.log
+logs/
+ignite.log*
+
+# Ignite snapshots
+snapshots/
+**/snapshots/
+
+# Ignite temp files
+*.tmp
+temp/
+
+# GC logs
+gc*.log
+gc.log.*
+
+# Heap dumps
+*.hprof
+heapdump*
+
+# Thread dumps
+thread-dump*.txt
+
+# Ignite configuration backups
+*.xml.bak
+
+# ===================================
+# IDEs and Editors
+# ===================================
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+
+# Eclipse
+.classpath
+.project
+.settings/
+.metadata/
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.loadpath
+.recommenders
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+*~
+Session.vim
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ===================================
+# macOS
+# ===================================
+
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# macOS Finder
+.DS_Store?
+.Trashes
+.fseventsd
+.VolumeIcon.icns
+
+# ===================================
+# Operating System Files
+# ===================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# ===================================
+# Node / NPM (if using web console)
+# ===================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.npm
+.yarn-integrity
+.pnp.*
+
+# ===================================
+# Docker
+# ===================================
+docker-compose.override.yml
+.dockerignore
+
+# ===================================
+# Kubernetes
+# ===================================
+*.kubeconfig
+
+# ===================================
+# Certificates and Keys
+# ===================================
+*.jks
+*.p12
+*.pem
+*.key
+*.crt
+*.cer
+keystore.jks
+truststore.jks
+server.key
+server.crt
+client.key
+client.crt
+
+# Keep example/template certificates (if any)
+!**/examples/**/*.jks
+!**/examples/**/*.pem
+
+# ===================================
+# Environment and Configuration
+# ===================================
+.env
+.env.local
+.env.*.local
+*.env
+
+# Local configuration overrides
+*local.xml
+*-local.xml
+local-config.xml
+
+# ===================================
+# Test Output
+# ===================================
+test-output/
+test-results/
+coverage/
+*.test
+.nyc_output/
+
+# JUnit
+junit*.properties
+
+# ===================================
+# Build Tools
+# ===================================
+
+# Ant
+build.properties
+
+# SBT
+.cache
+.history
+.lib/
+project/boot/
+project/plugins/project/
+
+# ===================================
+# Documentation
+# ===================================
+
+# Generated documentation
+javadoc/
+apidocs/
+docs/api/
+docs/_build/
+
+# ===================================
+# Backup Files
+# ===================================
+*.bak
+*.backup
+*.orig
+*.save
+*~
+
+# ===================================
+# Compressed Files (keep small examples)
+# ===================================
+# *.zip
+# *.tar.gz
+# *.rar
+
+# ===================================
+# Ignite Specific Patterns
+# ===================================
+
+# Performance test results
+benchmarks/
+perf-results/
+
+# Ignite console history
+.ignite_console_history
+
+# Ignite work directories by pattern
+work-*
+node-*/
+
+# Custom Ignite configurations (keep examples)
+# !**/examples/**/*.xml
+
+# ===================================
+# Project Specific
+# ===================================
+
+# Lab artifacts
+labs/*/target/
+labs/*/build/
+labs/**/ignite-data/
+labs/**/work/
+
+# Presentation exports
+presentations/*.pdf
+presentations/*.pptx
+presentations/*.key
+
+# Student work (if collecting)
+student-submissions/
+assignments/
+
+# Course materials build
+course-build/
+dist/
+
+# ===================================
+# Temporary Files
+# ===================================
+*.tmp
+*.temp
+tmp/
+temp/
+scratch/
+
+# ===================================
+# Caches
+# ===================================
+.cache/
+*.cache
+
+# ===================================
+# Miscellaneous
+# ===================================
+
+# Compiled Python (if any helper scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+*.db
+
+# ===================================
+# Keep These Files
+# ===================================
+
+# Keep important documentation
+!README.md
+!LICENSE
+!CONTRIBUTING.md
+!.gitignore
+
+# Keep configuration examples
+!**/examples/
+!**/templates/
+!config/example-*.xml
+
+# Keep lab instructions
+!labs/**/*.md
+
+# Keep presentation sources
+!presentations/**/*.md
+
+# End of .gitignore
