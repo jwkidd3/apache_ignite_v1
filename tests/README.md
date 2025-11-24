@@ -1,8 +1,39 @@
-# Apache Ignite Labs - Comprehensive Test Suite
+# Apache Ignite Training Course - Validation Test Suite
 
-## Overview
+## Purpose
 
-This test suite provides **100% coverage** of all operations in the 12 Apache Ignite lab exercises with a **100% pass rate**. The suite contains comprehensive unit and integration tests that validate every concept, operation, and feature taught in the course.
+This test suite validates that the **Apache Ignite training course materials work correctly**. It ensures all lab instructions, code examples, and operations are accurate and functional before course delivery.
+
+**This is NOT for student work validation.** Students implement labs independently. These tests verify the course itself is correct.
+
+## Use Cases
+
+### 1. Pre-Course Validation
+Run before teaching to ensure all course materials work:
+```bash
+mvn test  # Expected: 100% pass = Course ready to deliver
+```
+
+### 2. Course Material Updates
+After updating labs, verify nothing broke:
+```bash
+mvn test -Dtest=Lab03*  # Validate Lab 3 updates
+```
+
+### 3. Ignite Version Upgrades
+When upgrading Ignite version, check compatibility:
+```bash
+# Update pom.xml, then:
+mvn clean test  # Verify all operations still work
+```
+
+### 4. Issue Reproduction
+When students report problems, verify with tests:
+```bash
+mvn test -Dtest=Lab02MultiNodeClusterTest#testDataReplication
+# If passes: student implementation issue
+# If fails: course materials need fixing
+```
 
 ## Test Statistics
 
