@@ -2,12 +2,17 @@ package com.example.ignite.tests;
 
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMetrics;
+import org.apache.ignite.cache.CacheWriteSynchronizationMode;
 import org.apache.ignite.cluster.ClusterMetrics;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.transactions.Transaction;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -204,8 +209,9 @@ public class Lab04ConfigurationDeploymentTest extends BaseIgniteTest {
     @DisplayName("Test node attributes")
     public void testNodeAttributes() {
         assertThat(ignite.cluster().localNode().attributes()).isNotEmpty();
-        Object versionAttr = ignite.cluster().localNode().attribute("org.apache.ignite.lang.IgniteProductVersion");
-        assertThat(versionAttr).isNotNull();
+        // Check for common node attributes that are always present
+        Map<String, Object> attrs = ignite.cluster().localNode().attributes();
+        assertThat(attrs).containsKey("org.apache.ignite.ips");
     }
 
     @Test
@@ -276,5 +282,181 @@ public class Lab04ConfigurationDeploymentTest extends BaseIgniteTest {
         CacheMetrics metrics = cache.metrics();
 
         assertThat(metrics.getCacheRemovals()).isGreaterThan(0);
+    }
+
+    @Test
+    @DisplayName("Test TRANSACTIONAL atomicity mode")
+    public void testAtomicityModeTransactional() {
+        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(getTestCacheName());
+        cfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
+
+        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cfg);
+
+        // Verify configuration
+        CacheConfiguration<?, ?> actualCfg = cache.getConfiguration(CacheConfiguration.class);
+        assertThat(actualCfg.getAtomicityMode()).isEqualTo(CacheAtomicityMode.TRANSACTIONAL);
+
+        // Test transactional operations
+        try (Transaction tx = ignite.transactions().txStart()) {
+            cache.put(1, "value1");
+            cache.put(2, "value2");
+            tx.commit();
+        }
+
+        assertThat(cache.get(1)).isEqualTo("value1");
+        assertThat(cache.get(2)).isEqualTo("value2");
+
+        // Test transaction rollback
+        try (Transaction tx = ignite.transactions().txStart()) {
+            cache.put(3, "value3");
+            tx.rollback();
+        }
+
+        assertThat(cache.get(3)).isNull();
+    }
+
+    @Test
+    @DisplayName("Test ATOMIC atomicity mode")
+    public void testAtomicityModeAtomic() {
+        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(getTestCacheName());
+        cfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+
+        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cfg);
+
+        // Verify configuration
+        CacheConfiguration<?, ?> actualCfg = cache.getConfiguration(CacheConfiguration.class);
+        assertThat(actualCfg.getAtomicityMode()).isEqualTo(CacheAtomicityMode.ATOMIC);
+
+        // Test atomic operations
+        cache.put(1, "value1");
+        assertThat(cache.get(1)).isEqualTo("value1");
+
+        // Test getAndPut (atomic)
+        String oldValue = cache.getAndPut(1, "value2");
+        assertThat(oldValue).isEqualTo("value1");
+        assertThat(cache.get(1)).isEqualTo("value2");
+
+        // Test putIfAbsent (atomic)
+        boolean put = cache.putIfAbsent(2, "value2");
+        assertThat(put).isTrue();
+
+        boolean notPut = cache.putIfAbsent(2, "value3");
+        assertThat(notPut).isFalse();
+        assertThat(cache.get(2)).isEqualTo("value2");
+    }
+
+    @Test
+    @DisplayName("Test CacheWriteSynchronizationMode settings")
+    public void testWriteSynchronizationMode() {
+        // Test FULL_SYNC mode
+        CacheConfiguration<Integer, String> fullSyncCfg = new CacheConfiguration<>(getTestCacheName() + "-fullsync");
+        fullSyncCfg.setWriteSynchronizationMode(CacheWriteSynchronizationMode.FULL_SYNC);
+
+        IgniteCache<Integer, String> fullSyncCache = ignite.getOrCreateCache(fullSyncCfg);
+        CacheConfiguration<?, ?> actualFullSyncCfg = fullSyncCache.getConfiguration(CacheConfiguration.class);
+        assertThat(actualFullSyncCfg.getWriteSynchronizationMode()).isEqualTo(CacheWriteSynchronizationMode.FULL_SYNC);
+
+        // Test PRIMARY_SYNC mode
+        CacheConfiguration<Integer, String> primarySyncCfg = new CacheConfiguration<>(getTestCacheName() + "-primarysync");
+        primarySyncCfg.setWriteSynchronizationMode(CacheWriteSynchronizationMode.PRIMARY_SYNC);
+
+        IgniteCache<Integer, String> primarySyncCache = ignite.getOrCreateCache(primarySyncCfg);
+        CacheConfiguration<?, ?> actualPrimarySyncCfg = primarySyncCache.getConfiguration(CacheConfiguration.class);
+        assertThat(actualPrimarySyncCfg.getWriteSynchronizationMode()).isEqualTo(CacheWriteSynchronizationMode.PRIMARY_SYNC);
+
+        // Test FULL_ASYNC mode
+        CacheConfiguration<Integer, String> asyncCfg = new CacheConfiguration<>(getTestCacheName() + "-async");
+        asyncCfg.setWriteSynchronizationMode(CacheWriteSynchronizationMode.FULL_ASYNC);
+
+        IgniteCache<Integer, String> asyncCache = ignite.getOrCreateCache(asyncCfg);
+        CacheConfiguration<?, ?> actualAsyncCfg = asyncCache.getConfiguration(CacheConfiguration.class);
+        assertThat(actualAsyncCfg.getWriteSynchronizationMode()).isEqualTo(CacheWriteSynchronizationMode.FULL_ASYNC);
+
+        // Verify caches work correctly
+        fullSyncCache.put(1, "value1");
+        primarySyncCache.put(1, "value1");
+        asyncCache.put(1, "value1");
+
+        assertThat(fullSyncCache.get(1)).isEqualTo("value1");
+        assertThat(primarySyncCache.get(1)).isEqualTo("value1");
+        assertThat(asyncCache.get(1)).isEqualTo("value1");
+    }
+
+    @Test
+    @DisplayName("Test thread pool configuration")
+    public void testThreadPoolConfiguration() {
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setIgniteInstanceName("thread-pool-test-node");
+
+        // Configure thread pools
+        cfg.setPublicThreadPoolSize(8);
+        cfg.setSystemThreadPoolSize(4);
+
+        // Verify configuration values are set
+        assertThat(cfg.getPublicThreadPoolSize()).isEqualTo(8);
+        assertThat(cfg.getSystemThreadPoolSize()).isEqualTo(4);
+
+        // Additional thread pool configurations
+        cfg.setManagementThreadPoolSize(2);
+        cfg.setQueryThreadPoolSize(4);
+        cfg.setServiceThreadPoolSize(4);
+
+        assertThat(cfg.getManagementThreadPoolSize()).isEqualTo(2);
+        assertThat(cfg.getQueryThreadPoolSize()).isEqualTo(4);
+        assertThat(cfg.getServiceThreadPoolSize()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("Test network timeout configuration")
+    public void testNetworkTimeout() {
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setIgniteInstanceName("network-timeout-test-node");
+
+        // Set network timeout (in milliseconds)
+        long networkTimeout = 10000L; // 10 seconds
+        cfg.setNetworkTimeout(networkTimeout);
+
+        // Verify the configuration
+        assertThat(cfg.getNetworkTimeout()).isEqualTo(networkTimeout);
+
+        // Test with different timeout values
+        cfg.setNetworkTimeout(5000L);
+        assertThat(cfg.getNetworkTimeout()).isEqualTo(5000L);
+
+        cfg.setNetworkTimeout(30000L);
+        assertThat(cfg.getNetworkTimeout()).isEqualTo(30000L);
+
+        // Verify default timeout is positive
+        IgniteConfiguration defaultCfg = new IgniteConfiguration();
+        assertThat(defaultCfg.getNetworkTimeout()).isGreaterThan(0);
+    }
+
+    @Test
+    @DisplayName("Test failure detection timeout configuration")
+    public void testFailureDetectionTimeout() {
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setIgniteInstanceName("failure-detection-test-node");
+
+        // Set failure detection timeout (in milliseconds)
+        long failureDetectionTimeout = 15000L; // 15 seconds
+        cfg.setFailureDetectionTimeout(failureDetectionTimeout);
+
+        // Verify the configuration
+        assertThat(cfg.getFailureDetectionTimeout()).isEqualTo(failureDetectionTimeout);
+
+        // Test with different timeout values
+        cfg.setFailureDetectionTimeout(10000L);
+        assertThat(cfg.getFailureDetectionTimeout()).isEqualTo(10000L);
+
+        cfg.setFailureDetectionTimeout(30000L);
+        assertThat(cfg.getFailureDetectionTimeout()).isEqualTo(30000L);
+
+        // Also test client failure detection timeout
+        cfg.setClientFailureDetectionTimeout(20000L);
+        assertThat(cfg.getClientFailureDetectionTimeout()).isEqualTo(20000L);
+
+        // Verify default failure detection timeout is positive
+        IgniteConfiguration defaultCfg = new IgniteConfiguration();
+        assertThat(defaultCfg.getFailureDetectionTimeout()).isGreaterThan(0);
     }
 }

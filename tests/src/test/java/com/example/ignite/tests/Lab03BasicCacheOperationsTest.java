@@ -14,7 +14,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -327,5 +329,87 @@ public class Lab03BasicCacheOperationsTest extends BaseIgniteTest {
 
         assertThat(binaryCache).isNotNull();
         assertThat(binaryCache.get(1)).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Test localSize operation")
+    public void testLocalSize() {
+        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(getTestCacheName());
+        cfg.setCacheMode(CacheMode.PARTITIONED);
+        cfg.setBackups(0);
+
+        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cfg);
+
+        // Initially local size should be zero
+        assertThat(cache.localSize()).isZero();
+
+        // Add entries
+        for (int i = 0; i < 50; i++) {
+            cache.put(i, "value" + i);
+        }
+
+        // Local size should reflect entries on this node
+        // In single-node setup, all entries are local
+        assertThat(cache.localSize()).isEqualTo(50);
+
+        // Test localSize with specific peek modes
+        assertThat(cache.localSize(org.apache.ignite.cache.CachePeekMode.PRIMARY)).isGreaterThan(0);
+
+        // Remove some entries
+        cache.remove(0);
+        cache.remove(1);
+
+        assertThat(cache.localSize()).isEqualTo(48);
+    }
+
+    @Test
+    @DisplayName("Test async operations with future.listen() callback")
+    public void testAsyncWithCallback() throws Exception {
+        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(getTestCacheName());
+
+        // Prepare test data
+        cache.put(1, "initialValue");
+
+        // Use CountDownLatch to wait for async callback completion
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<String> callbackResult = new AtomicReference<>();
+
+        // Get async cache and perform operation
+        IgniteCache<Integer, String> asyncCache = cache.withAsync();
+        asyncCache.get(1);
+        IgniteFuture<String> future = asyncCache.future();
+
+        // Register listener callback
+        future.listen(f -> {
+            try {
+                callbackResult.set(f.get());
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        // Wait for callback to complete
+        boolean completed = latch.await(10, TimeUnit.SECONDS);
+
+        assertThat(completed).isTrue();
+        assertThat(callbackResult.get()).isEqualTo("initialValue");
+
+        // Test async put with callback
+        CountDownLatch putLatch = new CountDownLatch(1);
+        AtomicReference<Boolean> putCompleted = new AtomicReference<>(false);
+
+        asyncCache.put(2, "asyncValue");
+        IgniteFuture<Void> putFuture = asyncCache.future();
+
+        putFuture.listen(f -> {
+            putCompleted.set(true);
+            putLatch.countDown();
+        });
+
+        boolean putDone = putLatch.await(10, TimeUnit.SECONDS);
+
+        assertThat(putDone).isTrue();
+        assertThat(putCompleted.get()).isTrue();
+        assertThat(cache.get(2)).isEqualTo("asyncValue");
     }
 }

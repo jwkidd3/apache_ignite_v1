@@ -2,12 +2,14 @@ package com.example.ignite.tests;
 
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.Ignition;
 import org.apache.ignite.cluster.ClusterState;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.ConnectorConfiguration;
 import org.apache.ignite.configuration.DataRegionConfiguration;
 import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.plugin.security.SecurityCredentials;
 import org.apache.ignite.ssl.SslContextFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -345,5 +347,178 @@ public class Lab12ProductionDeploymentTest extends BaseIgniteTest {
         assertThat(localNode.id()).isNotNull();
         assertThat(localNode.consistentId()).isNotNull();
         assertThat(localNode.hostNames()).isNotEmpty();
+    }
+
+    // ========================================
+    // Authentication Configuration Tests
+    // ========================================
+
+    @Test
+    @DisplayName("Test security/authentication configuration options")
+    public void testAuthenticationConfiguration() {
+        // Test SecurityCredentials configuration
+        SecurityCredentials credentials = new SecurityCredentials("admin", "password123");
+
+        assertThat(credentials.getLogin()).isEqualTo("admin");
+        assertThat(credentials.getPassword()).isEqualTo("password123");
+
+        // Test credentials with user object
+        SecurityCredentials credentialsWithUserObj = new SecurityCredentials("user", "pass", "custom-user-object");
+        assertThat(credentialsWithUserObj.getLogin()).isEqualTo("user");
+        assertThat(credentialsWithUserObj.getPassword()).isEqualTo("pass");
+        assertThat(credentialsWithUserObj.getUserObject()).isEqualTo("custom-user-object");
+
+        // Test IgniteConfiguration with authentication enabled
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setAuthenticationEnabled(true);
+
+        assertThat(cfg.isAuthenticationEnabled()).isTrue();
+
+        // Verify authentication can be disabled
+        cfg.setAuthenticationEnabled(false);
+        assertThat(cfg.isAuthenticationEnabled()).isFalse();
+
+        // Test SSL configuration for secure communication (authentication transport)
+        SslContextFactory sslFactory = new SslContextFactory();
+        sslFactory.setKeyStoreFilePath("keystore.jks");
+        sslFactory.setKeyStorePassword("password".toCharArray());
+        sslFactory.setTrustStoreFilePath("truststore.jks");
+        sslFactory.setTrustStorePassword("password".toCharArray());
+        sslFactory.setProtocol("TLSv1.2");
+
+        cfg.setSslContextFactory(sslFactory);
+
+        assertThat(cfg.getSslContextFactory()).isNotNull();
+        assertThat(cfg.getSslContextFactory()).isInstanceOf(SslContextFactory.class);
+
+        log.info("Authentication configuration validated successfully");
+    }
+
+    // ========================================
+    // Snapshot Configuration Tests
+    // ========================================
+
+    @Test
+    @DisplayName("Test snapshot backup configuration")
+    public void testSnapshotConfiguration() {
+        DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+        // Configure snapshot path for backups
+        String snapshotPath = "/var/ignite/snapshots";
+        storageCfg.setStoragePath("/var/ignite/storage");
+
+        assertThat(storageCfg.getStoragePath()).isEqualTo("/var/ignite/storage");
+
+        // Configure WAL paths (required for snapshot consistency)
+        storageCfg.setWalPath("/var/ignite/wal");
+        storageCfg.setWalArchivePath("/var/ignite/wal-archive");
+
+        assertThat(storageCfg.getWalPath()).isEqualTo("/var/ignite/wal");
+        assertThat(storageCfg.getWalArchivePath()).isEqualTo("/var/ignite/wal-archive");
+
+        // Configure data region for persistence (required for snapshots)
+        DataRegionConfiguration persistentRegion = new DataRegionConfiguration();
+        persistentRegion.setName("persistent-region");
+        persistentRegion.setPersistenceEnabled(true);
+        persistentRegion.setInitialSize(256L * 1024 * 1024);
+        persistentRegion.setMaxSize(1L * 1024 * 1024 * 1024);
+
+        storageCfg.setDefaultDataRegionConfiguration(persistentRegion);
+
+        assertThat(storageCfg.getDefaultDataRegionConfiguration().isPersistenceEnabled()).isTrue();
+        assertThat(storageCfg.getDefaultDataRegionConfiguration().getName()).isEqualTo("persistent-region");
+
+        // Configure checkpoint settings for snapshot consistency
+        storageCfg.setCheckpointFrequency(60000L);  // 1 minute checkpoint frequency
+        storageCfg.setCheckpointThreads(4);
+
+        assertThat(storageCfg.getCheckpointFrequency()).isEqualTo(60000L);
+        assertThat(storageCfg.getCheckpointThreads()).isEqualTo(4);
+
+        // Test IgniteConfiguration with snapshot settings
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setDataStorageConfiguration(storageCfg);
+
+        // Verify storage configuration is set
+        assertThat(cfg.getDataStorageConfiguration()).isNotNull();
+        assertThat(cfg.getDataStorageConfiguration().getStoragePath()).isEqualTo("/var/ignite/storage");
+
+        log.info("Snapshot configuration validated: storage={}, wal={}, wal-archive={}",
+            storageCfg.getStoragePath(),
+            storageCfg.getWalPath(),
+            storageCfg.getWalArchivePath());
+    }
+
+    // ========================================
+    // Graceful Shutdown Tests
+    // ========================================
+
+    @Test
+    @DisplayName("Test graceful node shutdown")
+    public void testGracefulShutdown() {
+        // Create a separate Ignite node for shutdown testing
+        IgniteConfiguration cfg = createTestConfiguration();
+        cfg.setIgniteInstanceName("shutdown-test-node-" + System.currentTimeMillis());
+
+        Ignite testNode = Ignition.start(cfg);
+
+        // Verify node is running and in cluster
+        assertThat(testNode.cluster().state()).isEqualTo(ClusterState.ACTIVE);
+        assertThat(testNode.cluster().localNode()).isNotNull();
+
+        // Create a cache and add some data before shutdown
+        CacheConfiguration<Integer, String> cacheCfg = new CacheConfiguration<>("shutdown-test-cache");
+        IgniteCache<Integer, String> cache = testNode.getOrCreateCache(cacheCfg);
+
+        for (int i = 0; i < 100; i++) {
+            cache.put(i, "Value-" + i);
+        }
+        assertThat(cache.size()).isEqualTo(100);
+
+        // Get node name for logging
+        String nodeName = testNode.name();
+
+        // Verify node is active before shutdown
+        boolean wasActive = !testNode.cluster().nodes().isEmpty();
+        assertThat(wasActive).isTrue();
+
+        // Perform graceful shutdown using close()
+        // This allows the node to complete pending operations and properly leave the cluster
+        testNode.close();
+
+        // Verify node is no longer accessible after close
+        assertThatThrownBy(() -> testNode.cluster().state())
+            .isInstanceOf(IllegalStateException.class);
+
+        log.info("Graceful shutdown completed for node: {}", nodeName);
+
+        // Test Ignition.stop() method for graceful shutdown
+        IgniteConfiguration cfg2 = createTestConfiguration();
+        cfg2.setIgniteInstanceName("shutdown-test-node-2-" + System.currentTimeMillis());
+
+        Ignite testNode2 = Ignition.start(cfg2);
+        String nodeName2 = testNode2.name();
+
+        assertThat(testNode2.cluster().state()).isEqualTo(ClusterState.ACTIVE);
+
+        // Use Ignition.stop with cancel=false for graceful shutdown
+        // cancel=false means wait for all operations to complete
+        boolean stopped = Ignition.stop(nodeName2, false);
+
+        assertThat(stopped).isTrue();
+
+        log.info("Graceful shutdown via Ignition.stop() completed for node: {}", nodeName2);
+
+        // Test that stopAll with cancel=false performs graceful shutdown
+        IgniteConfiguration cfg3 = createTestConfiguration();
+        cfg3.setIgniteInstanceName("shutdown-test-node-3-" + System.currentTimeMillis());
+
+        Ignite testNode3 = Ignition.start(cfg3);
+        assertThat(testNode3.cluster().state()).isEqualTo(ClusterState.ACTIVE);
+
+        // Gracefully stop this specific node
+        Ignition.stop(testNode3.name(), false);
+
+        log.info("All graceful shutdown tests completed successfully");
     }
 }

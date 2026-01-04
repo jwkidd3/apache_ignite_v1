@@ -5,6 +5,8 @@ import org.apache.ignite.IgniteCache;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.ClientConfiguration;
+import org.apache.ignite.configuration.ClientConnectorConfiguration;
 import org.apache.ignite.configuration.ConnectorConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
@@ -394,5 +396,95 @@ public class Lab10IntegrationConnectivityTest extends BaseIgniteTest {
         assertThat(connectorCfg.getIdleTimeout()).isEqualTo(60000);
         assertThat(connectorCfg.getThreadPoolSize()).isEqualTo(16);
         assertThat(connectorCfg.isSslEnabled()).isFalse();
+    }
+
+    // ==================== REST API and Thin Client Tests ====================
+
+    @Test
+    @DisplayName("Test REST API connector is configured and accessible")
+    public void testRestApiConfiguration() {
+        // Create ConnectorConfiguration for REST API
+        ConnectorConfiguration restConnector = new ConnectorConfiguration();
+        restConnector.setHost("127.0.0.1");
+        restConnector.setPort(8080);
+        restConnector.setIdleTimeout(30000);
+        restConnector.setThreadPoolSize(4);
+
+        // Create IgniteConfiguration with REST connector
+        IgniteConfiguration cfg = createTestConfiguration();
+        cfg.setIgniteInstanceName(testName + "-rest-node");
+        cfg.setConnectorConfiguration(restConnector);
+
+        // Start node with REST connector configured
+        try (Ignite restNode = Ignition.start(cfg)) {
+            // Verify REST connector is configured
+            ConnectorConfiguration actualConnector = restNode.configuration().getConnectorConfiguration();
+            assertThat(actualConnector).isNotNull();
+            assertThat(actualConnector.getHost()).isEqualTo("127.0.0.1");
+            assertThat(actualConnector.getPort()).isEqualTo(8080);
+            assertThat(actualConnector.getIdleTimeout()).isEqualTo(30000);
+            assertThat(actualConnector.getThreadPoolSize()).isEqualTo(4);
+
+            // Verify node is running and accessible
+            assertThat(restNode.cluster().localNode()).isNotNull();
+            assertThat(restNode.cluster().nodes().size()).isGreaterThanOrEqualTo(1);
+
+            // Create a cache and verify it's accessible
+            CacheConfiguration<String, String> cacheCfg = new CacheConfiguration<>(getTestCacheName() + "-rest");
+            IgniteCache<String, String> cache = restNode.getOrCreateCache(cacheCfg);
+            cache.put("rest-key", "rest-value");
+            assertThat(cache.get("rest-key")).isEqualTo("rest-value");
+        }
+    }
+
+    @Test
+    @DisplayName("Test thin client connection configuration")
+    public void testThinClientConnection() {
+        // Configure ClientConnectorConfiguration for thin clients
+        ClientConnectorConfiguration clientConnectorCfg = new ClientConnectorConfiguration();
+        clientConnectorCfg.setHost("127.0.0.1");
+        clientConnectorCfg.setPort(10800);
+        clientConnectorCfg.setPortRange(10);
+        clientConnectorCfg.setMaxOpenCursorsPerConnection(128);
+        clientConnectorCfg.setThreadPoolSize(8);
+        clientConnectorCfg.setSocketSendBufferSize(32768);
+        clientConnectorCfg.setSocketReceiveBufferSize(32768);
+
+        // Create IgniteConfiguration with thin client connector
+        IgniteConfiguration cfg = createTestConfiguration();
+        cfg.setIgniteInstanceName(testName + "-thin-server");
+        cfg.setClientConnectorConfiguration(clientConnectorCfg);
+
+        // Start server node with thin client connector configured
+        try (Ignite serverNode = Ignition.start(cfg)) {
+            // Verify ClientConnectorConfiguration is applied
+            ClientConnectorConfiguration actualCfg = serverNode.configuration().getClientConnectorConfiguration();
+            assertThat(actualCfg).isNotNull();
+            assertThat(actualCfg.getHost()).isEqualTo("127.0.0.1");
+            assertThat(actualCfg.getPort()).isEqualTo(10800);
+            assertThat(actualCfg.getPortRange()).isEqualTo(10);
+            assertThat(actualCfg.getMaxOpenCursorsPerConnection()).isEqualTo(128);
+            assertThat(actualCfg.getThreadPoolSize()).isEqualTo(8);
+            assertThat(actualCfg.getSocketSendBufferSize()).isEqualTo(32768);
+            assertThat(actualCfg.getSocketReceiveBufferSize()).isEqualTo(32768);
+
+            // Verify server is running
+            assertThat(serverNode.cluster().localNode()).isNotNull();
+
+            // Test thin client configuration object (without actually connecting)
+            ClientConfiguration thinClientCfg = new ClientConfiguration();
+            thinClientCfg.setAddresses("127.0.0.1:10800..10810");
+            thinClientCfg.setTcpNoDelay(true);
+            thinClientCfg.setTimeout(5000);
+            thinClientCfg.setSendBufferSize(32768);
+            thinClientCfg.setReceiveBufferSize(32768);
+
+            // Verify client configuration properties
+            assertThat(thinClientCfg.getAddresses()).contains("127.0.0.1:10800..10810");
+            assertThat(thinClientCfg.isTcpNoDelay()).isTrue();
+            assertThat(thinClientCfg.getTimeout()).isEqualTo(5000);
+            assertThat(thinClientCfg.getSendBufferSize()).isEqualTo(32768);
+            assertThat(thinClientCfg.getReceiveBufferSize()).isEqualTo(32768);
+        }
     }
 }

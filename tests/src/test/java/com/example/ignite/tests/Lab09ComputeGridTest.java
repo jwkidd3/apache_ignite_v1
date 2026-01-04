@@ -3,19 +3,31 @@ package com.example.ignite.tests;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCompute;
+import org.apache.ignite.IgniteException;
 import org.apache.ignite.cluster.ClusterGroup;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.compute.ComputeJob;
+import org.apache.ignite.compute.ComputeJobAdapter;
+import org.apache.ignite.compute.ComputeJobResult;
+import org.apache.ignite.compute.ComputeTaskAdapter;
+import org.apache.ignite.compute.ComputeTaskSplitAdapter;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.lang.IgniteCallable;
 import org.apache.ignite.lang.IgniteFuture;
 import org.apache.ignite.lang.IgniteRunnable;
 import org.apache.ignite.resources.IgniteInstanceResource;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -552,14 +564,75 @@ public class Lab09ComputeGridTest extends BaseIgniteTest {
     }
 
     @Test
-    @DisplayName("Test compute with empty callable collection")
+    @DisplayName("Test compute with empty callable collection throws exception")
     public void testEmptyCallableCollection() {
         IgniteCompute compute = ignite.compute();
 
         Collection<IgniteCallable<String>> emptyJobs = new ArrayList<>();
-        Collection<String> results = compute.call(emptyJobs);
 
-        assertThat(results).isEmpty();
+        // Ignite throws IllegalArgumentException for empty job collections
+        assertThatThrownBy(() -> compute.call(emptyJobs))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("jobs must not be empty");
+    }
+
+    // ==================== MapReduce and ComputeTask Operations ====================
+
+    @Test
+    @DisplayName("Test MapReduce word count with ComputeTaskAdapter")
+    public void testMapReduceWordCount() {
+        IgniteCompute compute = ignite.compute();
+
+        // Input: list of sentences to count words
+        List<String> sentences = Arrays.asList(
+            "hello world hello",
+            "world of ignite",
+            "hello ignite world"
+        );
+
+        // Execute MapReduce task
+        Map<String, Integer> wordCounts = compute.execute(WordCountTask.class, sentences);
+
+        // Verify results
+        assertThat(wordCounts).isNotNull();
+        assertThat(wordCounts.get("hello")).isEqualTo(3);
+        assertThat(wordCounts.get("world")).isEqualTo(3);
+        assertThat(wordCounts.get("ignite")).isEqualTo(2);
+        assertThat(wordCounts.get("of")).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Test ComputeTask with map() and reduce() phases")
+    public void testComputeTaskSplit() {
+        IgniteCompute compute = ignite.compute();
+
+        // Input: numbers to sum in parallel
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+
+        // Execute task with split adapter (auto-splits jobs across nodes)
+        Long result = compute.execute(SumTask.class, numbers);
+
+        // Verify the sum is correct (1+2+...+10 = 55)
+        assertThat(result).isEqualTo(55L);
+    }
+
+    @Test
+    @DisplayName("Test ComputeJob implementation")
+    public void testComputeJobExecution() {
+        IgniteCompute compute = ignite.compute();
+
+        // Create a collection of ComputeJobs
+        Collection<ComputeJob> jobs = new ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            jobs.add(new SquareJob(i));
+        }
+
+        // Execute jobs using ComputeTaskAdapter
+        List<Integer> results = compute.execute(SquareTask.class, jobs);
+
+        // Verify results: 1^2=1, 2^2=4, 3^2=9, 4^2=16, 5^2=25
+        assertThat(results).hasSize(5);
+        assertThat(results).containsExactlyInAnyOrder(1, 4, 9, 16, 25);
     }
 
     // ==================== Helper Classes ====================
@@ -582,6 +655,161 @@ public class Lab09ComputeGridTest extends BaseIgniteTest {
 
         public int getValue() {
             return value;
+        }
+    }
+
+    /**
+     * Word count MapReduce task using ComputeTaskAdapter.
+     * Maps sentences to word count jobs and reduces by aggregating counts.
+     */
+    static class WordCountTask extends ComputeTaskAdapter<List<String>, Map<String, Integer>> {
+        @Override
+        public @NotNull Map<? extends ComputeJob, ClusterNode> map(
+                List<ClusterNode> subgrid, @Nullable List<String> sentences) throws IgniteException {
+
+            Map<ComputeJob, ClusterNode> jobs = new HashMap<>();
+
+            if (sentences != null) {
+                int nodeIdx = 0;
+                for (String sentence : sentences) {
+                    // Distribute jobs across available nodes in round-robin
+                    ClusterNode node = subgrid.get(nodeIdx % subgrid.size());
+                    jobs.put(new WordCountJob(sentence), node);
+                    nodeIdx++;
+                }
+            }
+
+            return jobs;
+        }
+
+        @Override
+        public @Nullable Map<String, Integer> reduce(List<ComputeJobResult> results) throws IgniteException {
+            Map<String, Integer> totalCounts = new HashMap<>();
+
+            for (ComputeJobResult result : results) {
+                @SuppressWarnings("unchecked")
+                Map<String, Integer> partialCounts = result.getData();
+                if (partialCounts != null) {
+                    for (Map.Entry<String, Integer> entry : partialCounts.entrySet()) {
+                        totalCounts.merge(entry.getKey(), entry.getValue(), Integer::sum);
+                    }
+                }
+            }
+
+            return totalCounts;
+        }
+    }
+
+    /**
+     * ComputeJob that counts words in a single sentence.
+     */
+    static class WordCountJob extends ComputeJobAdapter {
+        private final String sentence;
+
+        public WordCountJob(String sentence) {
+            this.sentence = sentence;
+        }
+
+        @Override
+        public Map<String, Integer> execute() throws IgniteException {
+            Map<String, Integer> counts = new HashMap<>();
+
+            if (sentence != null && !sentence.isEmpty()) {
+                String[] words = sentence.toLowerCase().split("\\s+");
+                for (String word : words) {
+                    counts.merge(word, 1, Integer::sum);
+                }
+            }
+
+            return counts;
+        }
+    }
+
+    /**
+     * Sum task using ComputeTaskSplitAdapter for automatic job distribution.
+     * Splits input numbers into jobs and reduces by summing results.
+     */
+    static class SumTask extends ComputeTaskSplitAdapter<List<Integer>, Long> {
+        @Override
+        protected Collection<? extends ComputeJob> split(int gridSize, List<Integer> numbers) throws IgniteException {
+            Collection<ComputeJob> jobs = new ArrayList<>();
+
+            // Create one job per number for parallel execution
+            for (Integer number : numbers) {
+                jobs.add(new ComputeJobAdapter() {
+                    @Override
+                    public Long execute() throws IgniteException {
+                        return number.longValue();
+                    }
+                });
+            }
+
+            return jobs;
+        }
+
+        @Override
+        public @Nullable Long reduce(List<ComputeJobResult> results) throws IgniteException {
+            long sum = 0;
+            for (ComputeJobResult result : results) {
+                Long value = result.getData();
+                if (value != null) {
+                    sum += value;
+                }
+            }
+            return sum;
+        }
+    }
+
+    /**
+     * ComputeJob that squares a number.
+     */
+    static class SquareJob extends ComputeJobAdapter {
+        private final int number;
+
+        public SquareJob(int number) {
+            this.number = number;
+        }
+
+        @Override
+        public Integer execute() throws IgniteException {
+            return number * number;
+        }
+    }
+
+    /**
+     * Task that executes SquareJobs and collects results.
+     */
+    static class SquareTask extends ComputeTaskAdapter<Collection<ComputeJob>, List<Integer>> {
+        @Override
+        public @NotNull Map<? extends ComputeJob, ClusterNode> map(
+                List<ClusterNode> subgrid, @Nullable Collection<ComputeJob> jobs) throws IgniteException {
+
+            Map<ComputeJob, ClusterNode> jobMap = new HashMap<>();
+
+            if (jobs != null) {
+                int nodeIdx = 0;
+                for (ComputeJob job : jobs) {
+                    ClusterNode node = subgrid.get(nodeIdx % subgrid.size());
+                    jobMap.put(job, node);
+                    nodeIdx++;
+                }
+            }
+
+            return jobMap;
+        }
+
+        @Override
+        public @Nullable List<Integer> reduce(List<ComputeJobResult> results) throws IgniteException {
+            List<Integer> squares = new ArrayList<>();
+
+            for (ComputeJobResult result : results) {
+                Integer value = result.getData();
+                if (value != null) {
+                    squares.add(value);
+                }
+            }
+
+            return squares;
         }
     }
 }

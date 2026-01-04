@@ -9,6 +9,7 @@ import org.apache.ignite.transactions.TransactionConcurrency;
 import org.apache.ignite.transactions.TransactionIsolation;
 import org.apache.ignite.transactions.TransactionOptimisticException;
 import org.apache.ignite.transactions.TransactionTimeoutException;
+import org.apache.ignite.IgniteException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -814,5 +815,177 @@ public class Lab07TransactionsAcidTest extends BaseIgniteTest {
 
         // The reader should still see the original value due to REPEATABLE_READ
         assertThat(readValue.get()).isEqualTo(100);
+    }
+
+    // ==================== Deadlock Detection and Avoidance ====================
+
+    @Test
+    @DisplayName("Test deadlock detection with transaction timeout")
+    public void testDeadlockDetection() throws InterruptedException {
+        CacheConfiguration<Integer, Integer> cfg = createTransactionalCacheConfig(getTestCacheName());
+        IgniteCache<Integer, Integer> cache = ignite.getOrCreateCache(cfg);
+
+        cache.put(1, 100);
+        cache.put(2, 200);
+
+        AtomicBoolean deadlockDetected = new AtomicBoolean(false);
+        CountDownLatch startLatch = new CountDownLatch(2);
+        CountDownLatch doneLatch = new CountDownLatch(2);
+
+        // Thread 1: Locks key 1, then tries to lock key 2
+        Thread t1 = new Thread(() -> {
+            try (Transaction tx = ignite.transactions().txStart(
+                    TransactionConcurrency.PESSIMISTIC,
+                    TransactionIsolation.REPEATABLE_READ,
+                    2000,  // 2 second timeout to detect deadlock
+                    0)) {
+
+                cache.get(1); // Lock key 1
+                startLatch.countDown();
+
+                try {
+                    startLatch.await(5, TimeUnit.SECONDS);
+                    Thread.sleep(100); // Give other thread time to acquire lock
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                cache.get(2); // Try to lock key 2 - potential deadlock
+                tx.commit();
+            } catch (IgniteException e) {
+                // Deadlock detected via timeout or exception (includes TransactionTimeoutException)
+                if (e.getMessage() != null &&
+                    (e.getMessage().contains("deadlock") ||
+                     e.getMessage().contains("timed out") ||
+                     e.getMessage().contains("timeout"))) {
+                    deadlockDetected.set(true);
+                } else {
+                    deadlockDetected.set(true);
+                }
+            } catch (Exception e) {
+                // Any transaction failure due to deadlock
+                deadlockDetected.set(true);
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+
+        // Thread 2: Locks key 2, then tries to lock key 1 (opposite order - creates deadlock)
+        Thread t2 = new Thread(() -> {
+            try (Transaction tx = ignite.transactions().txStart(
+                    TransactionConcurrency.PESSIMISTIC,
+                    TransactionIsolation.REPEATABLE_READ,
+                    2000,  // 2 second timeout to detect deadlock
+                    0)) {
+
+                cache.get(2); // Lock key 2
+                startLatch.countDown();
+
+                try {
+                    startLatch.await(5, TimeUnit.SECONDS);
+                    Thread.sleep(100); // Give other thread time to acquire lock
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                cache.get(1); // Try to lock key 1 - potential deadlock
+                tx.commit();
+            } catch (IgniteException e) {
+                // Deadlock detected via timeout or exception (includes TransactionTimeoutException)
+                if (e.getMessage() != null &&
+                    (e.getMessage().contains("deadlock") ||
+                     e.getMessage().contains("timed out") ||
+                     e.getMessage().contains("timeout"))) {
+                    deadlockDetected.set(true);
+                } else {
+                    deadlockDetected.set(true);
+                }
+            } catch (Exception e) {
+                // Any transaction failure due to deadlock
+                deadlockDetected.set(true);
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+
+        t1.start();
+        t2.start();
+
+        doneLatch.await(10, TimeUnit.SECONDS);
+
+        // At least one thread should have detected the deadlock (via timeout or explicit detection)
+        assertThat(deadlockDetected.get()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Test ordered locking pattern to avoid deadlocks")
+    public void testOrderedLockingPattern() throws InterruptedException {
+        CacheConfiguration<Integer, Integer> cfg = createTransactionalCacheConfig(getTestCacheName());
+        IgniteCache<Integer, Integer> cache = ignite.getOrCreateCache(cfg);
+
+        cache.put(1, 100);
+        cache.put(2, 200);
+        cache.put(3, 300);
+
+        AtomicInteger successCount = new AtomicInteger(0);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(3);
+
+        // Create multiple threads that all access keys in the SAME order
+        // This prevents deadlocks by ensuring consistent lock ordering
+        Runnable orderedTask = () -> {
+            try {
+                startLatch.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+
+            try (Transaction tx = ignite.transactions().txStart(
+                    TransactionConcurrency.PESSIMISTIC,
+                    TransactionIsolation.REPEATABLE_READ,
+                    5000,  // 5 second timeout
+                    0)) {
+
+                // Always access keys in ascending order to prevent deadlocks
+                int val1 = cache.get(1);
+                int val2 = cache.get(2);
+                int val3 = cache.get(3);
+
+                // Perform updates
+                cache.put(1, val1 + 10);
+                cache.put(2, val2 + 10);
+                cache.put(3, val3 + 10);
+
+                tx.commit();
+                successCount.incrementAndGet();
+            } catch (Exception e) {
+                // Log but don't fail - some contention is expected
+                log.warn("Transaction failed: " + e.getMessage());
+            } finally {
+                doneLatch.countDown();
+            }
+        };
+
+        Thread t1 = new Thread(orderedTask);
+        Thread t2 = new Thread(orderedTask);
+        Thread t3 = new Thread(orderedTask);
+
+        t1.start();
+        t2.start();
+        t3.start();
+
+        // Release all threads simultaneously
+        startLatch.countDown();
+
+        doneLatch.await(15, TimeUnit.SECONDS);
+
+        // With ordered locking, all transactions should succeed (no deadlocks)
+        assertThat(successCount.get()).isEqualTo(3);
+
+        // Verify final values (each key should have been incremented by 30 total)
+        assertThat(cache.get(1)).isEqualTo(130);  // 100 + 10 + 10 + 10
+        assertThat(cache.get(2)).isEqualTo(230);  // 200 + 10 + 10 + 10
+        assertThat(cache.get(3)).isEqualTo(330);  // 300 + 10 + 10 + 10
     }
 }

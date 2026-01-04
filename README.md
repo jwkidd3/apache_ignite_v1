@@ -155,6 +155,7 @@ apache_ignite_v1/
     ├── pom.xml
     └── src/test/java/com/example/ignite/tests/
         ├── BaseIgniteTest.java
+        ├── ComprehensiveTestSuite.java
         ├── Lab01EnvironmentSetupTest.java
         ├── Lab02MultiNodeClusterTest.java
         ├── Lab03BasicCacheOperationsTest.java

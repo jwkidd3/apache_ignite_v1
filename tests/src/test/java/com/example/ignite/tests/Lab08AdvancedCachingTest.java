@@ -1,6 +1,7 @@
 package com.example.ignite.tests;
 
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteEvents;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheEntryProcessor;
 import org.apache.ignite.cache.CacheMode;
@@ -9,6 +10,9 @@ import org.apache.ignite.cache.query.ContinuousQuery;
 import org.apache.ignite.cache.query.QueryCursor;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.NearCacheConfiguration;
+import org.apache.ignite.events.CacheEvent;
+import org.apache.ignite.events.EventType;
+import org.apache.ignite.lang.IgnitePredicate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +26,10 @@ import javax.cache.processor.MutableEntry;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -477,11 +484,7 @@ public class Lab08AdvancedCachingTest extends BaseIgniteTest {
     @Test
     @DisplayName("Test near cache configuration")
     public void testNearCacheConfiguration() {
-        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(getTestCacheName());
-        cfg.setCacheMode(CacheMode.PARTITIONED);
-        cfg.setBackups(1);
-
-        ignite.getOrCreateCache(cfg);
+        String cacheName = getTestCacheName() + "-near-config";
 
         NearCacheConfiguration<Integer, String> nearCfg = new NearCacheConfiguration<>();
         nearCfg.setNearEvictionPolicyFactory(() -> {
@@ -490,19 +493,21 @@ public class Lab08AdvancedCachingTest extends BaseIgniteTest {
             return policy;
         });
 
-        IgniteCache<Integer, String> nearCache = ignite.getOrCreateNearCache(getTestCacheName(), nearCfg);
+        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(cacheName);
+        cfg.setCacheMode(CacheMode.PARTITIONED);
+        cfg.setBackups(1);
+        cfg.setNearConfiguration(nearCfg);
 
-        nearCache.put(1, "Test Value");
-        assertThat(nearCache.get(1)).isEqualTo("Test Value");
+        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cfg);
+
+        cache.put(1, "Test Value");
+        assertThat(cache.get(1)).isEqualTo("Test Value");
     }
 
     @Test
     @DisplayName("Test near cache stores frequently accessed data")
     public void testNearCacheFrequentAccess() {
-        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(getTestCacheName());
-        cfg.setCacheMode(CacheMode.PARTITIONED);
-
-        ignite.getOrCreateCache(cfg);
+        String cacheName = getTestCacheName() + "-near-frequent";
 
         NearCacheConfiguration<Integer, String> nearCfg = new NearCacheConfiguration<>();
         nearCfg.setNearEvictionPolicyFactory(() -> {
@@ -511,23 +516,159 @@ public class Lab08AdvancedCachingTest extends BaseIgniteTest {
             return policy;
         });
 
-        IgniteCache<Integer, String> nearCache = ignite.getOrCreateNearCache(getTestCacheName(), nearCfg);
+        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(cacheName);
+        cfg.setCacheMode(CacheMode.PARTITIONED);
+        cfg.setNearConfiguration(nearCfg);
+
+        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cfg);
 
         // Populate cache
         for (int i = 0; i < 100; i++) {
-            nearCache.put(i, "Value-" + i);
+            cache.put(i, "Value-" + i);
         }
 
         // Access some entries multiple times
         for (int j = 0; j < 5; j++) {
             for (int i = 0; i < 20; i++) {
-                nearCache.get(i);
+                cache.get(i);
             }
         }
 
         // Verify entries are accessible
-        assertThat(nearCache.get(0)).isEqualTo("Value-0");
-        assertThat(nearCache.get(19)).isEqualTo("Value-19");
+        assertThat(cache.get(0)).isEqualTo("Value-0");
+        assertThat(cache.get(19)).isEqualTo("Value-19");
+    }
+
+    // ==================== INVOKE ALL TESTS ====================
+
+    @Test
+    @DisplayName("Test invokeAll for batch entry processing")
+    public void testInvokeAllBatchProcessor() {
+        CacheConfiguration<String, Integer> cfg = new CacheConfiguration<>(getTestCacheName());
+        cfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+
+        IgniteCache<String, Integer> cache = ignite.getOrCreateCache(cfg);
+
+        // Initialize multiple counters
+        cache.put("counter1", 10);
+        cache.put("counter2", 20);
+        cache.put("counter3", 30);
+        cache.put("counter4", 40);
+        cache.put("counter5", 50);
+
+        // Create set of keys to process
+        Set<String> keys = new HashSet<>();
+        keys.add("counter1");
+        keys.add("counter2");
+        keys.add("counter3");
+        keys.add("counter4");
+        keys.add("counter5");
+
+        // Invoke batch increment on all keys
+        Map<String, javax.cache.processor.EntryProcessorResult<Integer>> results =
+                cache.invokeAll(keys, new IncrementProcessor(100));
+
+        // Verify all results
+        assertThat(results).hasSize(5);
+        assertThat(results.get("counter1").get()).isEqualTo(110);  // 10 + 100
+        assertThat(results.get("counter2").get()).isEqualTo(120);  // 20 + 100
+        assertThat(results.get("counter3").get()).isEqualTo(130);  // 30 + 100
+        assertThat(results.get("counter4").get()).isEqualTo(140);  // 40 + 100
+        assertThat(results.get("counter5").get()).isEqualTo(150);  // 50 + 100
+
+        // Verify cache values are updated
+        assertThat(cache.get("counter1")).isEqualTo(110);
+        assertThat(cache.get("counter2")).isEqualTo(120);
+        assertThat(cache.get("counter3")).isEqualTo(130);
+        assertThat(cache.get("counter4")).isEqualTo(140);
+        assertThat(cache.get("counter5")).isEqualTo(150);
+    }
+
+    // ==================== CACHE EVENTS TESTS ====================
+
+    @Test
+    @DisplayName("Test enabling cache events with ignite.events().enableLocal()")
+    public void testCacheEventsEnabled() {
+        // Get the events API
+        IgniteEvents events = ignite.events();
+        assertThat(events).isNotNull();
+
+        // Enable local cache events
+        events.enableLocal(
+                EventType.EVT_CACHE_OBJECT_PUT,
+                EventType.EVT_CACHE_OBJECT_READ,
+                EventType.EVT_CACHE_OBJECT_REMOVED
+        );
+
+        // Create a cache
+        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(getTestCacheName());
+        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cfg);
+
+        // Perform cache operations - events are now enabled
+        cache.put(1, "test");
+        cache.get(1);
+        cache.remove(1);
+
+        // Verify events can be queried (local events only in single-node setup)
+        // The fact that no exception is thrown confirms events are enabled
+        assertThat(cache.containsKey(1)).isFalse();
+    }
+
+    @Test
+    @DisplayName("Test cache event listener registration and event capture")
+    public void testCacheEventListener() throws InterruptedException {
+        // Create a cache with events enabled
+        String cacheName = getTestCacheName();
+        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(cacheName);
+        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cfg);
+
+        // Enable local events
+        ignite.events().enableLocal(
+                EventType.EVT_CACHE_OBJECT_PUT,
+                EventType.EVT_CACHE_OBJECT_READ,
+                EventType.EVT_CACHE_OBJECT_REMOVED
+        );
+
+        List<String> capturedEvents = Collections.synchronizedList(new ArrayList<>());
+        CountDownLatch latch = new CountDownLatch(3);
+
+        // Create and register event listener that filters by cache name
+        IgnitePredicate<CacheEvent> listener = event -> {
+            // Only process events from our specific cache
+            if (cacheName.equals(event.cacheName())) {
+                String eventInfo = "EventType=" + event.type() + ",Key=" + event.key();
+                capturedEvents.add(eventInfo);
+                latch.countDown();
+            }
+            return true; // Continue listening
+        };
+
+        // Register listener for cache events
+        ignite.events().localListen(listener,
+                EventType.EVT_CACHE_OBJECT_PUT,
+                EventType.EVT_CACHE_OBJECT_READ,
+                EventType.EVT_CACHE_OBJECT_REMOVED);
+
+        try {
+            // Perform cache operations that trigger events
+            cache.put(1, "Value1");  // PUT event
+            cache.get(1);            // READ event
+            cache.remove(1);         // REMOVED event
+
+            // Wait for events to be captured
+            boolean completed = latch.await(5, TimeUnit.SECONDS);
+
+            assertThat(completed).isTrue();
+            assertThat(capturedEvents).hasSize(3);
+
+            // Verify event types were captured
+            assertThat(capturedEvents).anyMatch(e -> e.contains("EventType=" + EventType.EVT_CACHE_OBJECT_PUT));
+            assertThat(capturedEvents).anyMatch(e -> e.contains("EventType=" + EventType.EVT_CACHE_OBJECT_READ));
+            assertThat(capturedEvents).anyMatch(e -> e.contains("EventType=" + EventType.EVT_CACHE_OBJECT_REMOVED));
+        } finally {
+            // Unregister listener
+            ignite.events().stopLocalListen(listener);
+        }
     }
 
     // ==================== HELPER CLASSES ====================

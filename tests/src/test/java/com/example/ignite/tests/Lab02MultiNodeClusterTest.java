@@ -2,11 +2,17 @@ package com.example.ignite.tests;
 
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cluster.BaselineNode;
 import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.cluster.ClusterState;
 import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.Collection;
 
 import static org.assertj.core.api.Assertions.*;
@@ -241,5 +247,91 @@ public class Lab02MultiNodeClusterTest extends BaseIgniteTest {
         );
 
         node2.close();
+    }
+
+    @Test
+    @DisplayName("Test local port configuration")
+    public void testLocalPortConfiguration() {
+        // Create and configure TcpDiscoverySpi with local port settings
+        TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
+
+        // Set local port to a specific value (note: getLocalPort() returns 0 until SPI starts)
+        discoverySpi.setLocalPort(47550);
+
+        // Set local port range and verify it's set correctly
+        discoverySpi.setLocalPortRange(20);
+        assertThat(discoverySpi.getLocalPortRange()).isEqualTo(20);
+
+        // Configure IP finder
+        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+        ipFinder.setAddresses(Arrays.asList("127.0.0.1:47550..47569"));
+        discoverySpi.setIpFinder(ipFinder);
+
+        // Verify the SPI is properly configured
+        assertThat(discoverySpi.getIpFinder()).isNotNull();
+        assertThat(discoverySpi.getIpFinder()).isInstanceOf(TcpDiscoveryVmIpFinder.class);
+
+        // Verify we can use this SPI in configuration
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setDiscoverySpi(discoverySpi);
+        assertThat(cfg.getDiscoverySpi()).isEqualTo(discoverySpi);
+    }
+
+    @Test
+    @DisplayName("Test cluster activation")
+    public void testClusterActivation() {
+        // Get current cluster state
+        ClusterState currentState = ignite.cluster().state();
+        assertThat(currentState).isNotNull();
+
+        // Activate the cluster (should already be active, but this tests the API)
+        ignite.cluster().state(ClusterState.ACTIVE);
+
+        // Verify cluster is active
+        assertThat(ignite.cluster().state()).isEqualTo(ClusterState.ACTIVE);
+        assertThat(ignite.cluster().state().active()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Test topology version")
+    public void testTopologyVersion() {
+        // Get initial topology version
+        long initialVersion = ignite.cluster().topologyVersion();
+        assertThat(initialVersion).isGreaterThan(0);
+
+        // Start a second node
+        Ignite node2 = startAdditionalNode(testName + "-node2");
+        await().until(() -> ignite.cluster().nodes().size() == 2);
+
+        // Topology version should increase when a node joins
+        long newVersion = ignite.cluster().topologyVersion();
+        assertThat(newVersion).isGreaterThan(initialVersion);
+
+        node2.close();
+    }
+
+    @Test
+    @DisplayName("Test baseline topology operations")
+    public void testBaselineTopology() {
+        // Get the baseline topology (may be null if not set)
+        Collection<? extends BaselineNode> baselineNodes = ignite.cluster().currentBaselineTopology();
+
+        // Baseline topology can be null if cluster was never activated with persistence
+        // or it can contain the current nodes
+        if (baselineNodes != null) {
+            assertThat(baselineNodes).isNotEmpty();
+        }
+
+        // Verify we can get the cluster state
+        ClusterState state = ignite.cluster().state();
+        assertThat(state).isNotNull();
+
+        // Ensure the cluster is active
+        assertThat(state.active()).isTrue();
+
+        // Get all server nodes that could be part of baseline
+        Collection<ClusterNode> serverNodes = ignite.cluster().forServers().nodes();
+        assertThat(serverNodes).isNotEmpty();
+        assertThat(serverNodes).hasSize(1);
     }
 }

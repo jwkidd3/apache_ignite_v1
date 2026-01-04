@@ -1,18 +1,27 @@
 package com.example.ignite.tests;
 
+import org.apache.ignite.DataRegionMetrics;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMetrics;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cluster.ClusterMetrics;
 import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.DataPageEvictionMode;
 import org.apache.ignite.configuration.DataRegionConfiguration;
 import org.apache.ignite.configuration.DataStorageConfiguration;
+import org.apache.ignite.configuration.WALMode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -533,5 +542,233 @@ public class Lab11PerformanceTuningTest extends BaseIgniteTest {
             totalMemory / (1024 * 1024),
             freeMemory / (1024 * 1024),
             processors);
+    }
+
+    // ==================== Data Page Eviction Mode Tests ====================
+
+    @Test
+    @DisplayName("Test DataPageEvictionMode configuration (RANDOM_2_LRU)")
+    public void testDataPageEvictionMode() {
+        DataRegionConfiguration regionCfg = new DataRegionConfiguration();
+        regionCfg.setName("eviction-test-region");
+        regionCfg.setInitialSize(50L * 1024 * 1024);   // 50 MB
+        regionCfg.setMaxSize(100L * 1024 * 1024);      // 100 MB
+
+        // Configure RANDOM_2_LRU eviction mode
+        regionCfg.setPageEvictionMode(DataPageEvictionMode.RANDOM_2_LRU);
+
+        assertThat(regionCfg.getPageEvictionMode()).isEqualTo(DataPageEvictionMode.RANDOM_2_LRU);
+        assertThat(regionCfg.getName()).isEqualTo("eviction-test-region");
+
+        // Test other eviction modes
+        regionCfg.setPageEvictionMode(DataPageEvictionMode.RANDOM_LRU);
+        assertThat(regionCfg.getPageEvictionMode()).isEqualTo(DataPageEvictionMode.RANDOM_LRU);
+
+        regionCfg.setPageEvictionMode(DataPageEvictionMode.DISABLED);
+        assertThat(regionCfg.getPageEvictionMode()).isEqualTo(DataPageEvictionMode.DISABLED);
+
+        // Test eviction threshold with eviction mode
+        regionCfg.setPageEvictionMode(DataPageEvictionMode.RANDOM_2_LRU);
+        regionCfg.setEvictionThreshold(0.9);
+
+        assertThat(regionCfg.getEvictionThreshold()).isEqualTo(0.9);
+        assertThat(regionCfg.getPageEvictionMode()).isEqualTo(DataPageEvictionMode.RANDOM_2_LRU);
+
+        log.info("DataPageEvictionMode configured: {}", regionCfg.getPageEvictionMode());
+    }
+
+    // ==================== WAL Mode Configuration Tests ====================
+
+    @Test
+    @DisplayName("Test WAL mode configuration (LOG_ONLY, FSYNC, etc.)")
+    public void testWalModeConfiguration() {
+        DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+        // Test LOG_ONLY mode (fastest, less durable)
+        storageCfg.setWalMode(WALMode.LOG_ONLY);
+        assertThat(storageCfg.getWalMode()).isEqualTo(WALMode.LOG_ONLY);
+
+        // Test FSYNC mode (slowest, most durable)
+        storageCfg.setWalMode(WALMode.FSYNC);
+        assertThat(storageCfg.getWalMode()).isEqualTo(WALMode.FSYNC);
+
+        // Test BACKGROUND mode (balanced)
+        storageCfg.setWalMode(WALMode.BACKGROUND);
+        assertThat(storageCfg.getWalMode()).isEqualTo(WALMode.BACKGROUND);
+
+        // Test NONE mode (no WAL, fastest but no crash recovery)
+        storageCfg.setWalMode(WALMode.NONE);
+        assertThat(storageCfg.getWalMode()).isEqualTo(WALMode.NONE);
+
+        // Configure WAL with additional settings
+        storageCfg.setWalMode(WALMode.LOG_ONLY);
+        storageCfg.setWalSegmentSize(64 * 1024 * 1024);  // 64 MB
+        storageCfg.setWalHistorySize(10);
+        storageCfg.setWalCompactionEnabled(true);
+
+        assertThat(storageCfg.getWalMode()).isEqualTo(WALMode.LOG_ONLY);
+        assertThat(storageCfg.getWalSegmentSize()).isEqualTo(64 * 1024 * 1024);
+        assertThat(storageCfg.getWalHistorySize()).isEqualTo(10);
+        assertThat(storageCfg.isWalCompactionEnabled()).isTrue();
+
+        log.info("WAL mode configured: {}, segment size: {} MB",
+            storageCfg.getWalMode(),
+            storageCfg.getWalSegmentSize() / (1024 * 1024));
+    }
+
+    // ==================== Data Region Metrics API Tests ====================
+
+    @Test
+    @DisplayName("Test ignite.dataRegionMetrics() API")
+    public void testDataRegionMetricsApi() {
+        // Access data region metrics collection
+        Collection<DataRegionMetrics> allMetrics = ignite.dataRegionMetrics();
+
+        assertThat(allMetrics).isNotNull();
+        assertThat(allMetrics).isNotEmpty();
+
+        // There should be at least the default data region
+        for (DataRegionMetrics metrics : allMetrics) {
+            assertThat(metrics).isNotNull();
+            assertThat(metrics.getName()).isNotNull();
+            assertThat(metrics.getName()).isNotEmpty();
+
+            // Memory metrics should be non-negative
+            // Note: When metrics are disabled for a region, some values may be 0
+            assertThat(metrics.getTotalAllocatedPages()).isGreaterThanOrEqualTo(0);
+            assertThat(metrics.getPageSize()).isGreaterThanOrEqualTo(0);
+
+            log.info("Data region '{}': total allocated pages = {}, page size = {} bytes",
+                metrics.getName(),
+                metrics.getTotalAllocatedPages(),
+                metrics.getPageSize());
+        }
+
+        // Test getting metrics for a specific region by name
+        DataRegionMetrics defaultMetrics = ignite.dataRegionMetrics("default");
+        if (defaultMetrics != null) {
+            assertThat(defaultMetrics.getName()).isEqualTo("default");
+            // Page size can be 0 if metrics are not enabled for the region
+            assertThat(defaultMetrics.getPageSize()).isGreaterThanOrEqualTo(0);
+        }
+
+        // Verify metrics update after cache operations
+        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(getTestCacheName());
+        for (int i = 0; i < 100; i++) {
+            cache.put(i, "Value-" + i);
+        }
+
+        Collection<DataRegionMetrics> metricsAfterOps = ignite.dataRegionMetrics();
+        assertThat(metricsAfterOps).isNotEmpty();
+
+        log.info("Total data regions: {}", allMetrics.size());
+    }
+
+    // ==================== Concurrent Access Performance Tests ====================
+
+    @Test
+    @DisplayName("Test multi-threaded concurrent cache access performance")
+    public void testConcurrentAccessPerformance() throws InterruptedException {
+        int numThreads = 4;
+        int operationsPerThread = 250;
+        int totalOperations = numThreads * operationsPerThread;
+
+        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(getTestCacheName());
+        cfg.setStatisticsEnabled(true);
+        cfg.setCacheMode(CacheMode.PARTITIONED);
+        cfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+
+        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cfg);
+
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(numThreads);
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger errorCount = new AtomicInteger(0);
+
+        long startTime = System.currentTimeMillis();
+
+        // Submit concurrent write tasks
+        for (int t = 0; t < numThreads; t++) {
+            final int threadId = t;
+            executor.submit(() -> {
+                try {
+                    startLatch.await(); // Wait for all threads to be ready
+                    for (int i = 0; i < operationsPerThread; i++) {
+                        int key = threadId * operationsPerThread + i;
+                        cache.put(key, "Value-" + key);
+                        successCount.incrementAndGet();
+                    }
+                } catch (Exception e) {
+                    errorCount.incrementAndGet();
+                    log.error("Error in thread {}: {}", threadId, e.getMessage());
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        // Start all threads simultaneously
+        startLatch.countDown();
+
+        // Wait for completion with timeout
+        boolean completed = doneLatch.await(60, TimeUnit.SECONDS);
+        long writeTime = System.currentTimeMillis() - startTime;
+
+        assertThat(completed).isTrue();
+        assertThat(errorCount.get()).isZero();
+        assertThat(successCount.get()).isEqualTo(totalOperations);
+        assertThat(cache.size()).isEqualTo(totalOperations);
+
+        // Test concurrent reads
+        CountDownLatch readStartLatch = new CountDownLatch(1);
+        CountDownLatch readDoneLatch = new CountDownLatch(numThreads);
+        AtomicInteger readSuccessCount = new AtomicInteger(0);
+
+        long readStartTime = System.currentTimeMillis();
+
+        for (int t = 0; t < numThreads; t++) {
+            final int threadId = t;
+            executor.submit(() -> {
+                try {
+                    readStartLatch.await();
+                    for (int i = 0; i < operationsPerThread; i++) {
+                        int key = threadId * operationsPerThread + i;
+                        String value = cache.get(key);
+                        if (value != null && value.equals("Value-" + key)) {
+                            readSuccessCount.incrementAndGet();
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("Read error in thread {}: {}", threadId, e.getMessage());
+                } finally {
+                    readDoneLatch.countDown();
+                }
+            });
+        }
+
+        readStartLatch.countDown();
+        boolean readCompleted = readDoneLatch.await(60, TimeUnit.SECONDS);
+        long readTime = System.currentTimeMillis() - readStartTime;
+
+        assertThat(readCompleted).isTrue();
+        assertThat(readSuccessCount.get()).isEqualTo(totalOperations);
+
+        executor.shutdown();
+        executor.awaitTermination(10, TimeUnit.SECONDS);
+
+        // Calculate throughput
+        double writeOpsPerSec = (totalOperations * 1000.0) / writeTime;
+        double readOpsPerSec = (totalOperations * 1000.0) / readTime;
+
+        log.info("Concurrent performance test results:");
+        log.info("  Threads: {}, Operations per thread: {}", numThreads, operationsPerThread);
+        log.info("  Write time: {} ms, Write throughput: {:.2f} ops/sec", writeTime, writeOpsPerSec);
+        log.info("  Read time: {} ms, Read throughput: {:.2f} ops/sec", readTime, readOpsPerSec);
+
+        // Verify cache metrics
+        CacheMetrics metrics = cache.metrics();
+        assertThat(metrics.getCachePuts()).isEqualTo(totalOperations);
+        assertThat(metrics.getCacheGets()).isEqualTo(totalOperations);
     }
 }

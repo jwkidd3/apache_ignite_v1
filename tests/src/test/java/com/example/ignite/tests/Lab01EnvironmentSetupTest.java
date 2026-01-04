@@ -191,4 +191,25 @@ public class Lab01EnvironmentSetupTest extends BaseIgniteTest {
         assertThat(cache.containsKey(1)).isTrue();
         assertThat(cache.containsKey(999)).isFalse();
     }
+
+    @Test
+    @DisplayName("Test peer class loading can be enabled")
+    public void testPeerClassLoadingEnabled() {
+        // Verify the current configuration has peer class loading disabled (as set in BaseIgniteTest)
+        assertThat(ignite.configuration().isPeerClassLoadingEnabled()).isFalse();
+
+        // Create a new configuration with peer class loading enabled
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setPeerClassLoadingEnabled(true);
+
+        // Verify the configuration setting
+        assertThat(cfg.isPeerClassLoadingEnabled()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Test cluster state is active")
+    public void testClusterStateActive() {
+        // Verify the cluster state is active
+        assertThat(ignite.cluster().state().active()).isTrue();
+    }
 }

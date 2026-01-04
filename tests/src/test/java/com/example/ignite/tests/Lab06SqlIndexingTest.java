@@ -5,10 +5,18 @@ import org.apache.ignite.cache.QueryEntity;
 import org.apache.ignite.cache.QueryIndex;
 import org.apache.ignite.cache.QueryIndexType;
 import org.apache.ignite.cache.query.SqlFieldsQuery;
+import org.apache.ignite.cache.query.TextQuery;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import javax.cache.Cache;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -475,6 +483,230 @@ public class Lab06SqlIndexingTest extends BaseIgniteTest {
         assertThat((Double) results.get(0).get(1)).isEqualTo(95000.0); // MAX
     }
 
+    @Test
+    @DisplayName("Test FULLTEXT index creation and text search")
+    public void testFullTextIndex() {
+        CacheConfiguration<Long, Object> cfg = new CacheConfiguration<>(getTestCacheName());
+
+        QueryEntity entity = new QueryEntity(Long.class, Object.class);
+        entity.setTableName("Article");
+
+        LinkedHashMap<String, String> fields = new LinkedHashMap<>();
+        fields.put("id", "java.lang.Long");
+        fields.put("title", "java.lang.String");
+        fields.put("content", "java.lang.String");
+        fields.put("author", "java.lang.String");
+
+        entity.setFields(fields);
+        entity.setKeyFieldName("id");
+
+        // Create FULLTEXT index on content field
+        QueryIndex contentIdx = new QueryIndex("content", QueryIndexType.FULLTEXT);
+        contentIdx.setName("content_fulltext_idx");
+
+        // Create FULLTEXT index on title field
+        QueryIndex titleIdx = new QueryIndex("title", QueryIndexType.FULLTEXT);
+        titleIdx.setName("title_fulltext_idx");
+
+        entity.setIndexes(Arrays.asList(contentIdx, titleIdx));
+
+        cfg.setQueryEntities(Arrays.asList(entity));
+        cfg.setSqlSchema("PUBLIC");
+
+        IgniteCache<Long, Object> cache = ignite.getOrCreateCache(cfg);
+
+        // Insert test articles
+        cache.query(new SqlFieldsQuery(
+            "INSERT INTO Article (id, title, content, author) VALUES (?, ?, ?, ?)")
+            .setArgs(1L, "Introduction to Apache Ignite",
+                "Apache Ignite is an in-memory computing platform for high-performance applications",
+                "John Doe")).getAll();
+
+        cache.query(new SqlFieldsQuery(
+            "INSERT INTO Article (id, title, content, author) VALUES (?, ?, ?, ?)")
+            .setArgs(2L, "Distributed Caching Best Practices",
+                "Learn about distributed caching and how to optimize memory usage",
+                "Jane Smith")).getAll();
+
+        cache.query(new SqlFieldsQuery(
+            "INSERT INTO Article (id, title, content, author) VALUES (?, ?, ?, ?)")
+            .setArgs(3L, "SQL Queries in Ignite",
+                "Apache Ignite supports ANSI SQL for querying distributed data",
+                "Bob Johnson")).getAll();
+
+        cache.query(new SqlFieldsQuery(
+            "INSERT INTO Article (id, title, content, author) VALUES (?, ?, ?, ?)")
+            .setArgs(4L, "Machine Learning Overview",
+                "Introduction to machine learning algorithms and techniques",
+                "Alice Williams")).getAll();
+
+        // Test text search using SQL LIKE (basic text search)
+        SqlFieldsQuery likeQuery = new SqlFieldsQuery(
+            "SELECT title, author FROM Article WHERE content LIKE ?")
+            .setArgs("%Apache Ignite%");
+        List<List<?>> likeResults = cache.query(likeQuery).getAll();
+
+        assertThat(likeResults).hasSize(2);
+
+        // Test case-insensitive search
+        SqlFieldsQuery caseInsensitiveQuery = new SqlFieldsQuery(
+            "SELECT title FROM Article WHERE LOWER(content) LIKE ?")
+            .setArgs("%distributed%");
+        List<List<?>> caseResults = cache.query(caseInsensitiveQuery).getAll();
+
+        assertThat(caseResults).hasSize(2); // "distributed caching" and "distributed data"
+
+        // Test searching in title
+        SqlFieldsQuery titleQuery = new SqlFieldsQuery(
+            "SELECT title, author FROM Article WHERE title LIKE ?")
+            .setArgs("%Ignite%");
+        List<List<?>> titleResults = cache.query(titleQuery).getAll();
+
+        assertThat(titleResults).hasSize(2);
+
+        // Verify specific results
+        boolean foundIntroduction = false;
+        boolean foundSql = false;
+        for (List<?> row : titleResults) {
+            String title = (String) row.get(0);
+            if (title.contains("Introduction")) foundIntroduction = true;
+            if (title.contains("SQL")) foundSql = true;
+        }
+        assertThat(foundIntroduction).isTrue();
+        assertThat(foundSql).isTrue();
+    }
+
+    @Test
+    @DisplayName("Test JDBC thin driver connection and basic operations")
+    public void testJdbcConnection() throws SQLException {
+        // First create a table using cache API
+        CacheConfiguration<Object, Object> cfg = new CacheConfiguration<>(getTestCacheName());
+        cfg.setSqlSchema("PUBLIC");
+        IgniteCache<Object, Object> cache = ignite.getOrCreateCache(cfg);
+
+        // Create table via cache query
+        cache.query(new SqlFieldsQuery(
+            "CREATE TABLE IF NOT EXISTS JdbcTestProduct (" +
+            "id INT PRIMARY KEY, " +
+            "name VARCHAR, " +
+            "price DOUBLE, " +
+            "quantity INT)")).getAll();
+
+        // JDBC thin driver URL - using localhost since we have ignite running
+        String jdbcUrl = "jdbc:ignite:thin://127.0.0.1";
+
+        // Test JDBC connection
+        try (Connection conn = DriverManager.getConnection(jdbcUrl)) {
+            assertThat(conn).isNotNull();
+            assertThat(conn.isClosed()).isFalse();
+
+            // Test INSERT via JDBC
+            try (PreparedStatement pstmt = conn.prepareStatement(
+                    "INSERT INTO JdbcTestProduct (id, name, price, quantity) VALUES (?, ?, ?, ?)")) {
+
+                pstmt.setInt(1, 1);
+                pstmt.setString(2, "Laptop");
+                pstmt.setDouble(3, 1299.99);
+                pstmt.setInt(4, 10);
+                int insertedRows = pstmt.executeUpdate();
+                assertThat(insertedRows).isEqualTo(1);
+
+                pstmt.setInt(1, 2);
+                pstmt.setString(2, "Mouse");
+                pstmt.setDouble(3, 29.99);
+                pstmt.setInt(4, 100);
+                insertedRows = pstmt.executeUpdate();
+                assertThat(insertedRows).isEqualTo(1);
+
+                pstmt.setInt(1, 3);
+                pstmt.setString(2, "Keyboard");
+                pstmt.setDouble(3, 79.99);
+                pstmt.setInt(4, 50);
+                insertedRows = pstmt.executeUpdate();
+                assertThat(insertedRows).isEqualTo(1);
+            }
+
+            // Test SELECT via JDBC
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT id, name, price, quantity FROM JdbcTestProduct ORDER BY id")) {
+
+                int rowCount = 0;
+                while (rs.next()) {
+                    rowCount++;
+                    int id = rs.getInt("id");
+                    String name = rs.getString("name");
+                    double price = rs.getDouble("price");
+                    int quantity = rs.getInt("quantity");
+
+                    assertThat(id).isGreaterThan(0);
+                    assertThat(name).isNotEmpty();
+                    assertThat(price).isGreaterThan(0);
+                    assertThat(quantity).isGreaterThan(0);
+                }
+                assertThat(rowCount).isEqualTo(3);
+            }
+
+            // Test parameterized SELECT
+            try (PreparedStatement pstmt = conn.prepareStatement(
+                    "SELECT name, price FROM JdbcTestProduct WHERE price > ?")) {
+                pstmt.setDouble(1, 50.0);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    int count = 0;
+                    while (rs.next()) {
+                        count++;
+                        double price = rs.getDouble("price");
+                        assertThat(price).isGreaterThan(50.0);
+                    }
+                    assertThat(count).isEqualTo(2); // Laptop and Keyboard
+                }
+            }
+
+            // Test UPDATE via JDBC
+            try (PreparedStatement pstmt = conn.prepareStatement(
+                    "UPDATE JdbcTestProduct SET price = price * 0.9 WHERE name = ?")) {
+                pstmt.setString(1, "Laptop");
+                int updatedRows = pstmt.executeUpdate();
+                assertThat(updatedRows).isEqualTo(1);
+            }
+
+            // Verify UPDATE
+            try (PreparedStatement pstmt = conn.prepareStatement(
+                    "SELECT price FROM JdbcTestProduct WHERE name = ?")) {
+                pstmt.setString(1, "Laptop");
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    assertThat(rs.next()).isTrue();
+                    double newPrice = rs.getDouble("price");
+                    assertThat(newPrice).isCloseTo(1169.99, within(0.01)); // 1299.99 * 0.9
+                }
+            }
+
+            // Test DELETE via JDBC
+            try (PreparedStatement pstmt = conn.prepareStatement(
+                    "DELETE FROM JdbcTestProduct WHERE id = ?")) {
+                pstmt.setInt(1, 2);
+                int deletedRows = pstmt.executeUpdate();
+                assertThat(deletedRows).isEqualTo(1);
+            }
+
+            // Test aggregate function via JDBC
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT COUNT(*), SUM(quantity), AVG(price) FROM JdbcTestProduct")) {
+                assertThat(rs.next()).isTrue();
+                long count = rs.getLong(1);
+                long totalQuantity = rs.getLong(2);
+                double avgPrice = rs.getDouble(3);
+
+                assertThat(count).isEqualTo(2); // After delete
+                assertThat(totalQuantity).isEqualTo(60); // 10 + 50 (mouse was deleted)
+                assertThat(avgPrice).isGreaterThan(0);
+            }
+
+            // Test metadata
+            assertThat(conn.getMetaData()).isNotNull();
+            assertThat(conn.getMetaData().getDriverName()).contains("Ignite");
+        }
+    }
+
     // Helper methods
 
     private IgniteCache<Long, Object> createPersonCache() {
@@ -574,6 +806,10 @@ public class Lab06SqlIndexingTest extends BaseIgniteTest {
 
         entity.setFields(fields);
         entity.setKeyFieldName("id");
+
+        // Add index on dept_id for distributed joins
+        QueryIndex deptIdIdx = new QueryIndex("dept_id");
+        entity.setIndexes(Arrays.asList(deptIdIdx));
 
         cfg.setQueryEntities(Arrays.asList(entity));
         cfg.setSqlSchema("PUBLIC");

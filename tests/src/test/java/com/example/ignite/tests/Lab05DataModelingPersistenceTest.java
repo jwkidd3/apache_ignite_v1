@@ -4,13 +4,23 @@ import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cache.affinity.AffinityKeyMapped;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
+import org.apache.ignite.cache.store.CacheStore;
+import org.apache.ignite.cache.store.CacheStoreAdapter;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.DataRegionConfiguration;
 import org.apache.ignite.configuration.DataStorageConfiguration;
+import org.apache.ignite.configuration.WALMode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import javax.cache.Cache;
+import javax.cache.configuration.Factory;
+import javax.cache.integration.CacheLoaderException;
+import javax.cache.integration.CacheWriterException;
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -140,6 +150,161 @@ public class Lab05DataModelingPersistenceTest extends BaseIgniteTest {
         assertThat(regionCfg.getName()).isEqualTo("testRegion");
         assertThat(regionCfg.getInitialSize()).isEqualTo(50L * 1024 * 1024);
         assertThat(regionCfg.getMaxSize()).isEqualTo(200L * 1024 * 1024);
+    }
+
+    @Test
+    @DisplayName("Test WAL configuration")
+    public void testWalConfiguration() {
+        DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+        // Configure WAL mode
+        storageCfg.setWalMode(WALMode.LOG_ONLY);
+        storageCfg.setWalSegmentSize(64 * 1024 * 1024); // 64 MB segment size
+        storageCfg.setWalSegments(4);
+        storageCfg.setWalHistorySize(10);
+
+        // Verify WAL configuration
+        assertThat(storageCfg.getWalMode()).isEqualTo(WALMode.LOG_ONLY);
+        assertThat(storageCfg.getWalSegmentSize()).isEqualTo(64 * 1024 * 1024);
+        assertThat(storageCfg.getWalSegments()).isEqualTo(4);
+        assertThat(storageCfg.getWalHistorySize()).isEqualTo(10);
+
+        // Test other WAL modes
+        storageCfg.setWalMode(WALMode.FSYNC);
+        assertThat(storageCfg.getWalMode()).isEqualTo(WALMode.FSYNC);
+
+        storageCfg.setWalMode(WALMode.BACKGROUND);
+        assertThat(storageCfg.getWalMode()).isEqualTo(WALMode.BACKGROUND);
+
+        storageCfg.setWalMode(WALMode.NONE);
+        assertThat(storageCfg.getWalMode()).isEqualTo(WALMode.NONE);
+    }
+
+    @Test
+    @DisplayName("Test storage path configuration")
+    public void testStoragePathConfiguration() {
+        DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+        // Configure storage paths
+        String storagePath = "/data/ignite/storage";
+        String walPath = "/data/ignite/wal";
+        String walArchivePath = "/data/ignite/wal-archive";
+
+        storageCfg.setStoragePath(storagePath);
+        storageCfg.setWalPath(walPath);
+        storageCfg.setWalArchivePath(walArchivePath);
+
+        // Verify path configuration
+        assertThat(storageCfg.getStoragePath()).isEqualTo(storagePath);
+        assertThat(storageCfg.getWalPath()).isEqualTo(walPath);
+        assertThat(storageCfg.getWalArchivePath()).isEqualTo(walArchivePath);
+
+        // Test checkpoint configuration
+        storageCfg.setCheckpointFrequency(180000L); // 3 minutes
+        assertThat(storageCfg.getCheckpointFrequency()).isEqualTo(180000L);
+
+        // Test page size configuration
+        storageCfg.setPageSize(8 * 1024); // 8 KB
+        assertThat(storageCfg.getPageSize()).isEqualTo(8 * 1024);
+    }
+
+    @Test
+    @DisplayName("Test CacheStore configuration with read-through/write-through settings")
+    public void testCacheStoreConfiguration() {
+        CacheConfiguration<Long, String> cfg = new CacheConfiguration<>(getTestCacheName());
+
+        // Configure cache store factory using a serializable factory
+        cfg.setCacheStoreFactory(new TestCacheStoreFactory());
+
+        // Enable read-through and write-through
+        cfg.setReadThrough(true);
+        cfg.setWriteThrough(true);
+
+        // Verify configuration
+        assertThat(cfg.isReadThrough()).isTrue();
+        assertThat(cfg.isWriteThrough()).isTrue();
+        assertThat(cfg.getCacheStoreFactory()).isNotNull();
+
+        // Create cache to test the configuration is valid
+        IgniteCache<Long, String> cache = ignite.getOrCreateCache(cfg);
+
+        // Write-through test: put should write to store
+        cache.put(1L, "Value1");
+        cache.put(2L, "Value2");
+
+        // Verify values are in cache
+        assertThat(cache.get(1L)).isEqualTo("Value1");
+        assertThat(cache.get(2L)).isEqualTo("Value2");
+
+        // The cache with store should support load operations
+        assertThat(cache.containsKey(1L)).isTrue();
+        assertThat(cache.containsKey(2L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("Test write-behind cache store settings")
+    public void testWriteBehindConfiguration() {
+        CacheConfiguration<Long, String> cfg = new CacheConfiguration<>(getTestCacheName());
+
+        // Configure write-behind
+        cfg.setWriteBehindEnabled(true);
+        cfg.setWriteBehindFlushFrequency(5000L); // 5 seconds
+        cfg.setWriteBehindFlushSize(1024); // Flush when 1024 entries accumulated
+        cfg.setWriteBehindFlushThreadCount(2);
+        cfg.setWriteBehindBatchSize(512);
+
+        // Verify write-behind configuration
+        assertThat(cfg.isWriteBehindEnabled()).isTrue();
+        assertThat(cfg.getWriteBehindFlushFrequency()).isEqualTo(5000L);
+        assertThat(cfg.getWriteBehindFlushSize()).isEqualTo(1024);
+        assertThat(cfg.getWriteBehindFlushThreadCount()).isEqualTo(2);
+        assertThat(cfg.getWriteBehindBatchSize()).isEqualTo(512);
+
+        // Test disabling write-behind
+        cfg.setWriteBehindEnabled(false);
+        assertThat(cfg.isWriteBehindEnabled()).isFalse();
+
+        // Test default values after re-enabling
+        CacheConfiguration<Long, String> cfg2 = new CacheConfiguration<>(getTestCacheName() + "-2");
+        cfg2.setWriteBehindEnabled(true);
+
+        // Verify that write-behind can be enabled
+        assertThat(cfg2.isWriteBehindEnabled()).isTrue();
+    }
+
+    // Serializable CacheStore factory for testing
+    static class TestCacheStoreFactory implements Factory<CacheStore<Long, String>>, Serializable {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public CacheStore<Long, String> create() {
+            return new TestCacheStore();
+        }
+    }
+
+    // Test CacheStore implementation for testing
+    static class TestCacheStore extends CacheStoreAdapter<Long, String> implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private final Map<Long, String> backingStore = new ConcurrentHashMap<>();
+
+        public Map<Long, String> getBackingStore() {
+            return backingStore;
+        }
+
+        @Override
+        public String load(Long key) throws CacheLoaderException {
+            return backingStore.get(key);
+        }
+
+        @Override
+        public void write(Cache.Entry<? extends Long, ? extends String> entry) throws CacheWriterException {
+            backingStore.put(entry.getKey(), entry.getValue());
+        }
+
+        @Override
+        public void delete(Object key) throws CacheWriterException {
+            backingStore.remove(key);
+        }
     }
 
     // Test classes
