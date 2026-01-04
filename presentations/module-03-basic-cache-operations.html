@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 3: Basic Cache Operations - Apache Ignite</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+
+    <style>
+        :root {
+            --heading-color: #2c3e50;
+            --accent-color: #e67e22;
+            --text-color: #333;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--heading-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal h3 {
+            font-size: 1.3em;
+        }
+
+        .reveal a {
+            color: var(--accent-color);
+        }
+
+        .reveal a:hover {
+            color: #d35400;
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.55em;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .reveal code {
+            font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+        }
+
+        .reveal ul, .reveal ol {
+            display: block;
+            margin-left: 1em;
+        }
+
+        .reveal li {
+            margin-bottom: 0.5em;
+            font-size: 0.9em;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            border-collapse: collapse;
+            font-size: 0.7em;
+        }
+
+        .reveal table th,
+        .reveal table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: center;
+        }
+
+        .reveal table th {
+            background-color: var(--heading-color);
+            color: white;
+        }
+
+        .reveal table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .reveal .highlight {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .reveal .subtitle {
+            color: #666;
+            font-size: 0.8em;
+            margin-top: 0.5em;
+        }
+
+        .reveal .two-column {
+            display: flex;
+            justify-content: space-between;
+            gap: 2em;
+        }
+
+        .reveal .two-column > div {
+            flex: 1;
+        }
+
+        .reveal .benefits {
+            color: #27ae60;
+        }
+
+        .reveal .tradeoffs {
+            color: #e74c3c;
+        }
+
+        .reveal .key-point {
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 1em 0;
+        }
+
+        .reveal .small-text {
+            font-size: 0.7em;
+        }
+
+        .reveal .center-text {
+            text-align: center;
+        }
+
+        .reveal section.title-slide {
+            text-align: center;
+        }
+
+        .reveal section.title-slide h1 {
+            font-size: 2.5em;
+        }
+
+        .reveal .duration {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 0.2em 0.6em;
+            border-radius: 4px;
+            font-size: 0.6em;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Title Slide -->
+            <section class="title-slide">
+                <h1>Basic Cache Operations in Apache Ignite</h1>
+                <p class="subtitle">Master the fundamentals of data operations</p>
+                <p><span class="duration">Duration: 60 minutes</span></p>
+                <p class="small-text">Module 3</p>
+            </section>
+
+            <!-- Module Objectives -->
+            <section>
+                <h2>Module Objectives</h2>
+                <p>Learn to:</p>
+                <ul>
+                    <li>Use Cache API fundamentals</li>
+                    <li>Perform CRUD operations</li>
+                    <li>Understand cache modes (PARTITIONED, REPLICATED, LOCAL)</li>
+                    <li>Compare synchronous vs asynchronous operations</li>
+                    <li>Implement batch operations effectively</li>
+                </ul>
+            </section>
+
+            <!-- Cache API Overview -->
+            <section>
+                <h2>Cache API Overview</h2>
+                <h3>Core Interface</h3>
+                <pre><code class="java">IgniteCache&lt;K, V&gt; cache = ignite.cache("myCache");
+
+// Or create if not exists
+IgniteCache&lt;K, V&gt; cache = ignite.getOrCreateCache("myCache");
+
+// With configuration
+CacheConfiguration&lt;K, V&gt; cfg = new CacheConfiguration&lt;&gt;("myCache");
+IgniteCache&lt;K, V&gt; cache = ignite.getOrCreateCache(cfg);</code></pre>
+                <div class="key-point">
+                    <strong>Key Points:</strong>
+                    <ul>
+                        <li>Type-safe generic interface</li>
+                        <li>Similar to java.util.Map</li>
+                        <li>JCache (JSR 107) compliant</li>
+                        <li>Thread-safe operations</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Basic CRUD Operations -->
+            <section>
+                <section>
+                    <h2>Basic CRUD Operations</h2>
+                    <h3>Create/Update - PUT</h3>
+                    <pre><code class="java">// Put single entry
+cache.put(key, value);
+
+// Put if absent
+boolean added = cache.putIfAbsent(key, value);
+
+// Get and put (returns old value)
+V oldValue = cache.getAndPut(key, newValue);</code></pre>
+                    <h3>Read - GET</h3>
+                    <pre><code class="java">// Get single entry
+V value = cache.get(key);
+
+// Check existence
+boolean exists = cache.containsKey(key);</code></pre>
+                    <p class="small-text">(Press down arrow for DELETE operations)</p>
+                </section>
+
+                <section>
+                    <h2>Basic CRUD Operations</h2>
+                    <h3>Delete - REMOVE</h3>
+                    <pre><code class="java">// Remove entry
+boolean removed = cache.remove(key);
+
+// Conditional remove
+boolean removed = cache.remove(key, value);
+
+// Get and remove
+V value = cache.getAndRemove(key);</code></pre>
+                </section>
+            </section>
+
+            <!-- Replace Operations -->
+            <section>
+                <section>
+                    <h2>Replace Operations</h2>
+                    <h3>Atomic Replace</h3>
+                    <pre><code class="java">// Replace (key must exist)
+boolean replaced = cache.replace(key, newValue);
+
+// Conditional replace (compare-and-swap)
+boolean replaced = cache.replace(key, oldValue, newValue);
+
+// Get and replace
+V oldValue = cache.getAndReplace(key, newValue);</code></pre>
+                    <p><strong>Use Cases:</strong></p>
+                    <ul>
+                        <li>Optimistic locking</li>
+                        <li>Version control</li>
+                        <li>Atomic updates</li>
+                        <li>Race condition prevention</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Replace Operations</h2>
+                    <h3>Example: Safe Counter Increment</h3>
+                    <pre><code class="java">// Increment counter safely
+while (true) {
+    Integer current = cache.get("counter");
+    if (cache.replace("counter", current, current + 1)) {
+        break; // Success
+    }
+    // Retry if another thread modified it
+}</code></pre>
+                </section>
+            </section>
+
+            <!-- Cache Modes Overview -->
+            <section>
+                <h2>Cache Modes - Overview</h2>
+                <h3>Three Cache Modes</h3>
+                <div class="two-column">
+                    <div>
+                        <p><strong class="highlight">PARTITIONED</strong> (Default)</p>
+                        <ul>
+                            <li>Data distributed across nodes</li>
+                            <li>Best for scalability</li>
+                            <li>Configurable backups</li>
+                        </ul>
+
+                        <p><strong class="highlight">REPLICATED</strong></p>
+                        <ul>
+                            <li>Full copy on every node</li>
+                            <li>Best for small, read-heavy datasets</li>
+                            <li>Slower writes</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p><strong class="highlight">LOCAL</strong></p>
+                        <ul>
+                            <li>Data only on local node</li>
+                            <li>No distribution</li>
+                            <li>Good for node-specific data</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PARTITIONED Cache Mode -->
+            <section>
+                <h2>PARTITIONED Cache Mode</h2>
+                <h3>Distributed Data</h3>
+                <pre><code class="java">CacheConfiguration&lt;K, V&gt; cfg = new CacheConfiguration&lt;&gt;("partCache");
+cfg.setCacheMode(CacheMode.PARTITIONED);
+cfg.setBackups(1); // Number of backup copies</code></pre>
+                <pre><code class="text">With 3 nodes, 1 backup:
+Node 1: Primary [A, B, C]    Backup [G, H, I]
+Node 2: Primary [D, E, F]    Backup [A, B, C]
+Node 3: Primary [G, H, I]    Backup [D, E, F]
+
+Total Memory Usage = Data Size x (1 + Backups) / Nodes</code></pre>
+                <div class="two-column small-text">
+                    <div>
+                        <p class="benefits"><strong>Benefits:</strong></p>
+                        <ul>
+                            <li>Scales horizontally</li>
+                            <li>Efficient memory use</li>
+                            <li>Parallel processing</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="tradeoffs"><strong>Trade-offs:</strong></p>
+                        <ul>
+                            <li>Network hops for remote data</li>
+                            <li>Rebalancing on topology changes</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- REPLICATED Cache Mode -->
+            <section>
+                <h2>REPLICATED Cache Mode</h2>
+                <h3>Full Copy Everywhere</h3>
+                <pre><code class="java">CacheConfiguration&lt;K, V&gt; cfg = new CacheConfiguration&lt;&gt;("replCache");
+cfg.setCacheMode(CacheMode.REPLICATED);
+// No backup setting needed - all nodes have all data</code></pre>
+                <pre><code class="text">With 3 nodes:
+Node 1: [A, B, C, D, E, F, G, H, I]
+Node 2: [A, B, C, D, E, F, G, H, I]
+Node 3: [A, B, C, D, E, F, G, H, I]
+
+Total Memory Usage = Data Size x Number of Nodes</code></pre>
+                <div class="two-column small-text">
+                    <div>
+                        <p class="benefits"><strong>Benefits:</strong></p>
+                        <ul>
+                            <li>No network hops (local reads)</li>
+                            <li>Fast reads</li>
+                            <li>High availability</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="tradeoffs"><strong>Trade-offs:</strong></p>
+                        <ul>
+                            <li>High memory usage</li>
+                            <li>Slower writes (update all nodes)</li>
+                            <li>Doesn't scale with data size</li>
+                        </ul>
+                    </div>
+                </div>
+                <p class="small-text"><strong>Best For:</strong> Reference data, Configuration, Small datasets (&lt; 10 GB), Read-heavy workloads</p>
+            </section>
+
+            <!-- LOCAL Cache Mode -->
+            <section>
+                <h2>LOCAL Cache Mode</h2>
+                <h3>Node-Specific Data</h3>
+                <pre><code class="java">CacheConfiguration&lt;K, V&gt; cfg = new CacheConfiguration&lt;&gt;("localCache");
+cfg.setCacheMode(CacheMode.LOCAL);</code></pre>
+                <pre><code class="text">With 3 nodes:
+Node 1: [A, B, C]
+Node 2: [D, E, F]
+Node 3: [G, H, I]
+
+No sharing, no backups</code></pre>
+                <div class="two-column small-text">
+                    <div>
+                        <p class="benefits"><strong>Benefits:</strong></p>
+                        <ul>
+                            <li>Simple</li>
+                            <li>No network overhead</li>
+                            <li>Fast operations</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="tradeoffs"><strong>Trade-offs:</strong></p>
+                        <ul>
+                            <li>No distribution</li>
+                            <li>No fault tolerance</li>
+                            <li>Limited scalability</li>
+                        </ul>
+                    </div>
+                </div>
+                <p class="small-text"><strong>Best For:</strong> Session data, Thread-local caches, Node-specific computations, Temporary data</p>
+            </section>
+
+            <!-- Choosing Cache Mode -->
+            <section>
+                <h2>Choosing Cache Mode</h2>
+                <h3>Decision Matrix</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Criteria</th>
+                            <th>PARTITIONED</th>
+                            <th>REPLICATED</th>
+                            <th>LOCAL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Data Size</strong></td>
+                            <td>Large</td>
+                            <td>Small</td>
+                            <td>Any</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Read Pattern</strong></td>
+                            <td>Any</td>
+                            <td>High</td>
+                            <td>Any</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Write Pattern</strong></td>
+                            <td>High</td>
+                            <td>Low</td>
+                            <td>Any</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Memory Efficiency</strong></td>
+                            <td class="benefits">Best</td>
+                            <td class="tradeoffs">Worst</td>
+                            <td class="benefits">Good</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Read Speed</strong></td>
+                            <td>Network</td>
+                            <td class="benefits">Local</td>
+                            <td class="benefits">Local</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Scalability</strong></td>
+                            <td class="benefits">Scales</td>
+                            <td class="tradeoffs">Limited</td>
+                            <td class="tradeoffs">No</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fault Tolerance</strong></td>
+                            <td class="benefits">Yes</td>
+                            <td class="benefits">Yes</td>
+                            <td class="tradeoffs">No</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="key-point small-text">
+                    <strong>Rule of Thumb:</strong> User data, transactions &rarr; PARTITIONED | Reference data, lookups &rarr; REPLICATED | Temporary, node-specific &rarr; LOCAL
+                </div>
+            </section>
+
+            <!-- Synchronous Operations -->
+            <section>
+                <h2>Synchronous Operations</h2>
+                <h3>Default Behavior</h3>
+                <pre><code class="java">// Synchronous put (waits for completion)
+cache.put(key, value); // Blocks until acknowledged
+
+// Synchronous get
+V value = cache.get(key); // Blocks until value retrieved</code></pre>
+                <p><strong>Characteristics:</strong></p>
+                <ul>
+                    <li>Blocking calls</li>
+                    <li class="benefits">Simple programming model</li>
+                    <li class="benefits">Immediate error handling</li>
+                    <li class="tradeoffs">Lower throughput</li>
+                    <li class="tradeoffs">Can't do other work while waiting</li>
+                </ul>
+                <p><strong>When to Use:</strong> Single operations, Need immediate confirmation, Sequential logic, Error handling critical</p>
+            </section>
+
+            <!-- Asynchronous Operations -->
+            <section>
+                <section>
+                    <h2>Asynchronous Operations</h2>
+                    <h3>Non-Blocking Pattern</h3>
+                    <pre><code class="java">IgniteCache&lt;K, V&gt; asyncCache = cache.withAsync();
+
+// Async put
+asyncCache.put(key, value);
+IgniteFuture&lt;Void&gt; future = asyncCache.future();
+
+// Do other work...
+processOtherData();
+
+// Wait for completion when needed
+future.get();</code></pre>
+                </section>
+
+                <section>
+                    <h2>Asynchronous Operations</h2>
+                    <h3>With Callbacks</h3>
+                    <pre><code class="java">asyncCache.get(key);
+IgniteFuture&lt;V&gt; future = asyncCache.future();
+
+future.listen(f -> {
+    V value = f.get();
+    System.out.println("Value retrieved: " + value);
+});</code></pre>
+                    <p class="benefits"><strong>Benefits:</strong></p>
+                    <ul>
+                        <li>Non-blocking</li>
+                        <li>Higher throughput</li>
+                        <li>Parallel operations</li>
+                        <li>Better resource utilization</li>
+                    </ul>
+                    <p><strong>When to Use:</strong> Multiple independent operations, High-throughput scenarios, Can do useful work while waiting</p>
+                </section>
+            </section>
+
+            <!-- Async Performance -->
+            <section>
+                <h2>Async Performance Comparison</h2>
+                <p><strong>Scenario:</strong> Update 1000 cache entries</p>
+                <div class="two-column">
+                    <div>
+                        <p class="tradeoffs"><strong>Synchronous:</strong></p>
+                        <pre><code class="java">long start = System.currentTimeMillis();
+for (int i = 0; i < 1000; i++) {
+    cache.put(i, "Value-" + i);
+}
+long time = System.currentTimeMillis() - start;
+// Time: ~500ms (sequential)</code></pre>
+                    </div>
+                    <div>
+                        <p class="benefits"><strong>Asynchronous:</strong></p>
+                        <pre><code class="java">long start = System.currentTimeMillis();
+IgniteCache&lt;K, V&gt; asyncCache = cache.withAsync();
+List&lt;IgniteFuture&gt; futures = new ArrayList&lt;&gt;();
+
+for (int i = 0; i < 1000; i++) {
+    asyncCache.put(i, "Value-" + i);
+    futures.add(asyncCache.future());
+}
+futures.forEach(f -> f.get());
+long time = System.currentTimeMillis() - start;
+// Time: ~100ms (parallel)</code></pre>
+                    </div>
+                </div>
+                <div class="key-point center-text">
+                    <strong class="highlight">Speedup: 5x faster!</strong>
+                </div>
+            </section>
+
+            <!-- Batch Operations -->
+            <section>
+                <section>
+                    <h2>Batch Operations</h2>
+                    <h3>putAll / getAll</h3>
+                    <p><strong>Batch Put:</strong></p>
+                    <pre><code class="java">Map&lt;K, V&gt; batch = new HashMap&lt;&gt;();
+for (int i = 0; i < 1000; i++) {
+    batch.put(i, "Value-" + i);
+}
+cache.putAll(batch); // Single network call</code></pre>
+                    <p><strong>Batch Get:</strong></p>
+                    <pre><code class="java">Set&lt;K&gt; keys = new HashSet&lt;&gt;(Arrays.asList(1, 2, 3, 4, 5));
+Map&lt;K, V&gt; values = cache.getAll(keys);</code></pre>
+                    <p><strong>Batch Remove:</strong></p>
+                    <pre><code class="java">Set&lt;K&gt; keys = new HashSet&lt;&gt;(Arrays.asList(1, 2, 3));
+cache.removeAll(keys);</code></pre>
+                </section>
+
+                <section>
+                    <h2>Batch Operations</h2>
+                    <h3>Performance Gain</h3>
+                    <ul>
+                        <li><strong class="highlight">10-100x faster</strong> than individual operations</li>
+                        <li>Reduced network round trips</li>
+                        <li>Lower protocol overhead</li>
+                        <li>Efficient serialization</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Batch Size Optimization -->
+            <section>
+                <section>
+                    <h2>Batch Size Optimization</h2>
+                    <h3>Finding the Sweet Spot</h3>
+                    <table>
+                        <tr>
+                            <th>Batch Size</th>
+                            <th>Result</th>
+                        </tr>
+                        <tr>
+                            <td class="tradeoffs">Too Small (10)</td>
+                            <td>Many network calls, not optimal</td>
+                        </tr>
+                        <tr>
+                            <td class="benefits">Optimal (500-1000)</td>
+                            <td>Good balance</td>
+                        </tr>
+                        <tr>
+                            <td class="tradeoffs">Too Large (100,000)</td>
+                            <td>Memory pressure, timeout risk</td>
+                        </tr>
+                    </table>
+                    <p><strong>Best Practices:</strong></p>
+                    <ul>
+                        <li>Batch size: 500-1000 entries</li>
+                        <li>Monitor network utilization</li>
+                        <li>Adjust based on entry size</li>
+                        <li>Consider memory constraints</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Batch Size Optimization</h2>
+                    <h3>Example Pattern</h3>
+                    <pre><code class="java">List&lt;Entry&gt; allData = loadData();
+int batchSize = 500;
+
+for (int i = 0; i &lt; allData.size(); i += batchSize) {
+    Map&lt;K, V&gt; batch = new HashMap&lt;&gt;();
+    for (int j = i; j &lt; Math.min(i + batchSize, allData.size()); j++) {
+        batch.put(allData.get(j).key, allData.get(j).value);
+    }
+    cache.putAll(batch);
+}</code></pre>
+                </section>
+            </section>
+
+            <!-- Atomic Operations -->
+            <section>
+                <h2>Atomic Operations</h2>
+                <h3>Thread-Safe Operations</h3>
+                <p><strong>Built-in Atomicity:</strong></p>
+                <pre><code class="java">// These are atomic (no race conditions)
+cache.putIfAbsent(key, value);
+cache.replace(key, oldValue, newValue);
+cache.remove(key, value);
+cache.getAndPut(key, value);
+cache.getAndRemove(key);
+cache.getAndReplace(key, value);</code></pre>
+                <div class="two-column">
+                    <div>
+                        <p class="tradeoffs"><strong>NON-ATOMIC (Bad):</strong></p>
+                        <pre><code class="java">if (!cache.containsKey(key)) {
+    cache.put(key, value);
+    // Race condition!
+}</code></pre>
+                    </div>
+                    <div>
+                        <p class="benefits"><strong>ATOMIC (Good):</strong></p>
+                        <pre><code class="java">cache.putIfAbsent(key, value);
+// Thread-safe!</code></pre>
+                    </div>
+                </div>
+                <p><strong>Use Cases:</strong> Counters, Flags, Resource allocation, Distributed locks</p>
+            </section>
+
+            <!-- Cache Iteration -->
+            <section>
+                <h2>Cache Iteration</h2>
+                <h3>Scanning Cache Entries</h3>
+                <p><strong>forEach:</strong></p>
+                <pre><code class="java">cache.forEach(entry -> {
+    System.out.println(entry.getKey() + " = " + entry.getValue());
+});</code></pre>
+                <p><strong>Iterator:</strong></p>
+                <pre><code class="java">for (Cache.Entry&lt;K, V&gt; entry : cache) {
+    K key = entry.getKey();
+    V value = entry.getValue();
+}</code></pre>
+                <p><strong>Scan Query:</strong></p>
+                <pre><code class="java">ScanQuery&lt;K, V&gt; scan = new ScanQuery&lt;&gt;((k, v) -> v.startsWith("A"));
+
+try (QueryCursor&lt;Cache.Entry&lt;K, V&gt;&gt; cursor = cache.query(scan)) {
+    for (Cache.Entry&lt;K, V&gt; entry : cursor) {
+        // Process entries
+    }
+}</code></pre>
+                <p class="small-text tradeoffs"><strong>Caution:</strong> Iteration can be expensive on large datasets. Consider SQL queries or scan queries for filtering.</p>
+            </section>
+
+            <!-- Cache Size and Metrics -->
+            <section>
+                <h2>Cache Size and Metrics</h2>
+                <h3>Monitoring Cache</h3>
+                <p><strong>Size Operations:</strong></p>
+                <pre><code class="java">// Local size (on this node)
+int localSize = cache.localSize();
+
+// Total size (across cluster)
+int totalSize = cache.size();
+
+// Size with mode
+int primarySize = cache.localSize(CachePeekMode.PRIMARY);
+int backupSize = cache.localSize(CachePeekMode.BACKUP);</code></pre>
+                <p><strong>Cache Metrics:</strong></p>
+                <pre><code class="java">CacheMetrics metrics = cache.metrics();
+
+System.out.println("Gets: " + metrics.getCacheGets());
+System.out.println("Puts: " + metrics.getCachePuts());
+System.out.println("Hits: " + metrics.getCacheHits());
+System.out.println("Misses: " + metrics.getCacheMisses());
+System.out.println("Hit %: " + metrics.getCacheHitPercentage());</code></pre>
+            </section>
+
+            <!-- Clear vs Destroy -->
+            <section>
+                <h2>Clear vs Destroy</h2>
+                <h3>Cache Management</h3>
+                <div class="two-column">
+                    <div>
+                        <p><strong>Clear (Empty Cache):</strong></p>
+                        <pre><code class="java">cache.clear();</code></pre>
+                        <ul class="small-text">
+                            <li>Cache still exists</li>
+                            <li>Can add new entries</li>
+                            <li>Configuration preserved</li>
+                        </ul>
+
+                        <p><strong>Remove All:</strong></p>
+                        <pre><code class="java">cache.removeAll();</code></pre>
+                        <ul class="small-text">
+                            <li>Same as clear but with events</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p><strong>Destroy (Delete Cache):</strong></p>
+                        <pre><code class="java">ignite.destroyCache("myCache");</code></pre>
+                        <ul class="small-text">
+                            <li>Cache no longer exists</li>
+                            <li>Must recreate to use</li>
+                            <li>Frees all resources</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="key-point small-text">
+                    <strong>Use Cases:</strong> Clear = Reset data for new test | RemoveAll = Clear with event notifications | Destroy = Remove cache entirely
+                </div>
+            </section>
+
+            <!-- Error Handling -->
+            <section>
+                <section>
+                    <h2>Error Handling</h2>
+                    <h3>Exception Management</h3>
+                    <p><strong>Common Exceptions:</strong></p>
+                    <pre><code class="java">try {
+    cache.put(key, value);
+} catch (CacheException e) {
+    // Generic cache operation error
+} catch (TransactionException e) {
+    // Transaction-specific error
+} catch (ClusterTopologyException e) {
+    // Cluster state changed during operation
+}</code></pre>
+                    <p><strong>Timeout Handling:</strong></p>
+                    <pre><code class="java">IgniteCache&lt;K, V&gt; cacheWithTimeout = cache.withExpiryPolicy(
+    new CreatedExpiryPolicy(new Duration(TimeUnit.SECONDS, 10))
+);</code></pre>
+                </section>
+
+                <section>
+                    <h2>Error Handling</h2>
+                    <h3>Retry Pattern</h3>
+                    <pre><code class="java">int maxRetries = 3;
+for (int i = 0; i &lt; maxRetries; i++) {
+    try {
+        cache.put(key, value);
+        break; // Success
+    } catch (ClusterTopologyException e) {
+        if (i == maxRetries - 1) throw e;
+        Thread.sleep(100); // Wait and retry
+    }
+}</code></pre>
+                </section>
+            </section>
+
+            <!-- Performance Best Practices -->
+            <section>
+                <section>
+                    <h2>Performance Best Practices</h2>
+                    <h3>Optimization Tips</h3>
+                    <p><strong>1. Use Batch Operations</strong></p>
+                    <pre><code class="java">// Slow
+for (Entry e : entries) cache.put(e.key, e.value);
+
+// Fast
+cache.putAll(entriesMap);</code></pre>
+                    <p><strong>2. Use Async for Parallel Operations</strong></p>
+                    <pre><code class="java">// Sequential
+for (K key : keys) cache.get(key);
+
+// Parallel
+IgniteCache async = cache.withAsync();
+List&lt;Future&gt; futures = new ArrayList&lt;&gt;();
+for (K key : keys) {
+    async.get(key);
+    futures.add(async.future());
+}</code></pre>
+                </section>
+
+                <section>
+                    <h2>Performance Best Practices</h2>
+                    <h3>More Tips</h3>
+                    <p><strong>3. Choose Right Cache Mode</strong></p>
+                    <ul>
+                        <li>Large data &rarr; PARTITIONED</li>
+                        <li>Small, read-heavy &rarr; REPLICATED</li>
+                    </ul>
+                    <p><strong>4. Configure Backups Appropriately</strong></p>
+                    <ul>
+                        <li>1 backup usually sufficient</li>
+                        <li>More backups = more memory</li>
+                    </ul>
+                    <p><strong>5. Enable Statistics</strong></p>
+                    <pre><code class="java">cfg.setStatisticsEnabled(true); // Monitor performance</code></pre>
+                </section>
+            </section>
+
+            <!-- Cache Configuration Summary -->
+            <section>
+                <h2>Cache Configuration Summary</h2>
+                <h3>Key Settings</h3>
+                <pre><code class="java">CacheConfiguration&lt;K, V&gt; cfg = new CacheConfiguration&lt;&gt;();
+
+// Basic settings
+cfg.setName("myCache");
+cfg.setCacheMode(CacheMode.PARTITIONED);
+cfg.setBackups(1);
+
+// Atomicity
+cfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+
+// Write synchronization
+cfg.setWriteSynchronizationMode(
+    CacheWriteSynchronizationMode.FULL_SYNC);
+
+// Statistics
+cfg.setStatisticsEnabled(true);
+
+// Rebalancing
+cfg.setRebalanceMode(CacheRebalanceMode.ASYNC);</code></pre>
+            </section>
+
+            <!-- Common Patterns -->
+            <section>
+                <h2>Common Patterns</h2>
+                <h3>Real-World Usage</h3>
+                <p><strong>Pattern 1: Caching Database Results</strong></p>
+                <pre><code class="java">V value = cache.get(key);
+if (value == null) {
+    value = database.query(key);
+    cache.put(key, value);
+}
+return value;</code></pre>
+                <p><strong>Pattern 2: Distributed Counter</strong></p>
+                <pre><code class="java">cache.putIfAbsent("counter", 0);
+while (true) {
+    Integer current = cache.get("counter");
+    if (cache.replace("counter", current, current + 1)) {
+        break;
+    }
+}</code></pre>
+                <p><strong>Pattern 3: Session Storage</strong></p>
+                <pre><code class="java">// Store session with expiry
+IgniteCache withExpiry = cache.withExpiryPolicy(
+    new CreatedExpiryPolicy(Duration.THIRTY_MINUTES));
+withExpiry.put(sessionId, sessionData);</code></pre>
+            </section>
+
+            <!-- Troubleshooting -->
+            <section>
+                <h2>Troubleshooting</h2>
+                <h3>Common Issues</h3>
+                <div class="two-column small-text">
+                    <div>
+                        <p><strong>Issue 1: Slow Operations</strong></p>
+                        <ul>
+                            <li>Check network latency</li>
+                            <li>Review cache mode choice</li>
+                            <li>Use batch operations</li>
+                            <li>Enable async operations</li>
+                        </ul>
+
+                        <p><strong>Issue 2: High Memory Usage</strong></p>
+                        <ul>
+                            <li>Review backup count</li>
+                            <li>Check cache mode (REPLICATED?)</li>
+                            <li>Implement eviction policies</li>
+                            <li>Monitor data growth</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p><strong>Issue 3: Data Not Found</strong></p>
+                        <ul>
+                            <li>Check cache name</li>
+                            <li>Verify key type matches</li>
+                            <li>Check if data was actually written</li>
+                            <li>Review eviction settings</li>
+                        </ul>
+
+                        <p><strong>Issue 4: CacheException</strong></p>
+                        <ul>
+                            <li>Check cluster topology</li>
+                            <li>Verify node is connected</li>
+                            <li>Review logs for details</li>
+                            <li>Check network connectivity</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Key Takeaways -->
+            <section>
+                <h2>Key Takeaways</h2>
+                <h3>Remember These Points</h3>
+                <ol>
+                    <li><strong>Cache modes matter</strong>
+                        <ul class="small-text">
+                            <li>PARTITIONED: scalable, distributed</li>
+                            <li>REPLICATED: fast reads, high memory</li>
+                            <li>LOCAL: node-specific, simple</li>
+                        </ul>
+                    </li>
+                    <li><strong>Batch operations are faster</strong>
+                        <ul class="small-text">
+                            <li>putAll/getAll reduce network calls</li>
+                            <li>10-100x performance improvement</li>
+                        </ul>
+                    </li>
+                    <li><strong>Use async for parallelism</strong> - Non-blocking, better throughput</li>
+                    <li><strong>Atomic operations prevent races</strong> - putIfAbsent, replace, etc.</li>
+                    <li><strong>Monitor with metrics</strong> - Hit ratios, operation times, cache sizes</li>
+                </ol>
+            </section>
+
+            <!-- Questions -->
+            <section class="title-slide">
+                <h2>Questions?</h2>
+                <h3>Discussion Topics</h3>
+                <ul style="text-align: left; display: inline-block;">
+                    <li>Cache mode selection for your use case</li>
+                    <li>Batch size optimization</li>
+                    <li>Async vs sync trade-offs</li>
+                    <li>Performance expectations</li>
+                </ul>
+                <p style="margin-top: 2em;"><strong>Next:</strong> Lab 3 - Basic Cache Operations</p>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all',
+            transition: 'slide',
+            plugins: [ RevealHighlight, RevealNotes ],
+
+            // Nested slides (vertical)
+            navigationMode: 'default',
+
+            // Better code highlighting
+            highlight: {
+                highlightOnLoad: true
+            }
+        });
+    </script>
+</body>
+</html>

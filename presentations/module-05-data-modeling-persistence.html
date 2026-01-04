@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 05: Data Modeling and Persistence - Apache Ignite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/idea.min.css">
+    <style>
+        :root {
+            --accent-color: #e67e22;
+            --accent-dark: #d35400;
+            --text-dark: #2c3e50;
+            --text-light: #7f8c8d;
+            --bg-light: #ecf0f1;
+        }
+
+        .reveal {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--text-dark);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+            border-bottom: 4px solid var(--accent-color);
+            padding-bottom: 0.3em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+            color: var(--accent-color);
+        }
+
+        .reveal h3 {
+            font-size: 1.3em;
+            color: var(--accent-dark);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal .slides > section {
+            padding: 20px;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.55em;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .reveal code {
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .reveal ul, .reveal ol {
+            margin-left: 1em;
+        }
+
+        .reveal li {
+            margin-bottom: 0.5em;
+            line-height: 1.4;
+        }
+
+        .reveal .highlight {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .reveal .accent-box {
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .reveal .info-box {
+            background-color: var(--bg-light);
+            border-left: 4px solid var(--accent-color);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .reveal .warning-box {
+            background-color: #ffeaa7;
+            border-left: 4px solid #fdcb6e;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .reveal .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .reveal .three-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .reveal .diagram-box {
+            background: white;
+            border: 2px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 0.8em;
+            line-height: 1.6;
+        }
+
+        .reveal .feature-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .reveal .feature-card h4 {
+            color: var(--accent-color);
+            margin-top: 0;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 8px;
+        }
+
+        .reveal table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7em;
+            margin: 15px 0;
+        }
+
+        .reveal table th {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .reveal table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal table tr:hover {
+            background-color: var(--bg-light);
+        }
+
+        .reveal .section-title {
+            text-align: center;
+        }
+
+        .reveal .section-title h1 {
+            border-bottom: none;
+            font-size: 2.5em;
+        }
+
+        .reveal .duration-badge {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.6em;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .reveal .step-list {
+            counter-reset: step-counter;
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .reveal .step-list li {
+            counter-increment: step-counter;
+            margin-bottom: 15px;
+            padding-left: 50px;
+            position: relative;
+        }
+
+        .reveal .step-list li::before {
+            content: counter(step-counter);
+            background-color: var(--accent-color);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-weight: bold;
+        }
+
+        .reveal .icon-bullet {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .reveal .icon-bullet li::before {
+            content: "\2713";
+            color: var(--accent-color);
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .reveal .fragment.fade-in-then-semi-out.visible:not(.current-fragment) {
+            opacity: 0.5;
+        }
+
+        .slide-number {
+            color: var(--accent-color) !important;
+        }
+
+        .progress span {
+            background: var(--accent-color) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Title Slide -->
+            <section class="section-title">
+                <h1>Module 05</h1>
+                <h2>Data Modeling and Persistence</h2>
+                <p>Apache Ignite Training</p>
+                <div class="duration-badge">Duration: 60 minutes</div>
+            </section>
+
+            <!-- Agenda -->
+            <section>
+                <h1>Module Agenda</h1>
+                <div class="two-columns">
+                    <div>
+                        <h3>Data Modeling</h3>
+                        <ul>
+                            <li>Key-Value Data Model</li>
+                            <li>Binary Objects</li>
+                            <li>SQL Tables</li>
+                            <li>Affinity and Colocation</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Persistence</h3>
+                        <ul>
+                            <li>Native Persistence Configuration</li>
+                            <li>Write-Ahead Log (WAL)</li>
+                            <li>Checkpointing</li>
+                            <li>Data Regions</li>
+                            <li>Best Practices</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 1: Data Models -->
+            <section>
+                <section class="section-title">
+                    <h1>Section 1</h1>
+                    <h2>Data Models in Apache Ignite</h2>
+                    <div class="duration-badge">15 minutes</div>
+                </section>
+
+                <!-- Data Model Overview -->
+                <section>
+                    <h1>Data Model Overview</h1>
+                    <p>Apache Ignite supports multiple data modeling approaches:</p>
+                    <div class="three-columns">
+                        <div class="feature-card">
+                            <h4>Key-Value</h4>
+                            <ul>
+                                <li>Simple and fast</li>
+                                <li>Direct cache access</li>
+                                <li>POJO support</li>
+                            </ul>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Binary Objects</h4>
+                            <ul>
+                                <li>Schema evolution</li>
+                                <li>No class deployment</li>
+                                <li>Field-level access</li>
+                            </ul>
+                        </div>
+                        <div class="feature-card">
+                            <h4>SQL Tables</h4>
+                            <ul>
+                                <li>ANSI SQL support</li>
+                                <li>Familiar interface</li>
+                                <li>JDBC/ODBC drivers</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Key-Value Data Model -->
+                <section>
+                    <h1>Key-Value Data Model</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>Characteristics</h3>
+                            <ul>
+                                <li>Primary storage paradigm</li>
+                                <li>Keys and values are objects</li>
+                                <li>Automatic serialization</li>
+                                <li>JCache (JSR-107) compliant</li>
+                            </ul>
+                            <div class="info-box">
+                                <strong>Use When:</strong> High-performance lookups by key, simple data structures
+                            </div>
+                        </div>
+                        <div>
+                            <pre><code class="language-java">// Key-Value operations
+IgniteCache&lt;Integer, Customer&gt; cache =
+    ignite.getOrCreateCache("customers");
+
+// Put operation
+Customer c = new Customer(1, "John",
+    "john@example.com", "NYC");
+cache.put(1, c);
+
+// Get operation
+Customer retrieved = cache.get(1);
+
+// Atomic operations
+cache.putIfAbsent(2, newCustomer);
+cache.replace(1, updatedCustomer);</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Domain Class Example -->
+                <section>
+                    <h1>Creating Domain Classes</h1>
+                    <pre><code class="language-java">package com.example.ignite.model;
+
+import java.io.Serializable;
+
+public class Customer implements Serializable {
+    private Integer customerId;
+    private String name;
+    private String email;
+    private String city;
+
+    public Customer() {}
+
+    public Customer(Integer customerId, String name,
+                    String email, String city) {
+        this.customerId = customerId;
+        this.name = name;
+        this.email = email;
+        this.city = city;
+    }
+
+    // Getters and setters
+    public Integer getCustomerId() { return customerId; }
+    public void setCustomerId(Integer id) { this.customerId = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    // ... additional getters/setters
+}</code></pre>
+                    <div class="warning-box">
+                        <strong>Important:</strong> Domain classes must implement <code>Serializable</code> for cluster distribution
+                    </div>
+                </section>
+
+                <!-- Binary Objects -->
+                <section>
+                    <h1>Binary Objects</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>Advantages</h3>
+                            <ul>
+                                <li><span class="highlight">Schema Evolution</span> - Add/remove fields without redeployment</li>
+                                <li><span class="highlight">No Class Deployment</span> - Access data without class definition</li>
+                                <li><span class="highlight">Field-Level Access</span> - Read specific fields efficiently</li>
+                                <li><span class="highlight">Language Agnostic</span> - Cross-platform compatibility</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <pre><code class="language-java">// Access cache as binary objects
+IgniteCache&lt;Integer, BinaryObject&gt; binaryCache =
+    cache.withKeepBinary();
+
+// Create binary object
+BinaryObject obj = ignite.binary()
+    .builder("Customer")
+    .setField("id", 1)
+    .setField("name", "John")
+    .setField("email", "john@email.com")
+    .build();
+
+binaryCache.put(1, obj);
+
+// Read specific field
+BinaryObject retrieved = binaryCache.get(1);
+String name = retrieved.field("name");</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SQL Tables -->
+                <section>
+                    <h1>SQL Tables</h1>
+                    <pre><code class="language-java">// Define SQL table with annotations
+@QueryEntity(tableName = "CUSTOMER")
+public class Customer implements Serializable {
+
+    @QuerySqlField(index = true)
+    private Integer customerId;
+
+    @QuerySqlField
+    private String name;
+
+    @QuerySqlField(index = true)
+    private String email;
+
+    @QuerySqlField
+    private String city;
+
+    // ... constructor and methods
+}</code></pre>
+                    <div class="info-box">
+                        Use <code>@QuerySqlField</code> to expose fields to SQL engine and <code>index = true</code> for indexed columns
+                    </div>
+                </section>
+
+                <!-- SQL Table Creation via DDL -->
+                <section>
+                    <h1>SQL Table Creation via DDL</h1>
+                    <pre><code class="language-sql">-- Create table using SQL DDL
+CREATE TABLE Customer (
+    customer_id INT PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(255),
+    city VARCHAR(100)
+) WITH "template=partitioned, backups=1,
+        affinity_key=customer_id,
+        cache_name=CustomerCache";
+
+-- Insert data
+INSERT INTO Customer (customer_id, name, email, city)
+VALUES (1, 'John Doe', 'john@example.com', 'New York');
+
+-- Query data
+SELECT * FROM Customer WHERE city = 'New York';</code></pre>
+                    <div class="two-columns" style="margin-top: 20px;">
+                        <div class="info-box">
+                            <strong>WITH clause options:</strong> template, backups, affinity_key, cache_name, data_region
+                        </div>
+                        <div class="info-box">
+                            <strong>Access via:</strong> JDBC, ODBC, Ignite thin client, REST API
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Choosing a Data Model -->
+                <section>
+                    <h1>Choosing a Data Model</h1>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Criterion</th>
+                                <th>Key-Value</th>
+                                <th>Binary Objects</th>
+                                <th>SQL Tables</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Performance</td>
+                                <td>Fastest</td>
+                                <td>Fast</td>
+                                <td>Good (with indexes)</td>
+                            </tr>
+                            <tr>
+                                <td>Flexibility</td>
+                                <td>Low</td>
+                                <td>High</td>
+                                <td>Medium</td>
+                            </tr>
+                            <tr>
+                                <td>Schema Evolution</td>
+                                <td>Requires redeployment</td>
+                                <td>Dynamic</td>
+                                <td>ALTER TABLE</td>
+                            </tr>
+                            <tr>
+                                <td>Query Capability</td>
+                                <td>Key lookup only</td>
+                                <td>Field access</td>
+                                <td>Full SQL</td>
+                            </tr>
+                            <tr>
+                                <td>Best For</td>
+                                <td>Simple caching</td>
+                                <td>Heterogeneous data</td>
+                                <td>Complex queries</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- Section 2: Affinity and Colocation -->
+            <section>
+                <section class="section-title">
+                    <h1>Section 2</h1>
+                    <h2>Affinity and Colocation</h2>
+                    <div class="duration-badge">10 minutes</div>
+                </section>
+
+                <!-- What is Affinity? -->
+                <section>
+                    <h1>What is Affinity?</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>Definition</h3>
+                            <p><strong>Affinity</strong> is the mechanism that determines which node stores a particular cache entry.</p>
+                            <ul>
+                                <li>Based on key hash function</li>
+                                <li>Consistent hashing algorithm</li>
+                                <li>Predictable data location</li>
+                                <li>Even distribution across nodes</li>
+                            </ul>
+                        </div>
+                        <div class="diagram-box">
+<pre>
+   Affinity Function
+        |
+        v
++-------+-------+
+|  Key Hash     |
++-------+-------+
+        |
+        v
++-------+-------+
+| Partition ID  |  (0 to 1023)
++-------+-------+
+        |
+        v
++-------+-------+
+| Primary Node  |
++-------+-------+
+</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Why Colocation Matters -->
+                <section>
+                    <h1>Why Colocation Matters</h1>
+                    <div class="diagram-box" style="margin-bottom: 20px;">
+<pre>
+Without Colocation:                    With Colocation:
++--------+     +--------+              +--------+
+| Node 1 |     | Node 2 |              | Node 1 |
+|--------|     |--------|              |--------|
+|Cust #1 |---->|Order#1 |              |Cust #1 |
+|        | NET |Order#2 |              |Order#1 |
++--------+     +--------+              |Order#2 |
+                                       +--------+
+    Network overhead!                  Local access!
+</pre>
+                    </div>
+                    <div class="accent-box">
+                        <strong>Colocation ensures related data lives on the same node, enabling:</strong>
+                        <ul>
+                            <li>Efficient distributed joins (no network round-trips)</li>
+                            <li>Co-located computations</li>
+                            <li>Reduced latency for related data access</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- AffinityKeyMapped Annotation -->
+                <section>
+                    <h1>Implementing Affinity Keys</h1>
+                    <pre><code class="language-java">import org.apache.ignite.cache.affinity.AffinityKeyMapped;
+
+public class Order implements Serializable {
+    private Integer orderId;
+
+    @AffinityKeyMapped   // This field determines node placement
+    private Integer customerId;  // Orders go to same node as Customer
+
+    private String product;
+    private Double amount;
+
+    public Order(Integer orderId, Integer customerId,
+                 String product, Double amount) {
+        this.orderId = orderId;
+        this.customerId = customerId;
+        this.product = product;
+        this.amount = amount;
+    }
+    // ... getters and setters
+}</code></pre>
+                    <div class="info-box">
+                        The <code>@AffinityKeyMapped</code> annotation tells Ignite to use <code>customerId</code>
+                        for affinity calculation, ensuring orders are stored with their customer.
+                    </div>
+                </section>
+
+                <!-- Verifying Colocation -->
+                <section>
+                    <h1>Verifying Colocation</h1>
+                    <pre><code class="language-java">// Get affinity instances for both caches
+Affinity&lt;Integer&gt; customerAffinity = ignite.affinity("customers");
+Affinity&lt;Integer&gt; orderAffinity = ignite.affinity("orders");
+
+// Check where data is stored
+ClusterNode customer1Node = customerAffinity.mapKeyToNode(1);
+ClusterNode order101Node = orderAffinity.mapKeyToNode(101);
+ClusterNode order102Node = orderAffinity.mapKeyToNode(102);
+
+System.out.println("Customer 1 on node: " + customer1Node.id());
+System.out.println("Order 101 on node: " + order101Node.id());
+System.out.println("Order 102 on node: " + order102Node.id());
+
+// Verify colocation
+boolean colocated = customer1Node.equals(order101Node)
+                 && customer1Node.equals(order102Node);
+System.out.println("Data is colocated: " + colocated);</code></pre>
+                </section>
+
+                <!-- AffinityKey Wrapper Class -->
+                <section>
+                    <h1>AffinityKey Wrapper Class</h1>
+                    <pre><code class="language-java">import org.apache.ignite.cache.affinity.AffinityKey;
+
+// Alternative: Use AffinityKey wrapper for composite keys
+public class OrderKey implements Serializable {
+    private Integer orderId;
+    private Integer customerId;  // Affinity field
+
+    // ... constructors, getters, setters
+}
+
+// Usage with AffinityKey wrapper
+IgniteCache&lt;AffinityKey&lt;Integer&gt;, Order&gt; orderCache =
+    ignite.getOrCreateCache("orders");
+
+// Create key with affinity to customer
+AffinityKey&lt;Integer&gt; orderKey =
+    new AffinityKey&lt;&gt;(orderId, customerId);
+
+orderCache.put(orderKey, order);</code></pre>
+                    <div class="warning-box">
+                        <strong>When to use which approach:</strong><br>
+                        <code>@AffinityKeyMapped</code> - When affinity field is part of the value<br>
+                        <code>AffinityKey</code> - When you need composite keys or separation of concerns
+                    </div>
+                </section>
+
+                <!-- Colocation Best Practices -->
+                <section>
+                    <h1>Colocation Best Practices</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>Do</h3>
+                            <ul class="icon-bullet">
+                                <li>Colocate parent-child relationships</li>
+                                <li>Use consistent affinity key types</li>
+                                <li>Plan data model before implementation</li>
+                                <li>Verify colocation with tests</li>
+                                <li>Document affinity relationships</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>Avoid</h3>
+                            <ul>
+                                <li>Changing affinity keys after deployment</li>
+                                <li>Using complex objects as affinity keys</li>
+                                <li>Ignoring data access patterns</li>
+                                <li>Over-colocating unrelated data</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="info-box" style="margin-top: 20px;">
+                        <strong>Performance Impact:</strong> Properly colocated data can reduce join query time by 10x or more
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 3: Native Persistence -->
+            <section>
+                <section class="section-title">
+                    <h1>Section 3</h1>
+                    <h2>Native Persistence Configuration</h2>
+                    <div class="duration-badge">15 minutes</div>
+                </section>
+
+                <!-- Native Persistence Overview -->
+                <section>
+                    <h1>Native Persistence Overview</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>What is Native Persistence?</h3>
+                            <p>Ignite Native Persistence is a distributed, ACID-compliant, and SQL-compatible disk store.</p>
+                            <ul>
+                                <li>Data survives cluster restarts</li>
+                                <li>Automatic page-based storage</li>
+                                <li>RAM + Disk tiered storage</li>
+                                <li>Full ACID transactions</li>
+                                <li>Instant cluster restarts</li>
+                            </ul>
+                        </div>
+                        <div class="diagram-box">
+<pre>
++---------------------------+
+|      Application          |
++---------------------------+
+            |
+            v
++---------------------------+
+|   In-Memory Data (RAM)    |
+|   Hot Data / Indexes      |
++---------------------------+
+            |
+            v
++---------------------------+
+|   Native Persistence      |
+|   (Disk Storage)          |
+|   - Data Pages            |
+|   - Write-Ahead Log       |
++---------------------------+
+</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Persistence Configuration -->
+                <section>
+                    <h1>Configuring Native Persistence</h1>
+                    <pre><code class="language-java">IgniteConfiguration cfg = new IgniteConfiguration();
+
+// Configure data storage
+DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+// Create persistent data region
+DataRegionConfiguration persistentRegion = new DataRegionConfiguration();
+persistentRegion.setName("Persistent_Region");
+persistentRegion.setPersistenceEnabled(true);          // Enable persistence
+persistentRegion.setInitialSize(100L * 1024 * 1024);   // 100 MB initial
+persistentRegion.setMaxSize(500L * 1024 * 1024);       // 500 MB max
+
+storageCfg.setDefaultDataRegionConfiguration(persistentRegion);
+
+// Configure storage paths
+storageCfg.setStoragePath("./ignite-data");
+storageCfg.setWalPath("./ignite-wal");
+storageCfg.setWalArchivePath("./ignite-wal-archive");
+
+cfg.setDataStorageConfiguration(storageCfg);</code></pre>
+                </section>
+
+                <!-- XML Configuration -->
+                <section>
+                    <h1>XML Configuration</h1>
+                    <pre><code class="language-xml">&lt;bean class="org.apache.ignite.configuration.IgniteConfiguration"&gt;
+    &lt;property name="dataStorageConfiguration"&gt;
+        &lt;bean class="org.apache.ignite.configuration.DataStorageConfiguration"&gt;
+            &lt;!-- Storage paths --&gt;
+            &lt;property name="storagePath" value="./ignite-data"/&gt;
+            &lt;property name="walPath" value="./ignite-wal"/&gt;
+            &lt;property name="walArchivePath" value="./ignite-wal-archive"/&gt;
+
+            &lt;!-- Default data region with persistence --&gt;
+            &lt;property name="defaultDataRegionConfiguration"&gt;
+                &lt;bean class="org.apache.ignite.configuration.DataRegionConfiguration"&gt;
+                    &lt;property name="name" value="Persistent_Region"/&gt;
+                    &lt;property name="persistenceEnabled" value="true"/&gt;
+                    &lt;property name="initialSize" value="#{100L * 1024 * 1024}"/&gt;
+                    &lt;property name="maxSize" value="#{500L * 1024 * 1024}"/&gt;
+                &lt;/bean&gt;
+            &lt;/property&gt;
+        &lt;/bean&gt;
+    &lt;/property&gt;
+&lt;/bean&gt;</code></pre>
+                </section>
+
+                <!-- Cluster Activation -->
+                <section>
+                    <h1>Cluster Activation</h1>
+                    <div class="warning-box">
+                        <strong>Important:</strong> Persistent clusters require explicit activation before use!
+                    </div>
+                    <pre><code class="language-java">try (Ignite ignite = Ignition.start(cfg)) {
+    // Check and activate cluster
+    if (ignite.cluster().state() != ClusterState.ACTIVE) {
+        System.out.println("Activating cluster...");
+        ignite.cluster().state(ClusterState.ACTIVE);
+    }
+
+    System.out.println("Cluster state: " + ignite.cluster().state());
+
+    // Now you can use caches
+    IgniteCache&lt;Integer, String&gt; cache =
+        ignite.getOrCreateCache("persistentCache");
+}</code></pre>
+                    <div class="info-box">
+                        <strong>Cluster States:</strong>
+                        <ul>
+                            <li><code>INACTIVE</code> - Cluster is stopped, no operations allowed</li>
+                            <li><code>ACTIVE</code> - Full functionality enabled</li>
+                            <li><code>ACTIVE_READ_ONLY</code> - Read operations only</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Data Recovery Demo -->
+                <section>
+                    <h1>Data Recovery in Action</h1>
+                    <pre><code class="language-java">// Create persistent cache
+CacheConfiguration&lt;Integer, String&gt; cacheCfg =
+    new CacheConfiguration&lt;&gt;("persistentCache");
+cacheCfg.setDataRegionName("Persistent_Region");
+
+IgniteCache&lt;Integer, String&gt; cache = ignite.getOrCreateCache(cacheCfg);
+
+// Check if data already exists (from previous run)
+if (cache.size() > 0) {
+    System.out.println("Data recovered from disk!");
+    System.out.println("Cache size: " + cache.size());
+    System.out.println("Sample data: " + cache.get(1));
+} else {
+    System.out.println("No existing data. Creating new data...");
+    for (int i = 1; i &lt;= 100; i++) {
+        cache.put(i, "Persistent-Value-" + i);
+    }
+    System.out.println("Added 100 entries to persistent cache");
+    System.out.println("Restart the application to see data recovery!");
+}</code></pre>
+                </section>
+
+                <!-- Persistence Features -->
+                <section>
+                    <h1>Native Persistence Features</h1>
+                    <div class="three-columns">
+                        <div class="feature-card">
+                            <h4>Durability</h4>
+                            <ul>
+                                <li>ACID compliance</li>
+                                <li>Crash recovery</li>
+                                <li>No data loss</li>
+                                <li>Point-in-time recovery</li>
+                            </ul>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Performance</h4>
+                            <ul>
+                                <li>Memory-speed reads</li>
+                                <li>Async disk writes</li>
+                                <li>Page-based storage</li>
+                                <li>Efficient caching</li>
+                            </ul>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Scalability</h4>
+                            <ul>
+                                <li>Larger-than-RAM datasets</li>
+                                <li>Automatic tiering</li>
+                                <li>Linear scaling</li>
+                                <li>Instant restarts</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 4: Write-Ahead Log -->
+            <section>
+                <section class="section-title">
+                    <h1>Section 4</h1>
+                    <h2>Write-Ahead Log (WAL)</h2>
+                    <div class="duration-badge">10 minutes</div>
+                </section>
+
+                <!-- WAL Overview -->
+                <section>
+                    <h1>Write-Ahead Log (WAL)</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>What is WAL?</h3>
+                            <p>The Write-Ahead Log records all data modifications <strong>before</strong> they are applied to disk pages.</p>
+                            <ul>
+                                <li>Ensures durability</li>
+                                <li>Enables crash recovery</li>
+                                <li>Supports point-in-time restore</li>
+                                <li>Sequential write pattern</li>
+                            </ul>
+                        </div>
+                        <div class="diagram-box">
+<pre>
+ Write Operation Flow:
+
+ +-------------+
+ |  Modify RAM |
+ +------+------+
+        |
+        v
+ +-------------+
+ | Write to WAL|  (Sequential)
+ +------+------+
+        |
+        v
+ +-------------+
+ |   Success!  |
+ +-------------+
+        |
+        v (Async)
+ +-------------+
+ | Checkpoint  |  (Background)
+ +-------------+
+</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- WAL Modes -->
+                <section>
+                    <h1>WAL Modes</h1>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mode</th>
+                                <th>Description</th>
+                                <th>Performance</th>
+                                <th>Durability</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>FSYNC</strong></td>
+                                <td>Sync to disk on every write</td>
+                                <td>Slowest</td>
+                                <td>Highest</td>
+                            </tr>
+                            <tr>
+                                <td><strong>LOG_ONLY</strong></td>
+                                <td>Write to OS buffer, no sync</td>
+                                <td>Fast</td>
+                                <td>Good</td>
+                            </tr>
+                            <tr>
+                                <td><strong>BACKGROUND</strong></td>
+                                <td>Async flushing thread</td>
+                                <td>Faster</td>
+                                <td>Medium</td>
+                            </tr>
+                            <tr>
+                                <td><strong>NONE</strong></td>
+                                <td>WAL disabled</td>
+                                <td>Fastest</td>
+                                <td>None</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <pre><code class="language-java">// Configure WAL mode
+storageCfg.setWalMode(WALMode.LOG_ONLY);     // Recommended for most cases
+storageCfg.setWalMode(WALMode.FSYNC);        // Maximum durability
+storageCfg.setWalMode(WALMode.BACKGROUND);   // Higher performance
+storageCfg.setWalMode(WALMode.NONE);         // No WAL (dangerous!)</code></pre>
+                </section>
+
+                <!-- WAL Configuration -->
+                <section>
+                    <h1>WAL Configuration Options</h1>
+                    <pre><code class="language-java">DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+// WAL mode
+storageCfg.setWalMode(WALMode.LOG_ONLY);
+
+// WAL segment size (default 64MB)
+storageCfg.setWalSegmentSize(64 * 1024 * 1024);
+
+// Number of WAL segments (default 10)
+storageCfg.setWalSegments(10);
+
+// WAL history size for point-in-time recovery
+storageCfg.setWalHistorySize(20);
+
+// WAL paths
+storageCfg.setWalPath("./ignite-wal");
+storageCfg.setWalArchivePath("./ignite-wal-archive");
+
+// WAL compaction (reduces archive size)
+storageCfg.setWalCompactionEnabled(true);
+storageCfg.setWalCompactionLevel(Deflater.BEST_SPEED);</code></pre>
+                </section>
+
+                <!-- WAL Architecture -->
+                <section>
+                    <h1>WAL Architecture</h1>
+                    <div class="diagram-box">
+<pre>
++---------------------------------------------------------------------+
+|                           WAL Segments                               |
++---------------------------------------------------------------------+
+
+   Active Segment          Work Directory              Archive
+   +------------+         +------------+            +-------------+
+   | Segment N  |  --->   | Segment N-1| ------>   | Segment N-2 |
+   | (Current)  |  Roll   | (Filled)   | Compress  | Segment N-3 |
+   +------------+         +------------+            | Segment N-4 |
+                                                    +-------------+
+   Written to
+   sequentially                                     Used for:
+                                                    - Crash recovery
+   Fast writes!                                     - Point-in-time restore
+                                                    - Cluster snapshots
+</pre>
+                    </div>
+                    <div class="info-box">
+                        <strong>WAL Segment Lifecycle:</strong> Active segment receives writes, filled segments move to work directory,
+                        then get archived and optionally compressed.
+                    </div>
+                </section>
+
+                <!-- WAL Tuning Tips -->
+                <section>
+                    <h1>WAL Tuning Tips</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>Performance Optimization</h3>
+                            <ul>
+                                <li>Use fast SSD for WAL path</li>
+                                <li>Separate WAL disk from data disk</li>
+                                <li>Increase segment size for write-heavy workloads</li>
+                                <li>Enable WAL compaction for long retention</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>Durability Considerations</h3>
+                            <ul>
+                                <li>Use FSYNC for financial data</li>
+                                <li>LOG_ONLY sufficient for most cases</li>
+                                <li>BACKGROUND for analytics workloads</li>
+                                <li>Never use NONE in production!</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="warning-box" style="margin-top: 20px;">
+                        <strong>Warning:</strong> Disabling WAL (NONE mode) means data loss on crash.
+                        Only use for initial bulk loading, then re-enable!
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 5: Checkpointing -->
+            <section>
+                <section class="section-title">
+                    <h1>Section 5</h1>
+                    <h2>Checkpointing</h2>
+                    <div class="duration-badge">5 minutes</div>
+                </section>
+
+                <!-- Checkpointing Overview -->
+                <section>
+                    <h1>Checkpointing Overview</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>What is Checkpointing?</h3>
+                            <p>Checkpointing is the process of writing dirty pages from memory to disk.</p>
+                            <ul>
+                                <li>Background process</li>
+                                <li>Reduces WAL replay time</li>
+                                <li>Frees WAL segments</li>
+                                <li>Ensures durability</li>
+                            </ul>
+                        </div>
+                        <div class="diagram-box">
+<pre>
+  Memory (Dirty Pages)
+  +------------------+
+  | Page 1 (dirty)   |
+  | Page 2 (dirty)   |    Checkpoint
+  | Page 3 (clean)   |   ----------->
+  | Page 4 (dirty)   |
+  +------------------+
+
+  Disk (Data Files)
+  +------------------+
+  | Page 1           |
+  | Page 2           |
+  | Page 3           |
+  | Page 4           |
+  +------------------+
+</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Checkpoint Configuration -->
+                <section>
+                    <h1>Checkpoint Configuration</h1>
+                    <pre><code class="language-java">DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+// Checkpoint frequency (default 3 min)
+storageCfg.setCheckpointFrequency(180000);  // 3 minutes in ms
+
+// Checkpoint page buffer size
+storageCfg.setCheckpointPageBufferSize(256L * 1024 * 1024);  // 256 MB
+
+// Number of checkpoint threads
+storageCfg.setCheckpointThreads(4);
+
+// Checkpoint write order (SEQUENTIAL or RANDOM)
+storageCfg.setCheckpointWriteOrder(CheckpointWriteOrder.SEQUENTIAL);
+
+// Lock wait time during checkpoint
+storageCfg.setLockWaitTime(60000);  // 60 seconds</code></pre>
+                    <div class="info-box">
+                        <strong>Checkpoint triggers:</strong> Time-based (frequency), WAL size, dirty pages ratio
+                    </div>
+                </section>
+
+                <!-- Checkpoint Process -->
+                <section>
+                    <h1>Checkpoint Process Flow</h1>
+                    <div class="diagram-box">
+<pre>
+  Checkpoint Flow:
+
+  1. Mark Checkpoint Start
+     |
+     v
+  2. Copy Dirty Pages List
+     |
+     v
+  3. Begin Writing to Disk   <-- Can be parallel with new writes
+     |
+     v
+  4. Sync All Written Pages
+     |
+     v
+  5. Mark Checkpoint End
+     |
+     v
+  6. Release Old WAL Segments
+
+  +-----------------------------------------------------------+
+  | Recovery Time = Time since last checkpoint + WAL replay   |
+  +-----------------------------------------------------------+
+</pre>
+                    </div>
+                    <p><strong>Key insight:</strong> More frequent checkpoints = faster recovery but more I/O overhead</p>
+                </section>
+            </section>
+
+            <!-- Section 6: Data Regions -->
+            <section>
+                <section class="section-title">
+                    <h1>Section 6</h1>
+                    <h2>Data Regions</h2>
+                    <div class="duration-badge">5 minutes</div>
+                </section>
+
+                <!-- Data Regions Overview -->
+                <section>
+                    <h1>Data Regions Overview</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>What are Data Regions?</h3>
+                            <p>Data regions are isolated memory areas with independent configuration.</p>
+                            <ul>
+                                <li>Memory isolation</li>
+                                <li>Independent persistence settings</li>
+                                <li>Different eviction policies</li>
+                                <li>Separate memory limits</li>
+                            </ul>
+                        </div>
+                        <div class="diagram-box">
+<pre>
+   +---------------------------+
+   |     Total RAM             |
+   +---------------------------+
+   |  Default Region (100MB)   |
+   |  - Persistent             |
+   +---------------------------+
+   |  Hot Data Region (200MB)  |
+   |  - In-Memory Only         |
+   +---------------------------+
+   |  Analytics Region (500MB) |
+   |  - Persistent             |
+   |  - LRU Eviction           |
+   +---------------------------+
+</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Multiple Data Regions -->
+                <section>
+                    <h1>Configuring Multiple Data Regions</h1>
+                    <pre><code class="language-java">DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+// Default region - persistent
+DataRegionConfiguration defaultRegion = new DataRegionConfiguration();
+defaultRegion.setName("Default_Region");
+defaultRegion.setPersistenceEnabled(true);
+defaultRegion.setInitialSize(100L * 1024 * 1024);
+defaultRegion.setMaxSize(500L * 1024 * 1024);
+storageCfg.setDefaultDataRegionConfiguration(defaultRegion);
+
+// In-memory region - no persistence
+DataRegionConfiguration inMemoryRegion = new DataRegionConfiguration();
+inMemoryRegion.setName("InMemory_Region");
+inMemoryRegion.setPersistenceEnabled(false);
+inMemoryRegion.setInitialSize(50L * 1024 * 1024);
+inMemoryRegion.setMaxSize(200L * 1024 * 1024);
+
+// Analytics region - with eviction
+DataRegionConfiguration analyticsRegion = new DataRegionConfiguration();
+analyticsRegion.setName("Analytics_Region");
+analyticsRegion.setPersistenceEnabled(true);
+analyticsRegion.setInitialSize(200L * 1024 * 1024);
+analyticsRegion.setMaxSize(1024L * 1024 * 1024);
+analyticsRegion.setPageEvictionMode(DataPageEvictionMode.RANDOM_2_LRU);
+
+storageCfg.setDataRegionConfigurations(inMemoryRegion, analyticsRegion);</code></pre>
+                </section>
+
+                <!-- Assigning Caches to Regions -->
+                <section>
+                    <h1>Assigning Caches to Data Regions</h1>
+                    <pre><code class="language-java">// Persistent cache - uses default region
+CacheConfiguration&lt;Integer, Customer&gt; customerCfg =
+    new CacheConfiguration&lt;&gt;("customers");
+customerCfg.setDataRegionName("Default_Region");
+
+// Session cache - in-memory only
+CacheConfiguration&lt;String, Session&gt; sessionCfg =
+    new CacheConfiguration&lt;&gt;("sessions");
+sessionCfg.setDataRegionName("InMemory_Region");
+
+// Analytics cache - with eviction
+CacheConfiguration&lt;Long, AnalyticsData&gt; analyticsCfg =
+    new CacheConfiguration&lt;&gt;("analytics");
+analyticsCfg.setDataRegionName("Analytics_Region");
+
+// Create caches
+IgniteCache&lt;Integer, Customer&gt; customers = ignite.getOrCreateCache(customerCfg);
+IgniteCache&lt;String, Session&gt; sessions = ignite.getOrCreateCache(sessionCfg);
+IgniteCache&lt;Long, AnalyticsData&gt; analytics = ignite.getOrCreateCache(analyticsCfg);</code></pre>
+                </section>
+
+                <!-- Data Region Eviction -->
+                <section>
+                    <h1>Data Region Eviction Policies</h1>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Policy</th>
+                                <th>Description</th>
+                                <th>Use Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>DISABLED</strong></td>
+                                <td>No eviction</td>
+                                <td>Critical data that must stay in memory</td>
+                            </tr>
+                            <tr>
+                                <td><strong>RANDOM_LRU</strong></td>
+                                <td>Random sampling with LRU</td>
+                                <td>General purpose, good performance</td>
+                            </tr>
+                            <tr>
+                                <td><strong>RANDOM_2_LRU</strong></td>
+                                <td>Two random samples, evict LRU</td>
+                                <td>Better accuracy, slightly slower</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <pre><code class="language-java">// Configure eviction
+DataRegionConfiguration region = new DataRegionConfiguration();
+region.setName("Evictable_Region");
+region.setPageEvictionMode(DataPageEvictionMode.RANDOM_2_LRU);
+region.setEvictionThreshold(0.9);  // Start evicting at 90% full</code></pre>
+                </section>
+            </section>
+
+            <!-- Section 7: Best Practices -->
+            <section>
+                <section class="section-title">
+                    <h1>Section 7</h1>
+                    <h2>Persistence Best Practices</h2>
+                    <div class="duration-badge">10 minutes</div>
+                </section>
+
+                <!-- Storage Best Practices -->
+                <section>
+                    <h1>Storage Configuration Best Practices</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>Disk Layout</h3>
+                            <ul class="icon-bullet">
+                                <li>Separate disks for data and WAL</li>
+                                <li>Use SSDs for WAL path</li>
+                                <li>RAID-10 for data storage</li>
+                                <li>Avoid network storage for WAL</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>Sizing</h3>
+                            <ul class="icon-bullet">
+                                <li>Plan for 2x data size growth</li>
+                                <li>WAL archive needs ~10x segment size</li>
+                                <li>Monitor disk usage regularly</li>
+                                <li>Set memory limits appropriately</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="info-box" style="margin-top: 20px;">
+<pre>Recommended Disk Layout:
+/data/ignite-storage   - Data files (SSD or fast HDD)
+/wal/ignite-wal        - Active WAL (Fast SSD)
+/archive/ignite-wal    - WAL archive (Can be slower storage)</pre>
+                    </div>
+                </section>
+
+                <!-- Memory Configuration -->
+                <section>
+                    <h1>Memory Configuration Best Practices</h1>
+                    <pre><code class="language-java">// Production memory configuration
+DataRegionConfiguration region = new DataRegionConfiguration();
+region.setName("Production_Region");
+region.setPersistenceEnabled(true);
+
+// Memory sizing
+long totalRam = 32L * 1024 * 1024 * 1024;  // 32 GB total
+long igniteHeap = 8L * 1024 * 1024 * 1024;  // 8 GB for JVM heap
+long offHeapMax = totalRam - igniteHeap - (2L * 1024 * 1024 * 1024);  // Leave 2GB for OS
+
+region.setInitialSize(offHeapMax / 2);  // Start at 50%
+region.setMaxSize(offHeapMax);           // Max available
+
+// Enable metrics for monitoring
+region.setMetricsEnabled(true);
+
+// Memory policy
+region.setPageEvictionMode(DataPageEvictionMode.RANDOM_2_LRU);
+region.setEvictionThreshold(0.9);  // Evict at 90%</code></pre>
+                    <div class="warning-box">
+                        <strong>Rule of thumb:</strong> JVM Heap + Off-Heap + 2GB (OS) should not exceed total RAM
+                    </div>
+                </section>
+
+                <!-- WAL Best Practices -->
+                <section>
+                    <h1>WAL Best Practices</h1>
+                    <div class="three-columns">
+                        <div class="feature-card">
+                            <h4>Performance</h4>
+                            <ul>
+                                <li>Use LOG_ONLY mode</li>
+                                <li>64-256 MB segments</li>
+                                <li>Fast SSD storage</li>
+                                <li>Separate from data disk</li>
+                            </ul>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Durability</h4>
+                            <ul>
+                                <li>Use FSYNC for critical</li>
+                                <li>Keep 24h of archive</li>
+                                <li>Enable compaction</li>
+                                <li>Regular backups</li>
+                            </ul>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Maintenance</h4>
+                            <ul>
+                                <li>Monitor archive size</li>
+                                <li>Tune checkpoint freq</li>
+                                <li>Clean old archives</li>
+                                <li>Test recovery</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Production Configuration -->
+                <section>
+                    <h1>Production Configuration Template</h1>
+                    <pre><code class="language-java">public static IgniteConfiguration productionConfig() {
+    IgniteConfiguration cfg = new IgniteConfiguration();
+
+    DataStorageConfiguration storage = new DataStorageConfiguration();
+
+    // Paths - use absolute paths in production
+    storage.setStoragePath("/data/ignite/store");
+    storage.setWalPath("/wal/ignite/wal");
+    storage.setWalArchivePath("/archive/ignite/wal");
+
+    // WAL configuration
+    storage.setWalMode(WALMode.LOG_ONLY);
+    storage.setWalSegmentSize(128 * 1024 * 1024);  // 128 MB
+    storage.setWalSegments(10);
+    storage.setWalCompactionEnabled(true);
+
+    // Checkpoint tuning
+    storage.setCheckpointFrequency(180000);  // 3 min
+    storage.setCheckpointThreads(4);
+
+    // Default region
+    DataRegionConfiguration region = new DataRegionConfiguration();
+    region.setName("Default");
+    region.setPersistenceEnabled(true);
+    region.setInitialSize(4L * 1024 * 1024 * 1024);   // 4 GB
+    region.setMaxSize(16L * 1024 * 1024 * 1024);      // 16 GB
+    region.setMetricsEnabled(true);
+    storage.setDefaultDataRegionConfiguration(region);
+
+    cfg.setDataStorageConfiguration(storage);
+    return cfg;
+}</code></pre>
+                </section>
+
+                <!-- Common Issues -->
+                <section>
+                    <h1>Common Issues and Solutions</h1>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Issue</th>
+                                <th>Cause</th>
+                                <th>Solution</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Data not colocated</td>
+                                <td>Missing @AffinityKeyMapped</td>
+                                <td>Add annotation, verify with Affinity API</td>
+                            </tr>
+                            <tr>
+                                <td>Persistence not working</td>
+                                <td>Cluster not activated</td>
+                                <td>Call cluster().state(ACTIVE)</td>
+                            </tr>
+                            <tr>
+                                <td>Slow writes</td>
+                                <td>FSYNC WAL mode</td>
+                                <td>Switch to LOG_ONLY if appropriate</td>
+                            </tr>
+                            <tr>
+                                <td>Disk full</td>
+                                <td>WAL archive growth</td>
+                                <td>Enable compaction, reduce history</td>
+                            </tr>
+                            <tr>
+                                <td>Long restart time</td>
+                                <td>Large WAL replay</td>
+                                <td>Increase checkpoint frequency</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- Monitoring -->
+                <section>
+                    <h1>Monitoring Persistence</h1>
+                    <pre><code class="language-java">// Enable metrics
+DataRegionConfiguration region = new DataRegionConfiguration();
+region.setMetricsEnabled(true);
+
+// Access metrics
+DataRegionMetrics metrics = ignite.dataRegionMetrics("Default_Region");
+
+System.out.println("Total allocated: " +
+    metrics.getTotalAllocatedSize() / (1024*1024) + " MB");
+System.out.println("Used memory: " +
+    metrics.getPhysicalMemorySize() / (1024*1024) + " MB");
+System.out.println("Dirty pages: " + metrics.getDirtyPages());
+System.out.println("Pages read: " + metrics.getPagesRead());
+System.out.println("Pages written: " + metrics.getPagesWritten());
+System.out.println("Checkpoint buffer size: " +
+    metrics.getCheckpointBufferSize() / (1024*1024) + " MB");</code></pre>
+                    <div class="info-box">
+                        <strong>Key metrics to monitor:</strong> Dirty pages ratio, checkpoint duration, WAL archive size,
+                        page reads/writes, memory usage percentage
+                    </div>
+                </section>
+
+                <!-- Cache Store Patterns -->
+                <section>
+                    <h1>Cache Store Patterns</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>Write-Through</h3>
+                            <pre><code class="language-java">CacheConfiguration cfg =
+  new CacheConfiguration("cache");
+cfg.setWriteThrough(true);
+cfg.setReadThrough(true);
+cfg.setCacheStoreFactory(
+  () -> new MyCacheStore());</code></pre>
+                            <p>Synchronous writes to DB</p>
+                        </div>
+                        <div>
+                            <h3>Write-Behind</h3>
+                            <pre><code class="language-java">cfg.setWriteBehindEnabled(true);
+cfg.setWriteBehindFlushSize(1000);
+cfg.setWriteBehindFlushFrequency(5000);
+cfg.setWriteBehindBatchSize(100);</code></pre>
+                            <p>Async batched writes</p>
+                        </div>
+                    </div>
+                    <div class="info-box" style="margin-top: 20px;">
+                        <strong>When to use:</strong>
+                        <ul>
+                            <li><strong>Native Persistence:</strong> Ignite as primary store, full ACID</li>
+                            <li><strong>Write-Through:</strong> Immediate consistency with external DB</li>
+                            <li><strong>Write-Behind:</strong> High-throughput writes, eventual consistency</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Summary -->
+            <section>
+                <section class="section-title">
+                    <h1>Module Summary</h1>
+                </section>
+
+                <section>
+                    <h1>Key Takeaways</h1>
+                    <div class="two-columns">
+                        <div>
+                            <h3>Data Modeling</h3>
+                            <ul class="icon-bullet">
+                                <li>Choose right model: K/V, Binary, SQL</li>
+                                <li>Use @AffinityKeyMapped for colocation</li>
+                                <li>Plan relationships before deployment</li>
+                                <li>Verify colocation with Affinity API</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>Persistence</h3>
+                            <ul class="icon-bullet">
+                                <li>Enable for durable data</li>
+                                <li>Configure WAL appropriately</li>
+                                <li>Tune checkpointing for workload</li>
+                                <li>Use data regions for isolation</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="accent-box" style="margin-top: 30px; text-align: center;">
+                        <h3 style="color: white; margin: 0;">Remember</h3>
+                        <p style="margin: 10px 0 0 0;">Proper data modeling and persistence configuration are crucial for
+                        production-grade Ignite deployments!</p>
+                    </div>
+                </section>
+
+                <!-- Lab Preview -->
+                <section>
+                    <h1>Hands-On Lab Preview</h1>
+                    <h3>Lab 5: Data Modeling and Persistence</h3>
+                    <ol class="step-list">
+                        <li>Create domain classes with affinity keys</li>
+                        <li>Verify data colocation across nodes</li>
+                        <li>Configure native persistence</li>
+                        <li>Test data recovery after restart</li>
+                        <li>Implement cache store patterns</li>
+                    </ol>
+                    <div class="info-box">
+                        <strong>Duration:</strong> 45 minutes<br>
+                        <strong>Prerequisites:</strong> Completed Labs 1-4, understanding of cache operations
+                    </div>
+                </section>
+
+                <!-- Q&A -->
+                <section class="section-title">
+                    <h1>Questions?</h1>
+                    <p>Time for discussion and clarification</p>
+                    <div class="accent-box" style="display: inline-block; margin-top: 30px;">
+                        <p style="margin: 0;">Next: Module 06 - SQL and Distributed Queries</p>
+                    </div>
+                </section>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/zoom/zoom.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all',
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            center: false,
+            width: 1200,
+            height: 700,
+            margin: 0.1,
+            plugins: [RevealHighlight, RevealNotes, RevealZoom]
+        });
+    </script>
+</body>
+</html>

@@ -67,16 +67,18 @@ public class Lab03BasicCacheOperationsTest extends BaseIgniteTest {
     }
 
     @Test
-    @DisplayName("Test local cache mode")
-    public void testLocalCache() {
+    @DisplayName("Test partitioned cache without backups")
+    public void testPartitionedCacheNoBackups() {
         CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(getTestCacheName());
-        cfg.setCacheMode(CacheMode.LOCAL);
+        cfg.setCacheMode(CacheMode.PARTITIONED);
+        cfg.setBackups(0);
 
         IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cfg);
 
         cache.put(1, "value1");
 
         assertThat(cache.get(1)).isEqualTo("value1");
+        assertThat(cache.getConfiguration(CacheConfiguration.class).getBackups()).isEqualTo(0);
     }
 
     @Test

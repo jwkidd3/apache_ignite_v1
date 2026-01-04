@@ -41,6 +41,13 @@
             <version>${ignite.version}</version>
         </dependency>
 
+        <!-- Apache Ignite SLF4J Logger -->
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-slf4j</artifactId>
+            <version>${ignite.version}</version>
+        </dependency>
+
         <!-- Apache Ignite Indexing (SQL) -->
         <dependency>
             <groupId>org.apache.ignite</groupId>
@@ -55,12 +62,13 @@
             <version>${ignite.version}</version>
         </dependency>
 
-        <!-- Apache Ignite Kafka -->
+        <!-- Apache Ignite Kafka - Commented out as artifact not available in central repo
         <dependency>
             <groupId>org.apache.ignite</groupId>
             <artifactId>ignite-kafka</artifactId>
             <version>${ignite.version}</version>
         </dependency>
+        -->
 
         <!-- JUnit 5 -->
         <dependency>
@@ -81,6 +89,14 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
             <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit Platform Suite for test suites -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite</artifactId>
+            <version>1.9.3</version>
             <scope>test</scope>
         </dependency>
 

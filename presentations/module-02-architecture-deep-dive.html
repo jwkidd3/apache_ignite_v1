@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 02: Apache Ignite Architecture Deep Dive</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/monokai.min.css">
+
+    <style>
+        :root {
+            --heading-color: #2c3e50;
+            --accent-color: #e67e22;
+            --text-color: #333;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--heading-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal h3 {
+            font-size: 1.3em;
+            color: var(--accent-color);
+        }
+
+        .reveal a {
+            color: var(--accent-color);
+        }
+
+        .reveal a:hover {
+            color: #d35400;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.55em;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .reveal pre code {
+            max-height: 500px;
+            padding: 15px;
+        }
+
+        .reveal .ascii-diagram {
+            font-family: 'Courier New', monospace;
+            font-size: 0.5em;
+            line-height: 1.3;
+            text-align: left;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre;
+            display: inline-block;
+        }
+
+        .reveal ul, .reveal ol {
+            display: block;
+            text-align: left;
+            margin-left: 1em;
+        }
+
+        .reveal li {
+            margin-bottom: 0.5em;
+            font-size: 0.9em;
+        }
+
+        .reveal .two-columns {
+            display: flex;
+            gap: 2em;
+        }
+
+        .reveal .two-columns > div {
+            flex: 1;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            border-collapse: collapse;
+            font-size: 0.7em;
+        }
+
+        .reveal table th,
+        .reveal table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .reveal table th {
+            background-color: var(--heading-color);
+            color: white;
+        }
+
+        .reveal table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .reveal .highlight-orange {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .reveal .subtitle {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 0.5em;
+        }
+
+        .reveal .small-text {
+            font-size: 0.7em;
+        }
+
+        .reveal .box {
+            background: #f8f9fa;
+            border-left: 4px solid var(--accent-color);
+            padding: 15px;
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        .reveal .success { color: #27ae60; }
+        .reveal .warning { color: #e67e22; }
+        .reveal .danger { color: #e74c3c; }
+
+        .reveal section {
+            text-align: left;
+        }
+
+        .reveal section.center-slide {
+            text-align: center;
+        }
+
+        .reveal .flow-step {
+            background: #ecf0f1;
+            padding: 8px 15px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+
+        .reveal .flow-arrow {
+            text-align: center;
+            color: var(--accent-color);
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Title Slide -->
+            <section class="center-slide">
+                <h1>Apache Ignite Architecture Deep Dive</h1>
+                <p class="subtitle">Understanding the internals of distributed in-memory computing</p>
+                <p class="small-text" style="margin-top: 2em;">Module 2 | Duration: 60 minutes</p>
+            </section>
+
+            <!-- Module Objectives -->
+            <section>
+                <h2>Module Objectives</h2>
+                <p>By the end of this module, you will understand:</p>
+                <ul>
+                    <li>Ignite cluster topology and node types</li>
+                    <li>Data distribution and partitioning</li>
+                    <li>Memory architecture (on-heap, off-heap, persistence)</li>
+                    <li>Discovery mechanisms</li>
+                    <li>Baseline topology and cluster activation</li>
+                </ul>
+            </section>
+
+            <!-- Cluster Topology Section -->
+            <section>
+                <section>
+                    <h2>Cluster Topology Overview</h2>
+                    <h3>What is an Ignite Cluster?</h3>
+                    <p><strong>Definition:</strong> A group of Ignite nodes connected together, sharing data and computation.</p>
+                    <div class="ascii-diagram">
++-------------------------------------+
+|         Ignite Cluster              |
+|  +------+  +------+  +------+       |
+|  |Node 1|  |Node 2|  |Node 3|       |
+|  +------+  +------+  +------+       |
+|     |          |          |         |
+|  +----------------------------+     |
+|  |  Distributed Data Grid    |     |
+|  +----------------------------+     |
++-------------------------------------+</div>
+                </section>
+
+                <section>
+                    <h2>Key Cluster Characteristics</h2>
+                    <ul>
+                        <li><strong>Peer-to-peer:</strong> All nodes equal</li>
+                        <li><strong>Automatic discovery:</strong> Nodes find each other</li>
+                        <li><strong>Self-healing:</strong> Recovers from failures</li>
+                        <li><strong>Dynamic topology:</strong> Nodes can join/leave anytime</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Node Types Section -->
+            <section>
+                <section>
+                    <h2>Node Types</h2>
+                    <h3>Server Nodes vs Client Nodes</h3>
+                    <div class="two-columns">
+                        <div>
+                            <h4 style="color: var(--heading-color);">Server Nodes</h4>
+                            <ul>
+                                <li>Store data</li>
+                                <li>Participate in compute operations</li>
+                                <li>Full members of cluster</li>
+                                <li>Contribute resources (CPU, RAM)</li>
+                                <li>Participate in baseline topology</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--heading-color);">Client Nodes</h4>
+                            <ul>
+                                <li>Do not store data</li>
+                                <li>Lightweight</li>
+                                <li>Connect to cluster</li>
+                                <li>Can execute operations</li>
+                                <li>Route requests to server nodes</li>
+                                <li>Good for application servers</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Node Types Visual</h2>
+                    <div class="ascii-diagram">
+Client Nodes          Server Nodes (Data)
++--------+           +----------------+
+|  App   |-----------| Node 1: Data   |
+| Client |           +----------------+
++--------+           | Node 2: Data   |
+                     +----------------+
++--------+           | Node 3: Data   |
+|  App   |-----------+----------------+
+| Client |
++--------+</div>
+                </section>
+
+                <section>
+                    <h2>Node Configuration</h2>
+                    <h3>Setting Node Mode</h3>
+                    <p><strong>Server Node (Default):</strong></p>
+                    <pre><code class="java">IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setClientMode(false); // Server mode
+Ignite ignite = Ignition.start(cfg);</code></pre>
+                    <p><strong>Client Node:</strong></p>
+                    <pre><code class="java">IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setClientMode(true); // Client mode
+Ignite ignite = Ignition.start(cfg);</code></pre>
+                    <div class="box">
+                        <strong>Best Practices:</strong>
+                        <ul style="margin: 0;">
+                            <li>Use server nodes for data storage</li>
+                            <li>Use client nodes for application servers</li>
+                            <li>Typical: 3-5+ server nodes, N client nodes</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Data Distribution Section -->
+            <section>
+                <section>
+                    <h2>Data Distribution Fundamentals</h2>
+                    <h3>How Data is Spread Across Nodes</h3>
+                    <p><strong>Partitioning:</strong></p>
+                    <ul>
+                        <li>Data divided into partitions (default: 1024)</li>
+                        <li>Each partition assigned to specific nodes</li>
+                        <li>Even distribution across cluster</li>
+                        <li>Key -> Hash -> Partition -> Node(s)</li>
+                    </ul>
+                    <div class="ascii-diagram">
+Key: "user123"
+    | (hash function)
+    v
+Partition: 456
+    | (affinity)
+    v
+Nodes: [Node 2 (primary), Node 3 (backup)]</div>
+                </section>
+
+                <section>
+                    <h2>Partitioning Example</h2>
+                    <h3>Data Distribution Process</h3>
+                    <div class="ascii-diagram">
+1024 Partitions distributed across 4 nodes:
+
+Node 1: Partitions [0-255]     (256 partitions)
+Node 2: Partitions [256-511]   (256 partitions)
+Node 3: Partitions [512-767]   (256 partitions)
+Node 4: Partitions [768-1023]  (256 partitions)
+
+When you put key "X":
+1. Hash("X") = 1234567890
+2. Partition = 1234567890 % 1024 = 442
+3. Primary Node = Node 2 (owns partition 442)
+4. Backup Node = Node 3 (if backups=1)</div>
+                    <p><strong>Characteristics:</strong> Deterministic, consistent hashing, automatic rebalancing</p>
+                </section>
+
+                <section>
+                    <h2>Backup Strategy</h2>
+                    <h3>Ensuring Data Availability</h3>
+                    <pre><code class="java">CacheConfiguration&lt;K, V&gt; cfg = new CacheConfiguration&lt;&gt;();
+cfg.setBackups(1); // One backup copy</code></pre>
+                    <table>
+                        <tr>
+                            <th>Backups</th>
+                            <th>Fault Tolerance</th>
+                            <th>Use Case</th>
+                        </tr>
+                        <tr>
+                            <td>0</td>
+                            <td>None (fastest)</td>
+                            <td>Temporary/regenerable data</td>
+                        </tr>
+                        <tr>
+                            <td>1</td>
+                            <td>Survive 1 node failure</td>
+                            <td>Recommended for most cases</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>Survive 2 node failures</td>
+                            <td>High availability</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>Backup Trade-offs</h2>
+                    <div class="ascii-diagram">
+Primary Data:    Node 1, Node 2, Node 3
+Backup Data:     Node 2, Node 3, Node 1
+
+Node 1 fails -> Node 2's backup becomes primary
+No data loss!</div>
+                    <ul>
+                        <li><span class="success">More backups = better availability</span></li>
+                        <li><span class="warning">More backups = more memory used</span></li>
+                        <li><span class="warning">More backups = more network traffic</span></li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Memory Architecture Section -->
+            <section>
+                <section>
+                    <h2>Memory Architecture Overview</h2>
+                    <h3>Three-Tier Memory Model</h3>
+                    <div class="ascii-diagram">
++-------------------------------------+
+|         On-Heap (JVM Heap)          |
+|    - Java objects                   |
+|    - Fast access                    |
+|    - GC overhead                    |
+|    - Size limited                   |
++-------------------------------------+
+              | eviction
+              v
++-------------------------------------+
+|        Off-Heap (Native RAM)        |
+|    - Binary format                  |
+|    - No GC overhead                 |
+|    - Large capacity                 |
+|    - Serialization cost             |
++-------------------------------------+
+              | checkpointing
+              v
++-------------------------------------+
+|        Disk (Native Persistence)    |
+|    - Durable storage                |
+|    - Unlimited capacity             |
+|    - Slowest access                 |
+|    - Write-Ahead Log                |
++-------------------------------------+</div>
+                </section>
+
+                <section>
+                    <h2>On-Heap vs Off-Heap</h2>
+                    <h3>Memory Comparison</h3>
+                    <div class="two-columns">
+                        <div>
+                            <h4 style="color: var(--heading-color);">On-Heap Memory</h4>
+                            <ul>
+                                <li><span class="success">Fast access (Java objects)</span></li>
+                                <li><span class="success">No serialization needed</span></li>
+                                <li><span class="danger">GC pauses</span></li>
+                                <li><span class="danger">Size limitations</span></li>
+                                <li><span class="danger">Memory fragmentation</span></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--heading-color);">Off-Heap Memory</h4>
+                            <ul>
+                                <li><span class="success">No GC pauses</span></li>
+                                <li><span class="success">Large datasets (100s of GB)</span></li>
+                                <li><span class="success">Efficient memory use</span></li>
+                                <li><span class="danger">Serialization overhead</span></li>
+                                <li><span class="danger">Manual memory management</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Off-Heap Configuration</h2>
+                    <h3>Recommended Approach</h3>
+                    <pre><code class="java">DataRegionConfiguration region = new DataRegionConfiguration();
+region.setMaxSize(10L * 1024 * 1024 * 1024); // 10 GB off-heap
+region.setPersistenceEnabled(false); // In-memory only</code></pre>
+                </section>
+
+                <section>
+                    <h2>Data Regions</h2>
+                    <h3>Configuring Memory Regions</h3>
+                    <p><strong>What are Data Regions?</strong> Logical memory areas with specific characteristics.</p>
+                    <pre><code class="java">DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+// Default region - in-memory
+DataRegionConfiguration defaultRegion = new DataRegionConfiguration();
+defaultRegion.setName("Default_Region");
+defaultRegion.setMaxSize(4L * 1024 * 1024 * 1024); // 4 GB
+
+// Persistent region
+DataRegionConfiguration persistRegion = new DataRegionConfiguration();
+persistRegion.setName("Persistent_Region");
+persistRegion.setMaxSize(10L * 1024 * 1024 * 1024); // 10 GB
+persistRegion.setPersistenceEnabled(true);
+
+storageCfg.setDefaultDataRegionConfiguration(defaultRegion);
+storageCfg.setDataRegionConfigurations(persistRegion);</code></pre>
+                </section>
+
+                <section>
+                    <h2>Data Region Use Cases</h2>
+                    <table>
+                        <tr>
+                            <th>Use Case</th>
+                            <th>Region Type</th>
+                            <th>Configuration</th>
+                        </tr>
+                        <tr>
+                            <td>Hot data</td>
+                            <td>In-memory region</td>
+                            <td>Large size, no persistence</td>
+                        </tr>
+                        <tr>
+                            <td>Cold data</td>
+                            <td>Persistent region</td>
+                            <td>Persistence enabled</td>
+                        </tr>
+                        <tr>
+                            <td>Temporary data</td>
+                            <td>Smaller region</td>
+                            <td>Eviction enabled</td>
+                        </tr>
+                    </table>
+                </section>
+            </section>
+
+            <!-- Native Persistence Section -->
+            <section>
+                <section>
+                    <h2>Native Persistence</h2>
+                    <h3>Durability Without External Database</h3>
+                    <p><strong>What is Native Persistence?</strong> Ignite's own disk storage mechanism.</p>
+                    <p><strong>Features:</strong></p>
+                    <ul>
+                        <li>Write-Ahead Log (WAL) for durability</li>
+                        <li>Checkpointing for crash recovery</li>
+                        <li>Page-based storage</li>
+                        <li>Instant cluster restarts</li>
+                        <li>No external database needed</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Persistence Architecture</h2>
+                    <div class="ascii-diagram">
++-------------------------------------+
+|         RAM (Active Data)           |
++-------------------------------------+
+          | (async writes)
+          v
++-------------------------------------+
+|     WAL (Write-Ahead Log)           |
+|  - All changes logged first         |
+|  - Sequential writes (fast)         |
++-------------------------------------+
+          | (checkpointing)
+          v
++-------------------------------------+
+|     Disk Storage (Data Pages)       |
+|  - Permanent storage                |
+|  - Random access structure          |
++-------------------------------------+</div>
+                </section>
+
+                <section>
+                    <h2>WAL (Write-Ahead Log)</h2>
+                    <h3>Ensuring Durability</h3>
+                    <p><strong>How WAL Works:</strong></p>
+                    <ol>
+                        <li>Change made in memory</li>
+                        <li>Change written to WAL (append-only)</li>
+                        <li>WAL fsync'd to disk</li>
+                        <li>Acknowledgment returned</li>
+                        <li>Eventually checkpointed to data files</li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h2>WAL Modes</h2>
+                    <pre><code class="java">// LOG_ONLY - best performance
+storageCfg.setWalMode(WALMode.LOG_ONLY);
+
+// FSYNC - maximum durability
+storageCfg.setWalMode(WALMode.FSYNC);
+
+// BACKGROUND - balanced
+storageCfg.setWalMode(WALMode.BACKGROUND);</code></pre>
+                    <table>
+                        <tr>
+                            <th>Mode</th>
+                            <th>Performance</th>
+                            <th>Durability</th>
+                        </tr>
+                        <tr>
+                            <td>LOG_ONLY</td>
+                            <td>Fastest</td>
+                            <td>Slight risk of data loss</td>
+                        </tr>
+                        <tr>
+                            <td>FSYNC</td>
+                            <td>Slower writes</td>
+                            <td>Maximum safety</td>
+                        </tr>
+                        <tr>
+                            <td>BACKGROUND</td>
+                            <td>Middle ground</td>
+                            <td>Balanced</td>
+                        </tr>
+                    </table>
+                </section>
+            </section>
+
+            <!-- Discovery Mechanisms Section -->
+            <section>
+                <section>
+                    <h2>Discovery Mechanisms</h2>
+                    <h3>How Nodes Find Each Other</h3>
+                    <p><strong>Three Main Discovery Methods:</strong></p>
+                    <ol>
+                        <li>Multicast Discovery (Default)</li>
+                        <li>Static IP Discovery</li>
+                        <li>Cloud/Kubernetes Discovery</li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h2>Multicast Discovery</h2>
+                    <h3>Default - Zero Configuration</h3>
+                    <pre><code class="java">// Automatic, zero configuration
+TcpDiscoverySpi spi = new TcpDiscoverySpi();
+// Uses IP multicast for node discovery</code></pre>
+                    <div class="box">
+                        <strong>Best for:</strong> Development environments, simple setups where multicast is available
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Static IP Discovery</h2>
+                    <pre><code class="java">TcpDiscoverySpi spi = new TcpDiscoverySpi();
+TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+ipFinder.setAddresses(Arrays.asList(
+    "192.168.1.10:47500",
+    "192.168.1.11:47500",
+    "192.168.1.12:47500"
+));
+spi.setIpFinder(ipFinder);</code></pre>
+                    <div class="box">
+                        <strong>Best for:</strong> Production environments with known node addresses
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Kubernetes Discovery</h2>
+                    <pre><code class="java">// Kubernetes IP Finder
+TcpDiscoveryKubernetesIpFinder ipFinder =
+    new TcpDiscoveryKubernetesIpFinder();
+ipFinder.setNamespace("ignite");
+ipFinder.setServiceName("ignite-service");</code></pre>
+                    <div class="box">
+                        <strong>Best for:</strong> Cloud-native deployments on Kubernetes
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Discovery Process Flow</h2>
+                    <h3>Node Join Sequence</h3>
+                    <div class="flow-step">Step 1: New Node Starts</div>
+                    <div class="flow-arrow">v</div>
+                    <div class="flow-step">Step 2: Discovery SPI Activated</div>
+                    <div class="flow-arrow">v</div>
+                    <div class="flow-step">Step 3: Sends Discovery Request</div>
+                    <div class="flow-arrow">v</div>
+                    <div class="flow-step">Step 4: Coordinator Responds</div>
+                    <div class="flow-arrow">v</div>
+                    <div class="flow-step">Step 5: Topology Exchange</div>
+                    <div class="flow-arrow">v</div>
+                    <div class="flow-step">Step 6: Node Added to Cluster</div>
+                    <div class="flow-arrow">v</div>
+                    <div class="flow-step">Step 7: Rebalancing (if needed)</div>
+                    <div class="flow-arrow">v</div>
+                    <div class="flow-step">Step 8: Node Fully Joined</div>
+                </section>
+
+                <section>
+                    <h2>Discovery Key Concepts</h2>
+                    <ul>
+                        <li><strong>Coordinator:</strong> Oldest node in cluster</li>
+                        <li><strong>Topology Version:</strong> Increments on changes</li>
+                        <li><strong>Exchange:</strong> Synchronization of node info</li>
+                        <li><strong>Ring Topology:</strong> Nodes form logical ring</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Discovery Port Configuration</h2>
+                    <h3>Network Settings</h3>
+                    <table>
+                        <tr>
+                            <th>Service</th>
+                            <th>Default Ports</th>
+                        </tr>
+                        <tr>
+                            <td>Discovery</td>
+                            <td>47500-47509</td>
+                        </tr>
+                        <tr>
+                            <td>Communication</td>
+                            <td>47100-47199</td>
+                        </tr>
+                        <tr>
+                            <td>Thin clients</td>
+                            <td>10800</td>
+                        </tr>
+                        <tr>
+                            <td>REST API</td>
+                            <td>8080</td>
+                        </tr>
+                    </table>
+                    <pre><code class="java">TcpDiscoverySpi spi = new TcpDiscoverySpi();
+spi.setLocalPort(47500);
+spi.setLocalPortRange(10); // 47500-47509
+cfg.setDiscoverySpi(spi);</code></pre>
+                </section>
+
+                <section>
+                    <h2>Firewall Requirements</h2>
+                    <ul>
+                        <li>Open discovery port range</li>
+                        <li>Open communication port range</li>
+                        <li>Allow both TCP and UDP</li>
+                        <li>Consider cloud security groups</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Baseline Topology Section -->
+            <section>
+                <section>
+                    <h2>Baseline Topology</h2>
+                    <h3>Stable Server Node Configuration</h3>
+                    <p><strong>What is Baseline Topology?</strong> A set of server nodes that store data in a persistent cluster.</p>
+                    <p><strong>Why Baseline?</strong></p>
+                    <ul>
+                        <li>Defines which nodes are data nodes</li>
+                        <li>Ensures data consistency</li>
+                        <li>Controls rebalancing</li>
+                        <li>Required for persistent clusters</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Baseline Topology Visual</h2>
+                    <div class="ascii-diagram">
+All Nodes:     [Node1] [Node2] [Node3] [Client1] [Client2]
+Baseline:      [Node1] [Node2] [Node3]
+                 ^        ^        ^
+           (Only these store data)</div>
+                    <div class="box">
+                        <strong>Key Points:</strong>
+                        <ul style="margin: 0;">
+                            <li>New nodes don't automatically join baseline</li>
+                            <li>Must explicitly add nodes to baseline</li>
+                            <li>Prevents unexpected rebalancing</li>
+                            <li>Controls data distribution</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Cluster Activation</h2>
+                    <h3>Starting a Persistent Cluster</h3>
+                    <p><strong>Cluster States:</strong></p>
+                    <ul>
+                        <li><strong>INACTIVE:</strong> Cluster started but not ready</li>
+                        <li><strong>ACTIVE:</strong> Cluster ready for operations</li>
+                        <li><strong>READ_ONLY:</strong> Can read but not write</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Activation Process</h2>
+                    <pre><code class="java">// Check state
+ClusterState state = ignite.cluster().state();
+
+// Activate cluster
+ignite.cluster().state(ClusterState.ACTIVE);
+
+// Set baseline (first time)
+ignite.cluster().setBaselineTopology(
+    ignite.cluster().topologyVersion()
+);</code></pre>
+                    <p><strong>Command Line:</strong></p>
+                    <pre><code class="bash"># Activate cluster
+bin/ignite.sh --activate
+
+# Set baseline
+bin/ignite.sh --baseline add &lt;nodeId&gt;
+
+# View baseline
+bin/ignite.sh --baseline</code></pre>
+                </section>
+
+                <section>
+                    <h2>Baseline Topology Management</h2>
+                    <h3>Adding/Removing Nodes</h3>
+                    <p><strong>Adding Node to Baseline:</strong></p>
+                    <pre><code class="bash"># Start new node (joins cluster but not baseline)
+bin/ignite.sh
+
+# Add to baseline
+bin/ignite.sh --baseline add &lt;consistentId&gt;</code></pre>
+                    <p><strong>Removing Node from Baseline:</strong></p>
+                    <pre><code class="bash"># Stop node gracefully
+kill -SIGTERM &lt;pid&gt;
+
+# Remove from baseline
+bin/ignite.sh --baseline remove &lt;consistentId&gt;</code></pre>
+                </section>
+
+                <section>
+                    <h2>Auto-Adjust Baseline</h2>
+                    <h3>Ignite 2.4+</h3>
+                    <pre><code class="java">IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setDataStorageConfiguration(
+    new DataStorageConfiguration()
+        .setBaselineAutoAdjustEnabled(true)
+        .setBaselineAutoAdjustTimeout(30000) // 30 seconds
+);</code></pre>
+                    <div class="box">
+                        <strong>Best Practices:</strong>
+                        <ul style="margin: 0;">
+                            <li>Manually manage in production</li>
+                            <li>Use auto-adjust cautiously</li>
+                            <li>Always backup before topology changes</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Communication and Membership Section -->
+            <section>
+                <section>
+                    <h2>Communication SPI</h2>
+                    <h3>Node-to-Node Communication</h3>
+                    <p><strong>Purpose:</strong> Handles all inter-node communication (data, messages).</p>
+                    <pre><code class="java">TcpCommunicationSpi commSpi = new TcpCommunicationSpi();
+commSpi.setLocalPort(47100);
+commSpi.setLocalPortRange(100); // 47100-47199
+
+// Connection pooling
+commSpi.setConnectionsPerNode(1);
+
+// Message queue size
+commSpi.setMessageQueueLimit(1024);
+
+cfg.setCommunicationSpi(commSpi);</code></pre>
+                </section>
+
+                <section>
+                    <h2>Communication Tuning</h2>
+                    <table>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Effect</th>
+                        </tr>
+                        <tr>
+                            <td>Connections per node</td>
+                            <td>More = higher throughput</td>
+                        </tr>
+                        <tr>
+                            <td>Message queue</td>
+                            <td>Larger = handle bursts better</td>
+                        </tr>
+                        <tr>
+                            <td>Socket buffer sizes</td>
+                            <td>Match network capacity</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>Cluster Membership</h2>
+                    <h3>Node Lifecycle</h3>
+                    <div class="ascii-diagram">
+START -> JOINING -> JOINED -> ACTIVE -> LEAVING -> LEFT
+
+START:    Node process started
+JOINING:  Discovery in progress
+JOINED:   Part of topology
+ACTIVE:   Fully operational
+LEAVING:  Graceful shutdown
+LEFT:     No longer in cluster</div>
+                </section>
+
+                <section>
+                    <h2>Segmentation</h2>
+                    <h3>Split-Brain Prevention</h3>
+                    <p><strong>Segmentation:</strong> When network split causes multiple sub-clusters.</p>
+                    <p><strong>Prevention Mechanisms:</strong></p>
+                    <ul>
+                        <li>Segmentation resolvers</li>
+                        <li>Majority-based decisions</li>
+                        <li>Network partition detection</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Rebalancing Section -->
+            <section>
+                <section>
+                    <h2>Rebalancing</h2>
+                    <h3>Data Redistribution</h3>
+                    <p><strong>When Rebalancing Occurs:</strong></p>
+                    <ul>
+                        <li>Node joins cluster</li>
+                        <li>Node leaves cluster</li>
+                        <li>Baseline topology changes</li>
+                        <li>Cache configuration changes</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Rebalancing Process</h2>
+                    <div class="flow-step">1. Detect topology change</div>
+                    <div class="flow-arrow">v</div>
+                    <div class="flow-step">2. Calculate new partition mapping</div>
+                    <div class="flow-arrow">v</div>
+                    <div class="flow-step">3. Transfer partitions to new locations</div>
+                    <div class="flow-arrow">v</div>
+                    <div class="flow-step">4. Update partition counters</div>
+                    <div class="flow-arrow">v</div>
+                    <div class="flow-step">5. Verify data consistency</div>
+                </section>
+
+                <section>
+                    <h2>Rebalancing Configuration</h2>
+                    <pre><code class="java">CacheConfiguration cfg = new CacheConfiguration();
+
+// Rebalancing mode
+cfg.setRebalanceMode(CacheRebalanceMode.ASYNC);
+
+// Batch size
+cfg.setRebalanceBatchSize(512 * 1024); // 512 KB
+
+// Thread pool size
+cfg.setRebalanceThreadPoolSize(2);
+
+// Throttle
+cfg.setRebalanceThrottle(100); // 100ms pause</code></pre>
+                </section>
+            </section>
+
+            <!-- Affinity Section -->
+            <section>
+                <section>
+                    <h2>Affinity Function</h2>
+                    <h3>Controlling Data Placement</h3>
+                    <p><strong>Default Affinity:</strong> Rendezvous Affinity (consistent hashing)</p>
+                    <pre><code class="java">// Customize partitions
+AffinityFunction aff = new RendezvousAffinityFunction(
+    false,  // exclude neighbors
+    2048    // number of partitions
+);
+cfg.setAffinity(aff);</code></pre>
+                </section>
+
+                <section>
+                    <h2>Affinity Key</h2>
+                    <h3>Control Data Colocation</h3>
+                    <pre><code class="java">public class Order {
+    private int orderId;
+
+    @AffinityKeyMapped
+    private int customerId; // Orders colocated with customer
+}</code></pre>
+                    <p><strong>Benefits:</strong></p>
+                    <ul>
+                        <li>Colocation of related data</li>
+                        <li>Reduced network hops</li>
+                        <li>Faster joins and computations</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Topology Events Section -->
+            <section>
+                <section>
+                    <h2>Topology Events</h2>
+                    <h3>Monitoring Cluster Changes</h3>
+                    <p><strong>Event Types:</strong></p>
+                    <ul>
+                        <li>Node joined</li>
+                        <li>Node left</li>
+                        <li>Node failed</li>
+                        <li>Node segmented</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Listening for Events</h2>
+                    <pre><code class="java">ignite.events().localListen(event -> {
+    if (event instanceof DiscoveryEvent) {
+        DiscoveryEvent de = (DiscoveryEvent) event;
+
+        System.out.println("Event: " + de.name());
+        System.out.println("Node: " + de.eventNode().id());
+    }
+    return true;
+}, EventType.EVT_NODE_JOINED, EventType.EVT_NODE_LEFT);</code></pre>
+                    <p><strong>Use Cases:</strong></p>
+                    <ul>
+                        <li>Monitoring</li>
+                        <li>Alerting</li>
+                        <li>Custom rebalancing logic</li>
+                        <li>Application coordination</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Best Practices Section -->
+            <section>
+                <section>
+                    <h2>Architecture Best Practices</h2>
+                    <h3>Design Recommendations</h3>
+                    <div class="two-columns">
+                        <div>
+                            <h4 style="color: var(--heading-color);">1. Cluster Sizing</h4>
+                            <ul>
+                                <li>Start with 3-5 server nodes</li>
+                                <li>Use odd numbers (3, 5, 7) for quorum</li>
+                                <li>Plan for growth</li>
+                            </ul>
+                            <h4 style="color: var(--heading-color);">2. Memory Allocation</h4>
+                            <ul>
+                                <li>60-70% of RAM to Ignite</li>
+                                <li>Leave room for OS</li>
+                                <li>Use off-heap for large datasets</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--heading-color);">3. Network</h4>
+                            <ul>
+                                <li>Low-latency network critical</li>
+                                <li>10 Gbps for large clusters</li>
+                                <li>Minimize network hops</li>
+                            </ul>
+                            <h4 style="color: var(--heading-color);">4. Backups</h4>
+                            <ul>
+                                <li>1 backup for most cases</li>
+                                <li>2 backups for critical data</li>
+                                <li>Consider trade-offs</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Persistence Best Practices</h2>
+                    <ul>
+                        <li>Use native persistence for durability</li>
+                        <li>Configure WAL mode appropriately</li>
+                        <li>Plan for storage capacity</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Deployment Patterns Section -->
+            <section>
+                <section>
+                    <h2>Common Architecture Patterns</h2>
+                    <h3>Deployment Topologies</h3>
+                </section>
+
+                <section>
+                    <h2>Pattern 1: All-in-One</h2>
+                    <div class="ascii-diagram">
+[Application + Ignite Server Node]</div>
+                    <ul>
+                        <li>Simplest deployment</li>
+                        <li>Good for small apps</li>
+                        <li>Tight coupling</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Pattern 2: Separate Data Tier</h2>
+                    <div class="ascii-diagram">
+[Application (Client)] --> [Ignite Cluster (Servers)]</div>
+                    <ul>
+                        <li>Better separation</li>
+                        <li>Independent scaling</li>
+                        <li><strong>Production recommended</strong></li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Pattern 3: Multi-Datacenter</h2>
+                    <div class="ascii-diagram">
+[DC1: Ignite Cluster] <--> [DC2: Ignite Cluster]</div>
+                    <ul>
+                        <li>Geographic distribution</li>
+                        <li>Disaster recovery</li>
+                        <li>Application-level replication</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Monitoring Section -->
+            <section>
+                <section>
+                    <h2>Monitoring the Cluster</h2>
+                    <h3>Key Metrics to Watch</h3>
+                    <div class="two-columns">
+                        <div>
+                            <h4 style="color: var(--heading-color);">Topology Metrics</h4>
+                            <ul>
+                                <li>Number of nodes</li>
+                                <li>Baseline topology</li>
+                                <li>Coordinator node</li>
+                                <li>Topology version</li>
+                            </ul>
+                            <h4 style="color: var(--heading-color);">Memory Metrics</h4>
+                            <ul>
+                                <li>Heap usage</li>
+                                <li>Off-heap usage</li>
+                                <li>Data region utilization</li>
+                                <li>Page replacement rate</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--heading-color);">Performance Metrics</h4>
+                            <ul>
+                                <li>Cache hit ratio</li>
+                                <li>Query execution times</li>
+                                <li>Rebalancing progress</li>
+                                <li>Network throughput</li>
+                            </ul>
+                            <h4 style="color: var(--heading-color);">Tools</h4>
+                            <ul>
+                                <li>JMX/MBeans</li>
+                                <li>Ignite Web Console</li>
+                                <li>Prometheus + Grafana</li>
+                                <li>Custom monitoring</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Troubleshooting Section -->
+            <section>
+                <section>
+                    <h2>Troubleshooting Architecture Issues</h2>
+                    <h3>Common Problems</h3>
+                </section>
+
+                <section>
+                    <h2>Problem 1: Nodes Not Discovering</h2>
+                    <ul>
+                        <li>Check network connectivity</li>
+                        <li>Verify discovery configuration</li>
+                        <li>Check firewall rules</li>
+                        <li>Ensure port availability</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Problem 2: Segmentation</h2>
+                    <ul>
+                        <li>Check network stability</li>
+                        <li>Review segmentation resolver config</li>
+                        <li>Adjust failure detection timeout</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Problem 3: Slow Rebalancing</h2>
+                    <ul>
+                        <li>Increase rebalance threads</li>
+                        <li>Adjust batch sizes</li>
+                        <li>Check network bandwidth</li>
+                        <li>Review throttling settings</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Problem 4: Memory Issues</h2>
+                    <ul>
+                        <li>Increase data region size</li>
+                        <li>Enable eviction</li>
+                        <li>Review data model</li>
+                        <li>Check for memory leaks</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Key Takeaways Section -->
+            <section>
+                <h2>Key Takeaways</h2>
+                <h3>Remember These Points</h3>
+                <ol>
+                    <li><strong>Cluster is peer-to-peer</strong> - All nodes equal (no master), self-healing and elastic</li>
+                    <li><strong>Data is partitioned and distributed</strong> - Consistent hashing, automatic rebalancing</li>
+                    <li><strong>Three-tier memory model</strong> - On-heap, off-heap, disk - each has trade-offs</li>
+                    <li><strong>Baseline topology for persistence</strong> - Controls which nodes store data, manual management recommended</li>
+                    <li><strong>Discovery is critical</strong> - Must be configured correctly for different environments</li>
+                </ol>
+            </section>
+
+            <!-- Questions Slide -->
+            <section class="center-slide">
+                <h2>Questions?</h2>
+                <h3>Discussion Topics</h3>
+                <ul style="text-align: center; list-style-type: none; margin-left: 0;">
+                    <li>Cluster sizing for your use case</li>
+                    <li>Memory configuration strategies</li>
+                    <li>Discovery mechanism selection</li>
+                    <li>Persistence requirements</li>
+                </ul>
+                <p style="margin-top: 2em;"><strong>Next:</strong> Lab 2 - Multi-Node Cluster Setup</p>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Reveal.js Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: true,
+            transition: 'slide',
+            controlsTutorial: false,
+            progress: true,
+            center: false,
+            width: 1200,
+            height: 700,
+            margin: 0.1,
+            plugins: [ RevealHighlight, RevealNotes ]
+        });
+    </script>
+</body>
+</html>

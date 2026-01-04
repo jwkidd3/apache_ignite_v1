@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 06: SQL and Indexing - Apache Ignite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/intellij-light.min.css">
+    <style>
+        :root {
+            --r-main-color: #2c3e50;
+            --r-heading-color: #e67e22;
+            --r-link-color: #e67e22;
+            --r-link-color-hover: #d35400;
+            --r-selection-background-color: rgba(230, 126, 34, 0.3);
+        }
+        .reveal h1, .reveal h2, .reveal h3 {
+            color: var(--r-heading-color);
+            text-transform: none;
+        }
+        .reveal h1 { font-size: 2.2em; }
+        .reveal h2 { font-size: 1.6em; }
+        .reveal h3 { font-size: 1.3em; }
+        .reveal pre {
+            width: 100%;
+            font-size: 0.55em;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .reveal pre code {
+            max-height: 500px;
+            padding: 15px;
+        }
+        .reveal ul, .reveal ol {
+            display: block;
+            text-align: left;
+            margin-left: 1em;
+        }
+        .reveal li {
+            margin-bottom: 0.5em;
+            font-size: 0.9em;
+        }
+        .reveal .highlight {
+            color: #e67e22;
+            font-weight: bold;
+        }
+        .reveal .box {
+            background: #f8f9fa;
+            border-left: 4px solid #e67e22;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .reveal .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #e67e22;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .reveal .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .reveal table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            font-size: 0.7em;
+        }
+        .reveal table th {
+            background: #e67e22;
+            color: white;
+            padding: 12px 20px;
+        }
+        .reveal table td {
+            border: 1px solid #ddd;
+            padding: 10px 20px;
+        }
+        .reveal table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .reveal .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            text-align: left;
+        }
+        .reveal .three-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            text-align: left;
+        }
+        .reveal .small-text {
+            font-size: 0.7em;
+        }
+        .reveal .diagram-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px;
+            text-align: center;
+        }
+        .reveal .sql-box {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            text-align: left;
+        }
+        .slide-number {
+            color: #e67e22 !important;
+        }
+        .reveal .progress {
+            background: rgba(230, 126, 34, 0.2);
+        }
+        .reveal .progress span {
+            background: #e67e22;
+        }
+        .reveal .footer {
+            position: absolute;
+            bottom: 1em;
+            left: 1em;
+            font-size: 0.5em;
+            color: #7f8c8d;
+        }
+        .reveal .index-type {
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin: 5px;
+            display: inline-block;
+        }
+        .reveal .performance-tip {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section>
+                <h1>Module 06</h1>
+                <h2>SQL and Indexing</h2>
+                <h3>Apache Ignite Training</h3>
+                <p style="margin-top: 2em; color: #7f8c8d;">
+                    Duration: 60 minutes
+                </p>
+            </section>
+
+            <!-- Agenda -->
+            <section>
+                <h2>Module Agenda</h2>
+                <div class="two-column">
+                    <div>
+                        <h3 style="color: #e67e22;">Part 1: SQL Fundamentals</h3>
+                        <ul>
+                            <li>SQL in Apache Ignite</li>
+                            <li>ANSI-99 SQL Support</li>
+                            <li>SqlFieldsQuery API</li>
+                            <li>DDL & DML Operations</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 style="color: #e67e22;">Part 2: Advanced Topics</h3>
+                        <ul>
+                            <li>Index Types & Creation</li>
+                            <li>JDBC/ODBC Connectivity</li>
+                            <li>Distributed Joins</li>
+                            <li>Query Performance Tuning</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 1: SQL in Apache Ignite -->
+            <section>
+                <section>
+                    <h2>SQL in Apache Ignite</h2>
+                    <h3>Overview and Capabilities</h3>
+                </section>
+
+                <section>
+                    <h3>SQL Engine Overview</h3>
+                    <div class="box">
+                        <p>Apache Ignite provides a <span class="highlight">fully-featured SQL engine</span>
+                        that allows you to query distributed data using standard SQL syntax.</p>
+                    </div>
+                    <ul>
+                        <li>Built on Apache Calcite query optimizer</li>
+                        <li>ANSI-99 SQL compliant</li>
+                        <li>Distributed query execution</li>
+                        <li>Automatic query parallelization</li>
+                        <li>Cost-based optimization</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>ANSI-99 SQL Support</h3>
+                    <table>
+                        <tr>
+                            <th>Category</th>
+                            <th>Supported Features</th>
+                        </tr>
+                        <tr>
+                            <td>DDL</td>
+                            <td>CREATE, ALTER, DROP (tables, indexes, schemas)</td>
+                        </tr>
+                        <tr>
+                            <td>DML</td>
+                            <td>INSERT, UPDATE, DELETE, MERGE</td>
+                        </tr>
+                        <tr>
+                            <td>DQL</td>
+                            <td>SELECT, JOIN, UNION, subqueries</td>
+                        </tr>
+                        <tr>
+                            <td>Aggregations</td>
+                            <td>COUNT, SUM, AVG, MIN, MAX, GROUP BY</td>
+                        </tr>
+                        <tr>
+                            <td>Joins</td>
+                            <td>INNER, LEFT, RIGHT, FULL OUTER, CROSS</td>
+                        </tr>
+                        <tr>
+                            <td>Functions</td>
+                            <td>String, numeric, date/time, aggregate</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>SQL Architecture</h3>
+                    <div class="three-column">
+                        <div class="diagram-box">
+                            <strong>SQL Parser</strong><br>
+                            Query parsing &<br>validation
+                        </div>
+                        <div class="diagram-box">
+                            <strong>Query Optimizer</strong><br>
+                            Cost-based<br>optimization
+                        </div>
+                        <div class="diagram-box">
+                            <strong>Executor</strong><br>
+                            Distributed<br>execution
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <p>Queries are <span class="highlight">parsed</span>, <span class="highlight">optimized</span>,
+                        and <span class="highlight">executed</span> across cluster nodes.</p>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 2: SqlFieldsQuery API -->
+            <section>
+                <section>
+                    <h2>SqlFieldsQuery API</h2>
+                    <h3>Programmatic SQL Access</h3>
+                </section>
+
+                <section>
+                    <h3>SqlFieldsQuery Basics</h3>
+                    <pre><code class="language-java">// Create a SqlFieldsQuery
+SqlFieldsQuery query = new SqlFieldsQuery(
+    "SELECT name, age, city FROM Person WHERE city = ?");
+
+// Set parameters
+query.setArgs("New York");
+
+// Execute the query
+List&lt;List&lt;?&gt;&gt; results = cache.query(query).getAll();
+
+// Process results
+for (List&lt;?&gt; row : results) {
+    String name = (String) row.get(0);
+    Integer age = (Integer) row.get(1);
+    String city = (String) row.get(2);
+    System.out.println(name + " - " + age + " - " + city);
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Setting Up SQL Schema</h3>
+                    <pre><code class="language-java">// Configure cache with query entity
+CacheConfiguration&lt;Long, Object&gt; cfg = new CacheConfiguration&lt;&gt;("Person");
+
+// Define query entity (table schema)
+QueryEntity personEntity = new QueryEntity(Long.class, Object.class);
+personEntity.setTableName("Person");
+
+// Define fields
+LinkedHashMap&lt;String, String&gt; fields = new LinkedHashMap&lt;&gt;();
+fields.put("id", "java.lang.Long");
+fields.put("name", "java.lang.String");
+fields.put("age", "java.lang.Integer");
+fields.put("city", "java.lang.String");
+fields.put("salary", "java.lang.Double");
+
+personEntity.setFields(fields);
+personEntity.setKeyFieldName("id");
+
+cfg.setQueryEntities(Arrays.asList(personEntity));
+cfg.setSqlSchema("PUBLIC");</code></pre>
+                </section>
+
+                <section>
+                    <h3>Query Options</h3>
+                    <pre><code class="language-java">SqlFieldsQuery query = new SqlFieldsQuery(sql);
+
+// Set query timeout (milliseconds)
+query.setTimeout(5000, TimeUnit.MILLISECONDS);
+
+// Enable lazy result loading
+query.setLazy(true);
+
+// Set page size for pagination
+query.setPageSize(1000);
+
+// Enable distributed joins
+query.setDistributedJoins(true);
+
+// Set local execution only
+query.setLocal(true);
+
+// Enforce join order
+query.setEnforceJoinOrder(true);
+
+// Enable collocated mode
+query.setCollocated(true);</code></pre>
+                </section>
+
+                <section>
+                    <h3>Cursor-Based Iteration</h3>
+                    <pre><code class="language-java">// For large result sets, use cursor-based iteration
+SqlFieldsQuery query = new SqlFieldsQuery(
+    "SELECT * FROM LargeTable");
+query.setLazy(true);  // Enable lazy loading
+
+try (QueryCursor&lt;List&lt;?&gt;&gt; cursor = cache.query(query)) {
+    for (List&lt;?&gt; row : cursor) {
+        // Process each row without loading all into memory
+        processRow(row);
+    }
+}
+
+// Or use iterator
+try (QueryCursor&lt;List&lt;?&gt;&gt; cursor = cache.query(query)) {
+    Iterator&lt;List&lt;?&gt;&gt; iterator = cursor.iterator();
+    while (iterator.hasNext()) {
+        List&lt;?&gt; row = iterator.next();
+        processRow(row);
+    }
+}</code></pre>
+                </section>
+            </section>
+
+            <!-- Section 3: DDL and DML Operations -->
+            <section>
+                <section>
+                    <h2>DDL and DML Operations</h2>
+                    <h3>Data Definition & Manipulation</h3>
+                </section>
+
+                <section>
+                    <h3>DDL: Creating Tables</h3>
+                    <pre><code class="language-java">// Create table using SQL DDL
+cache.query(new SqlFieldsQuery(
+    "CREATE TABLE IF NOT EXISTS Employee (" +
+    "  id INT PRIMARY KEY," +
+    "  name VARCHAR(100)," +
+    "  department VARCHAR(50)," +
+    "  salary DECIMAL(10,2)," +
+    "  hire_date DATE" +
+    ") WITH \"template=partitioned,backups=1\""
+)).getAll();
+
+// Create table with value type
+cache.query(new SqlFieldsQuery(
+    "CREATE TABLE Product (" +
+    "  id INT PRIMARY KEY," +
+    "  name VARCHAR," +
+    "  price DECIMAL" +
+    ") WITH \"VALUE_TYPE=com.example.Product\""
+)).getAll();</code></pre>
+                </section>
+
+                <section>
+                    <h3>DDL: Table Options</h3>
+                    <div class="sql-box">
+                        <strong>WITH clause options:</strong><br><br>
+                        template=partitioned|replicated<br>
+                        backups=N<br>
+                        atomicity=ATOMIC|TRANSACTIONAL<br>
+                        cache_name=custom_name<br>
+                        key_type=com.example.KeyClass<br>
+                        value_type=com.example.ValueClass<br>
+                        affinity_key=column_name
+                    </div>
+                </section>
+
+                <section>
+                    <h3>DML: INSERT Operations</h3>
+                    <pre><code class="language-java">// Single INSERT with parameters
+cache.query(new SqlFieldsQuery(
+    "INSERT INTO Person (id, name, age, city, salary) " +
+    "VALUES (?, ?, ?, ?, ?)")
+    .setArgs(1L, "John Doe", 30, "New York", 75000.0)
+).getAll();
+
+// Batch INSERT
+String insertSQL = "INSERT INTO Person VALUES (?, ?, ?, ?, ?)";
+for (Person person : persons) {
+    cache.query(new SqlFieldsQuery(insertSQL)
+        .setArgs(person.getId(), person.getName(),
+                 person.getAge(), person.getCity(),
+                 person.getSalary())
+    ).getAll();
+}
+
+// INSERT ... SELECT
+cache.query(new SqlFieldsQuery(
+    "INSERT INTO HighEarners SELECT * FROM Person WHERE salary > 100000")
+).getAll();</code></pre>
+                </section>
+
+                <section>
+                    <h3>DML: UPDATE and DELETE</h3>
+                    <pre><code class="language-java">// UPDATE with WHERE clause
+cache.query(new SqlFieldsQuery(
+    "UPDATE Person SET salary = salary * 1.1 WHERE city = ?")
+    .setArgs("New York")
+).getAll();
+
+// UPDATE multiple columns
+cache.query(new SqlFieldsQuery(
+    "UPDATE Employee SET department = ?, salary = ? WHERE id = ?")
+    .setArgs("Engineering", 95000.0, 101)
+).getAll();
+
+// DELETE with condition
+cache.query(new SqlFieldsQuery(
+    "DELETE FROM Person WHERE age < ?")
+    .setArgs(29)
+).getAll();
+
+// DELETE all (use with caution!)
+cache.query(new SqlFieldsQuery("DELETE FROM TempTable")).getAll();</code></pre>
+                </section>
+
+                <section>
+                    <h3>DQL: SELECT Queries</h3>
+                    <pre><code class="language-java">// Simple SELECT
+SqlFieldsQuery query1 = new SqlFieldsQuery(
+    "SELECT name, age, city FROM Person");
+
+// WHERE clause with parameters
+SqlFieldsQuery query2 = new SqlFieldsQuery(
+    "SELECT name, age, salary FROM Person WHERE city = ?")
+    .setArgs("New York");
+
+// Aggregation with GROUP BY
+SqlFieldsQuery query3 = new SqlFieldsQuery(
+    "SELECT city, AVG(salary) as avg_salary " +
+    "FROM Person GROUP BY city");
+
+// ORDER BY with LIMIT
+SqlFieldsQuery query4 = new SqlFieldsQuery(
+    "SELECT name, salary FROM Person " +
+    "ORDER BY salary DESC LIMIT 10");
+
+// Results
+cache.query(query3).getAll().forEach(row ->
+    System.out.println(row.get(0) + ": $" + row.get(1)));</code></pre>
+                </section>
+
+                <section>
+                    <h3>Complex Queries</h3>
+                    <pre><code class="language-java">// Subquery
+SqlFieldsQuery subquery = new SqlFieldsQuery(
+    "SELECT * FROM Employee " +
+    "WHERE salary > (SELECT AVG(salary) FROM Employee)");
+
+// CASE expression
+SqlFieldsQuery caseQuery = new SqlFieldsQuery(
+    "SELECT name, salary, " +
+    "  CASE " +
+    "    WHEN salary > 100000 THEN 'High' " +
+    "    WHEN salary > 50000 THEN 'Medium' " +
+    "    ELSE 'Low' " +
+    "  END as salary_band " +
+    "FROM Employee");
+
+// HAVING clause
+SqlFieldsQuery havingQuery = new SqlFieldsQuery(
+    "SELECT department, COUNT(*) as emp_count " +
+    "FROM Employee " +
+    "GROUP BY department " +
+    "HAVING COUNT(*) > 5");</code></pre>
+                </section>
+            </section>
+
+            <!-- Section 4: JDBC/ODBC Connectivity -->
+            <section>
+                <section>
+                    <h2>JDBC/ODBC Connectivity</h2>
+                    <h3>Standard Database Access</h3>
+                </section>
+
+                <section>
+                    <h3>JDBC Thin Driver</h3>
+                    <div class="box">
+                        <p><strong>JDBC URL Format:</strong></p>
+                        <code>jdbc:ignite:thin://host[:port][/schema][?parameters]</code>
+                    </div>
+                    <pre><code class="language-java">// Register JDBC driver
+Class.forName("org.apache.ignite.IgniteJdbcThinDriver");
+
+// Connection URL
+String JDBC_URL = "jdbc:ignite:thin://127.0.0.1:10800/";
+
+// Establish connection
+try (Connection conn = DriverManager.getConnection(JDBC_URL)) {
+    System.out.println("Connected to Ignite!");
+
+    // Execute queries using standard JDBC
+    DatabaseMetaData metadata = conn.getMetaData();
+    System.out.println("Driver: " + metadata.getDriverName());
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>JDBC Connection Options</h3>
+                    <table>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Description</th>
+                            <th>Default</th>
+                        </tr>
+                        <tr>
+                            <td>schema</td>
+                            <td>Default schema name</td>
+                            <td>PUBLIC</td>
+                        </tr>
+                        <tr>
+                            <td>distributedJoins</td>
+                            <td>Enable distributed joins</td>
+                            <td>false</td>
+                        </tr>
+                        <tr>
+                            <td>enforceJoinOrder</td>
+                            <td>Enforce JOIN order</td>
+                            <td>false</td>
+                        </tr>
+                        <tr>
+                            <td>lazy</td>
+                            <td>Lazy query execution</td>
+                            <td>false</td>
+                        </tr>
+                        <tr>
+                            <td>collocated</td>
+                            <td>Collocated query mode</td>
+                            <td>false</td>
+                        </tr>
+                    </table>
+                    <pre><code class="language-java">String url = "jdbc:ignite:thin://127.0.0.1?" +
+    "distributedJoins=true&lazy=true";</code></pre>
+                </section>
+
+                <section>
+                    <h3>Using PreparedStatement</h3>
+                    <pre><code class="language-java">// Create table
+try (Statement stmt = conn.createStatement()) {
+    stmt.execute("CREATE TABLE IF NOT EXISTS Employee (" +
+        "id INT PRIMARY KEY, " +
+        "name VARCHAR, " +
+        "department VARCHAR, " +
+        "salary DECIMAL)");
+}
+
+// Insert with PreparedStatement
+String insertSQL = "INSERT INTO Employee VALUES (?, ?, ?, ?)";
+try (PreparedStatement pstmt = conn.prepareStatement(insertSQL)) {
+    pstmt.setInt(1, 1);
+    pstmt.setString(2, "Alice Johnson");
+    pstmt.setString(3, "Engineering");
+    pstmt.setDouble(4, 95000);
+    pstmt.executeUpdate();
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Query with ResultSet</h3>
+                    <pre><code class="language-java">// Query with parameters
+String querySQL = "SELECT name, department, salary FROM Employee " +
+    "WHERE salary > ? ORDER BY salary DESC";
+
+try (PreparedStatement pstmt = conn.prepareStatement(querySQL)) {
+    pstmt.setInt(1, 80000);
+
+    try (ResultSet rs = pstmt.executeQuery()) {
+        System.out.println("Name              | Department    | Salary");
+        System.out.println("------------------+---------------+--------");
+
+        while (rs.next()) {
+            String name = rs.getString("name");
+            String dept = rs.getString("department");
+            double salary = rs.getDouble("salary");
+            System.out.printf("%-17s | %-13s | $%.2f%n",
+                name, dept, salary);
+        }
+    }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>ODBC Connectivity</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4>Setup Steps:</h4>
+                            <ol>
+                                <li>Download Ignite ODBC driver</li>
+                                <li>Configure DSN</li>
+                                <li>Connect from tools (Excel, Tableau)</li>
+                            </ol>
+                        </div>
+                        <div>
+                            <h4>DSN Configuration:</h4>
+                            <div class="sql-box" style="font-size: 0.8em;">
+                                Driver: Apache Ignite<br>
+                                Server: 127.0.0.1<br>
+                                Port: 10800<br>
+                                Schema: PUBLIC
+                            </div>
+                        </div>
+                    </div>
+                    <div class="box" style="margin-top: 20px;">
+                        ODBC enables connectivity from BI tools, reporting systems, and legacy applications.
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 5: Index Types -->
+            <section>
+                <section>
+                    <h2>Index Types</h2>
+                    <h3>Optimizing Query Performance</h3>
+                </section>
+
+                <section>
+                    <h3>Types of Indexes</h3>
+                    <div class="three-column">
+                        <div style="text-align: center;">
+                            <div class="index-type">Primary</div>
+                            <p style="font-size: 0.7em; margin-top: 15px;">
+                                Automatic on key field<br>
+                                Unique constraint<br>
+                                B-tree structure
+                            </p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="index-type">Secondary</div>
+                            <p style="font-size: 0.7em; margin-top: 15px;">
+                                On any field(s)<br>
+                                SORTED or FULLTEXT<br>
+                                Speed up queries
+                            </p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="index-type">Composite</div>
+                            <p style="font-size: 0.7em; margin-top: 15px;">
+                                Multiple columns<br>
+                                Order matters<br>
+                                Range queries
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Creating Indexes - Java API</h3>
+                    <pre><code class="language-java">// Define query entity with indexes
+QueryEntity entity = new QueryEntity(Long.class, Product.class);
+entity.setTableName("Product");
+
+// Single-column SORTED index
+QueryIndex nameIdx = new QueryIndex("name", QueryIndexType.SORTED);
+
+// Single-column index with custom name
+QueryIndex categoryIdx = new QueryIndex("category", QueryIndexType.SORTED);
+categoryIdx.setName("idx_category");
+
+// Composite index on multiple columns
+QueryIndex compositeIdx = new QueryIndex(
+    Arrays.asList("category", "price"), QueryIndexType.SORTED);
+compositeIdx.setName("idx_category_price");
+
+// Full-text index for text search
+QueryIndex textIdx = new QueryIndex("description", QueryIndexType.FULLTEXT);
+
+// Add all indexes
+entity.setIndexes(Arrays.asList(nameIdx, categoryIdx, compositeIdx, textIdx));</code></pre>
+                </section>
+
+                <section>
+                    <h3>Creating Indexes - SQL DDL</h3>
+                    <pre><code class="language-sql">-- Create single-column index
+CREATE INDEX idx_name ON Product (name);
+
+-- Create unique index
+CREATE UNIQUE INDEX idx_email ON Customer (email);
+
+-- Create composite index
+CREATE INDEX idx_category_price ON Product (category, price);
+
+-- Create descending index
+CREATE INDEX idx_salary_desc ON Employee (salary DESC);
+
+-- Create index inline with table
+CREATE TABLE Employee (
+    id INT PRIMARY KEY,
+    name VARCHAR,
+    department VARCHAR,
+    salary DECIMAL,
+    INDEX idx_dept (department),
+    INDEX idx_salary (salary)
+);
+
+-- Drop index
+DROP INDEX idx_name;</code></pre>
+                </section>
+
+                <section>
+                    <h3>Composite Index Ordering</h3>
+                    <div class="warning-box">
+                        <strong>Important:</strong> Column order in composite indexes matters!
+                    </div>
+                    <div class="two-column" style="margin-top: 20px;">
+                        <div>
+                            <h4 style="color: #27ae60;">Effective:</h4>
+                            <pre><code class="language-sql">-- Index: (category, price)
+-- These queries use the index:
+WHERE category = 'Electronics'
+WHERE category = 'Electronics'
+  AND price < 500
+WHERE category = 'Electronics'
+  AND price BETWEEN 100 AND 500</code></pre>
+                        </div>
+                        <div>
+                            <h4 style="color: #e74c3c;">Ineffective:</h4>
+                            <pre><code class="language-sql">-- Index: (category, price)
+-- These queries may NOT use index:
+WHERE price < 500
+-- (Missing leading column!)
+
+WHERE price = 100
+  AND category = 'Electronics'
+-- (Order reversed, may not use)</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Full-Text Search Index</h3>
+                    <pre><code class="language-java">// Create full-text index
+QueryIndex textIdx = new QueryIndex("description", QueryIndexType.FULLTEXT);
+
+// Query using LIKE (basic text search)
+SqlFieldsQuery textQuery = new SqlFieldsQuery(
+    "SELECT name, description FROM Product " +
+    "WHERE description LIKE ?")
+    .setArgs("%wireless%");
+
+cache.query(textQuery).getAll().forEach(row ->
+    System.out.println(row.get(0) + ": " + row.get(1)));</code></pre>
+                    <div class="box" style="margin-top: 20px;">
+                        <strong>Note:</strong> Full-text indexes use more memory but enable efficient
+                        text search operations.
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Index Performance Impact</h3>
+                    <pre><code class="language-java">// Test query performance with timing
+long startTime = System.currentTimeMillis();
+
+// Query using single index
+SqlFieldsQuery query1 = new SqlFieldsQuery(
+    "SELECT name, price FROM Product WHERE category = ?")
+    .setArgs("Electronics");
+cache.query(query1).getAll();
+System.out.println("Single index query: " +
+    (System.currentTimeMillis() - startTime) + " ms");
+
+// Query using composite index
+startTime = System.currentTimeMillis();
+SqlFieldsQuery query2 = new SqlFieldsQuery(
+    "SELECT name, price FROM Product WHERE category = ? AND price < ?")
+    .setArgs("Electronics", 500.0);
+cache.query(query2).getAll();
+System.out.println("Composite index query: " +
+    (System.currentTimeMillis() - startTime) + " ms");</code></pre>
+                </section>
+            </section>
+
+            <!-- Section 6: Query Optimization -->
+            <section>
+                <section>
+                    <h2>Query Optimization</h2>
+                    <h3>Understanding and Improving Performance</h3>
+                </section>
+
+                <section>
+                    <h3>EXPLAIN Query Plan</h3>
+                    <pre><code class="language-java">// View query execution plan
+SqlFieldsQuery explainQuery = new SqlFieldsQuery(
+    "EXPLAIN SELECT name FROM Product " +
+    "WHERE category = 'Electronics' AND price < 500");
+
+cache.query(explainQuery).getAll().forEach(row ->
+    System.out.println(row.get(0)));
+
+// Output shows:
+// - Index scans vs table scans
+// - Join algorithms used
+// - Estimated row counts
+// - Sort operations</code></pre>
+                    <div class="sql-box" style="margin-top: 15px;">
+                        <strong>Example output:</strong><br>
+                        SELECT<br>
+                        &nbsp;&nbsp;PUBLIC.PRODUCT.NAME<br>
+                        FROM PUBLIC.PRODUCT<br>
+                        &nbsp;&nbsp;/* PUBLIC.IDX_CATEGORY_PRICE: CATEGORY = 'Electronics' */<br>
+                        WHERE (CATEGORY = 'Electronics') AND (PRICE < 500)
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Query Optimization Tips</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 style="color: #27ae60;">Do:</h4>
+                            <ul>
+                                <li>Use indexed columns in WHERE</li>
+                                <li>Create composite indexes for common query patterns</li>
+                                <li>Use LIMIT for large result sets</li>
+                                <li>Enable lazy loading for big queries</li>
+                                <li>Use parameterized queries</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: #e74c3c;">Avoid:</h4>
+                            <ul>
+                                <li>SELECT * when not needed</li>
+                                <li>Functions on indexed columns</li>
+                                <li>Leading wildcards in LIKE</li>
+                                <li>Unnecessary distributed joins</li>
+                                <li>Cross joins without filters</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Index Usage Patterns</h3>
+                    <pre><code class="language-sql">-- Index on 'name' column
+
+-- USES INDEX (equality)
+SELECT * FROM Product WHERE name = 'Laptop';
+
+-- USES INDEX (range)
+SELECT * FROM Product WHERE name BETWEEN 'A' AND 'M';
+
+-- USES INDEX (prefix pattern)
+SELECT * FROM Product WHERE name LIKE 'Lap%';
+
+-- DOES NOT USE INDEX (leading wildcard)
+SELECT * FROM Product WHERE name LIKE '%top';
+
+-- DOES NOT USE INDEX (function on column)
+SELECT * FROM Product WHERE UPPER(name) = 'LAPTOP';
+
+-- DOES NOT USE INDEX (expression)
+SELECT * FROM Product WHERE price * 1.1 > 100;</code></pre>
+                </section>
+
+                <section>
+                    <h3>Query Hints</h3>
+                    <pre><code class="language-java">// Force specific join order
+SqlFieldsQuery query = new SqlFieldsQuery(sql)
+    .setEnforceJoinOrder(true);
+
+// Collocated mode - skip nodes without data
+query.setCollocated(true);
+
+// Local execution only
+query.setLocal(true);
+
+// Set query parallelism
+query.setQueryParallelism(4);
+
+// Timeout for long-running queries
+query.setTimeout(30, TimeUnit.SECONDS);</code></pre>
+                    <div class="performance-tip">
+                        Use <code>setEnforceJoinOrder(true)</code> when you know the optimal
+                        join order better than the optimizer.
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Statistics and Optimization</h3>
+                    <pre><code class="language-sql">-- Refresh table statistics for better query plans
+ANALYZE TABLE Product;
+
+-- View system schema information
+SELECT * FROM SYS.TABLES;
+SELECT * FROM SYS.TABLE_COLUMNS WHERE TABLE_NAME = 'PRODUCT';
+SELECT * FROM SYS.INDEXES WHERE TABLE_NAME = 'PRODUCT';</code></pre>
+                    <div class="box" style="margin-top: 20px;">
+                        <strong>Best Practice:</strong> Run ANALYZE after bulk data loads or
+                        significant data changes to update statistics for the query optimizer.
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 7: Distributed Joins -->
+            <section>
+                <section>
+                    <h2>Distributed Joins</h2>
+                    <h3>Joining Data Across Nodes</h3>
+                </section>
+
+                <section>
+                    <h3>Colocated vs Distributed Joins</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 style="color: #27ae60;">Colocated Joins</h4>
+                            <ul>
+                                <li>Data on same node</li>
+                                <li>No network traffic</li>
+                                <li>Fast execution</li>
+                                <li>Uses affinity keys</li>
+                            </ul>
+                            <div class="diagram-box" style="margin-top: 20px;">
+                                Employee + Department<br>
+                                on SAME node
+                            </div>
+                        </div>
+                        <div>
+                            <h4 style="color: #e67e22;">Distributed Joins</h4>
+                            <ul>
+                                <li>Data on different nodes</li>
+                                <li>Requires network communication</li>
+                                <li>Slower execution</li>
+                                <li>Enabled explicitly</li>
+                            </ul>
+                            <div class="diagram-box" style="margin-top: 20px; background: linear-gradient(135deg, #e67e22, #d35400);">
+                                Data scattered<br>
+                                across nodes
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Enabling Distributed Joins</h3>
+                    <pre><code class="language-java">// Enable distributed joins on SqlFieldsQuery
+SqlFieldsQuery distributedJoin = new SqlFieldsQuery(
+    "SELECT e.name, e.salary, d.dept_name " +
+    "FROM Employee e JOIN Department d ON e.dept_id = d.id " +
+    "ORDER BY e.salary DESC")
+    .setDistributedJoins(true);  // <-- Enable here
+
+List&lt;List&lt;?&gt;&gt; results = empCache.query(distributedJoin).getAll();
+
+results.forEach(row ->
+    System.out.printf("%s - $%.2f - %s%n",
+        row.get(0), row.get(1), row.get(2)));</code></pre>
+                    <div class="warning-box">
+                        <strong>Warning:</strong> Distributed joins are slower than colocated joins.
+                        Consider data modeling to avoid them when possible.
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Affinity Colocation</h3>
+                    <pre><code class="language-java">// Define affinity key for colocation
+public class OrderKey {
+    @AffinityKeyMapped
+    private Long customerId;  // Colocates orders with customers
+    private Long orderId;
+
+    public OrderKey(Long customerId, Long orderId) {
+        this.customerId = customerId;
+        this.orderId = orderId;
+    }
+}
+
+// Now orders are stored on same node as their customer
+// Joins between Customer and Order are colocated (fast!)
+SqlFieldsQuery query = new SqlFieldsQuery(
+    "SELECT c.name, o.total FROM Customer c " +
+    "JOIN \"OrderCache\".Order o ON c.id = o.customerId");
+// No need for setDistributedJoins(true) - data is colocated!</code></pre>
+                </section>
+
+                <section>
+                    <h3>Join with Aggregation</h3>
+                    <pre><code class="language-java">// Complex join with aggregation
+SqlFieldsQuery aggJoin = new SqlFieldsQuery(
+    "SELECT d.dept_name, " +
+    "       COUNT(e.id) as emp_count, " +
+    "       AVG(e.salary) as avg_salary, " +
+    "       MAX(e.salary) as max_salary " +
+    "FROM Department d " +
+    "LEFT JOIN Employee e ON d.id = e.dept_id " +
+    "GROUP BY d.dept_name " +
+    "ORDER BY avg_salary DESC")
+    .setDistributedJoins(true);
+
+empCache.query(aggJoin).getAll().forEach(row ->
+    System.out.printf("%s: %d employees, avg $%.2f, max $%.2f%n",
+        row.get(0), row.get(1), row.get(2), row.get(3)));</code></pre>
+                </section>
+
+                <section>
+                    <h3>Distributed Join Best Practices</h3>
+                    <div class="box">
+                        <h4>Design for Colocation First</h4>
+                        <ol>
+                            <li>Identify frequently joined tables</li>
+                            <li>Use affinity keys to colocate related data</li>
+                            <li>Consider data denormalization</li>
+                            <li>Enable distributed joins only when necessary</li>
+                        </ol>
+                    </div>
+                    <div class="performance-tip" style="margin-top: 20px;">
+                        <strong>Rule of thumb:</strong> If you frequently join two tables,
+                        they should share an affinity key.
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 8: Performance Tuning -->
+            <section>
+                <section>
+                    <h2>Query Performance Tuning</h2>
+                    <h3>Advanced Optimization Techniques</h3>
+                </section>
+
+                <section>
+                    <h3>Query Parallelism</h3>
+                    <pre><code class="language-java">// Configure cache with query parallelism
+CacheConfiguration&lt;Long, Product&gt; cfg = new CacheConfiguration&lt;&gt;("Product");
+cfg.setQueryParallelism(4);  // Use 4 threads per node
+
+// Or set per-query
+SqlFieldsQuery query = new SqlFieldsQuery(
+    "SELECT * FROM Product WHERE price > 100")
+    .setQueryParallelism(4);</code></pre>
+                    <div class="box" style="margin-top: 20px;">
+                        <strong>Parallelism guidelines:</strong>
+                        <ul>
+                            <li>Default is 1 (single-threaded)</li>
+                            <li>Increase for large, complex queries</li>
+                            <li>Don't exceed CPU cores</li>
+                            <li>May increase memory usage</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Lazy vs Eager Execution</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4>Eager (Default)</h4>
+                            <pre><code class="language-java">// Loads all results into memory
+SqlFieldsQuery query =
+    new SqlFieldsQuery(sql);
+
+List&lt;List&lt;?&gt;&gt; results =
+    cache.query(query).getAll();
+
+// Good for small result sets
+// All data available immediately</code></pre>
+                        </div>
+                        <div>
+                            <h4>Lazy</h4>
+                            <pre><code class="language-java">// Streams results on demand
+SqlFieldsQuery query =
+    new SqlFieldsQuery(sql)
+        .setLazy(true);
+
+try (QueryCursor&lt;List&lt;?&gt;&gt; cursor =
+        cache.query(query)) {
+    for (List&lt;?&gt; row : cursor) {
+        process(row);
+    }
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="success-box" style="margin-top: 20px;">
+                        Use lazy execution for large result sets to avoid OutOfMemory errors.
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Memory Configuration</h3>
+                    <pre><code class="language-java">// Configure SQL query memory limit
+IgniteConfiguration cfg = new IgniteConfiguration();
+
+// Set memory limit for queries
+SqlConfiguration sqlCfg = new SqlConfiguration()
+    .setQueryMemoryQuota("256M")  // Max memory per query
+    .setQueryGlobalMemoryQuota("2G");  // Max for all queries
+
+cfg.setSqlConfiguration(sqlCfg);</code></pre>
+                    <div class="warning-box" style="margin-top: 20px;">
+                        <strong>Memory-intensive operations:</strong>
+                        <ul>
+                            <li>Sorting large result sets</li>
+                            <li>GROUP BY with many groups</li>
+                            <li>Distinct on non-indexed columns</li>
+                            <li>Cross joins</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Troubleshooting Slow Queries</h3>
+                    <table style="font-size: 0.65em;">
+                        <tr>
+                            <th>Symptom</th>
+                            <th>Possible Cause</th>
+                            <th>Solution</th>
+                        </tr>
+                        <tr>
+                            <td>Query not using index</td>
+                            <td>No index on WHERE columns</td>
+                            <td>Create appropriate index</td>
+                        </tr>
+                        <tr>
+                            <td>Full table scan</td>
+                            <td>Leading wildcard in LIKE</td>
+                            <td>Use prefix search or full-text index</td>
+                        </tr>
+                        <tr>
+                            <td>Slow distributed join</td>
+                            <td>Data not colocated</td>
+                            <td>Use affinity keys</td>
+                        </tr>
+                        <tr>
+                            <td>High memory usage</td>
+                            <td>Large result set</td>
+                            <td>Use lazy execution, add LIMIT</td>
+                        </tr>
+                        <tr>
+                            <td>Timeout errors</td>
+                            <td>Query too complex</td>
+                            <td>Optimize query, add indexes</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Monitoring Queries</h3>
+                    <pre><code class="language-sql">-- View running queries
+SELECT * FROM SYS.SQL_QUERIES;
+
+-- View query history
+SELECT * FROM SYS.SQL_QUERIES_HISTORY;
+
+-- Kill long-running query
+KILL QUERY 'query_id';</code></pre>
+                    <div class="box" style="margin-top: 20px;">
+                        <strong>Ignite Control Center</strong> provides:
+                        <ul>
+                            <li>Real-time query monitoring</li>
+                            <li>Query execution statistics</li>
+                            <li>Slow query log</li>
+                            <li>Index usage analysis</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Performance Checklist</h3>
+                    <div class="success-box">
+                        <h4>Before Production:</h4>
+                        <ol style="margin-left: 20px;">
+                            <li>Run EXPLAIN on all critical queries</li>
+                            <li>Create indexes for WHERE clause columns</li>
+                            <li>Use composite indexes for multi-column filters</li>
+                            <li>Configure affinity for frequently joined tables</li>
+                            <li>Set appropriate query timeouts</li>
+                            <li>Enable lazy execution for large queries</li>
+                            <li>Test with production-size data</li>
+                            <li>Monitor and tune based on metrics</li>
+                        </ol>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Lab Exercise -->
+            <section>
+                <section>
+                    <h2>Lab Exercise</h2>
+                    <h3>SQL and Indexing in Practice</h3>
+                </section>
+
+                <section>
+                    <h3>Lab Objectives</h3>
+                    <div class="box">
+                        <p><strong>Duration:</strong> 60 minutes</p>
+                    </div>
+                    <ul>
+                        <li>Execute SQL queries on Ignite caches (DDL, DML, DQL)</li>
+                        <li>Create and manage indexes for query optimization</li>
+                        <li>Use JDBC driver to connect to Ignite</li>
+                        <li>Optimize query performance</li>
+                        <li>Understand distributed joins and their implications</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Lab Part 1: SQL Support</h3>
+                    <pre><code class="language-java">// Create cache with SQL schema
+CacheConfiguration&lt;Long, Object&gt; personCfg =
+    new CacheConfiguration&lt;&gt;("Person");
+
+QueryEntity personEntity = new QueryEntity(Long.class, Object.class);
+personEntity.setTableName("Person");
+
+LinkedHashMap&lt;String, String&gt; fields = new LinkedHashMap&lt;&gt;();
+fields.put("id", "java.lang.Long");
+fields.put("name", "java.lang.String");
+fields.put("age", "java.lang.Integer");
+fields.put("city", "java.lang.String");
+fields.put("salary", "java.lang.Double");
+
+personEntity.setFields(fields);
+personEntity.setKeyFieldName("id");
+personEntity.setIndexes(Arrays.asList(
+    new QueryIndex("name"),
+    new QueryIndex("city")
+));</code></pre>
+                </section>
+
+                <section>
+                    <h3>Lab Part 2: Indexing</h3>
+                    <pre><code class="language-java">// Create different types of indexes
+QueryIndex nameIdx = new QueryIndex("name", QueryIndexType.SORTED);
+QueryIndex categoryIdx = new QueryIndex("category", QueryIndexType.SORTED);
+QueryIndex priceIdx = new QueryIndex("price", QueryIndexType.SORTED);
+
+// Composite index on category and price
+QueryIndex compositeIdx = new QueryIndex(
+    Arrays.asList("category", "price"), QueryIndexType.SORTED);
+compositeIdx.setName("category_price_idx");
+
+// Full-text index on description
+QueryIndex textIdx = new QueryIndex("description", QueryIndexType.FULLTEXT);
+
+// Test with EXPLAIN
+SqlFieldsQuery explain = new SqlFieldsQuery(
+    "EXPLAIN SELECT name FROM Product " +
+    "WHERE category = 'Electronics' AND price < 500");
+cache.query(explain).getAll().forEach(System.out::println);</code></pre>
+                </section>
+
+                <section>
+                    <h3>Lab Part 3: JDBC</h3>
+                    <pre><code class="language-java">// JDBC connection and operations
+String JDBC_URL = "jdbc:ignite:thin://127.0.0.1/";
+Class.forName("org.apache.ignite.IgniteJdbcThinDriver");
+
+try (Connection conn = DriverManager.getConnection(JDBC_URL)) {
+    // Create table
+    try (Statement stmt = conn.createStatement()) {
+        stmt.execute("CREATE TABLE IF NOT EXISTS Employee (" +
+            "id INT PRIMARY KEY, " +
+            "name VARCHAR, " +
+            "department VARCHAR, " +
+            "salary DECIMAL)");
+    }
+
+    // Insert and query using PreparedStatement
+    String querySQL = "SELECT name, salary FROM Employee " +
+        "WHERE salary > ? ORDER BY salary DESC";
+    try (PreparedStatement pstmt = conn.prepareStatement(querySQL)) {
+        pstmt.setInt(1, 80000);
+        ResultSet rs = pstmt.executeQuery();
+        // Process results...
+    }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Lab Part 4: Distributed Joins</h3>
+                    <pre><code class="language-java">// Colocated join (fast)
+SqlFieldsQuery colocatedJoin = new SqlFieldsQuery(
+    "SELECT e.name, e.salary, d.dept_name " +
+    "FROM Employee e JOIN Department d ON e.dept_id = d.id " +
+    "WHERE d.dept_name = ?")
+    .setArgs("Engineering");
+
+// Distributed join (enable explicitly)
+SqlFieldsQuery distributedJoin = new SqlFieldsQuery(
+    "SELECT e.name, e.salary, d.dept_name " +
+    "FROM Employee e JOIN Department d ON e.dept_id = d.id " +
+    "ORDER BY e.salary DESC")
+    .setDistributedJoins(true);
+
+// Compare performance
+long colocatedTime = measureQuery(colocatedJoin);
+long distributedTime = measureQuery(distributedJoin);
+System.out.println("Colocated: " + colocatedTime + " ms");
+System.out.println("Distributed: " + distributedTime + " ms");</code></pre>
+                </section>
+
+                <section>
+                    <h3>Verification Checklist</h3>
+                    <table>
+                        <tr>
+                            <th>Task</th>
+                            <th>Status</th>
+                        </tr>
+                        <tr>
+                            <td>SQL CREATE TABLE executed successfully</td>
+                            <td style="text-align: center;">[ ]</td>
+                        </tr>
+                        <tr>
+                            <td>INSERT, UPDATE, DELETE operations work</td>
+                            <td style="text-align: center;">[ ]</td>
+                        </tr>
+                        <tr>
+                            <td>SELECT with WHERE, ORDER BY, GROUP BY</td>
+                            <td style="text-align: center;">[ ]</td>
+                        </tr>
+                        <tr>
+                            <td>Indexes created and used by optimizer</td>
+                            <td style="text-align: center;">[ ]</td>
+                        </tr>
+                        <tr>
+                            <td>JDBC connection established</td>
+                            <td style="text-align: center;">[ ]</td>
+                        </tr>
+                        <tr>
+                            <td>Distributed joins executed correctly</td>
+                            <td style="text-align: center;">[ ]</td>
+                        </tr>
+                        <tr>
+                            <td>Query execution plans examined</td>
+                            <td style="text-align: center;">[ ]</td>
+                        </tr>
+                    </table>
+                </section>
+            </section>
+
+            <!-- Summary -->
+            <section>
+                <section>
+                    <h2>Module Summary</h2>
+                </section>
+
+                <section>
+                    <h3>Key Takeaways</h3>
+                    <div class="three-column" style="font-size: 0.8em;">
+                        <div class="box">
+                            <h4 style="color: #e67e22;">SQL Engine</h4>
+                            <ul>
+                                <li>ANSI-99 compliant</li>
+                                <li>SqlFieldsQuery API</li>
+                                <li>DDL/DML/DQL support</li>
+                                <li>JDBC/ODBC access</li>
+                            </ul>
+                        </div>
+                        <div class="box">
+                            <h4 style="color: #e67e22;">Indexing</h4>
+                            <ul>
+                                <li>Primary (automatic)</li>
+                                <li>Secondary (SORTED)</li>
+                                <li>Composite indexes</li>
+                                <li>Full-text search</li>
+                            </ul>
+                        </div>
+                        <div class="box">
+                            <h4 style="color: #e67e22;">Performance</h4>
+                            <ul>
+                                <li>EXPLAIN for plans</li>
+                                <li>Affinity colocation</li>
+                                <li>Lazy execution</li>
+                                <li>Query parallelism</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Common Issues & Solutions</h3>
+                    <table style="font-size: 0.7em;">
+                        <tr>
+                            <th>Issue</th>
+                            <th>Solution</th>
+                        </tr>
+                        <tr>
+                            <td>Query not using index</td>
+                            <td>Verify index exists, check EXPLAIN, update statistics</td>
+                        </tr>
+                        <tr>
+                            <td>JDBC connection failed</td>
+                            <td>Ensure node running, check port 10800, verify driver</td>
+                        </tr>
+                        <tr>
+                            <td>Distributed join very slow</td>
+                            <td>Use affinity keys, consider denormalization</td>
+                        </tr>
+                        <tr>
+                            <td>OutOfMemory on large query</td>
+                            <td>Enable lazy execution, add LIMIT clause</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Best Practices Summary</h3>
+                    <div class="success-box">
+                        <ol>
+                            <li>Create indexes on frequently queried columns</li>
+                            <li>Use composite indexes for multi-column filters</li>
+                            <li>Design data model for colocation when possible</li>
+                            <li>Enable distributed joins only when necessary</li>
+                            <li>Use EXPLAIN to verify query plans</li>
+                            <li>Set query timeouts in production</li>
+                            <li>Monitor query performance metrics</li>
+                            <li>Use lazy execution for large result sets</li>
+                        </ol>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Next Module Preview</h3>
+                    <div class="box">
+                        <h4>Module 07: Distributed Transactions</h4>
+                        <ul>
+                            <li>ACID transactions in distributed systems</li>
+                            <li>Transaction isolation levels</li>
+                            <li>Optimistic vs pessimistic locking</li>
+                            <li>Deadlock detection and prevention</li>
+                            <li>Two-phase commit protocol</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Questions?</h2>
+                    <div class="box" style="margin-top: 2em;">
+                        <p><strong>Lab Resources:</strong></p>
+                        <p>labs/lab06_sql_indexing.md</p>
+                    </div>
+                </section>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all',
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            center: true,
+            plugins: [RevealHighlight, RevealNotes],
+            highlight: {
+                highlightOnLoad: true
+            }
+        });
+    </script>
+</body>
+</html>

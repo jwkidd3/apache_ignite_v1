@@ -204,7 +204,8 @@ public class Lab04ConfigurationDeploymentTest extends BaseIgniteTest {
     @DisplayName("Test node attributes")
     public void testNodeAttributes() {
         assertThat(ignite.cluster().localNode().attributes()).isNotEmpty();
-        assertThat(ignite.cluster().localNode().attribute("org.apache.ignite.lang.IgniteProductVersion")).isNotNull();
+        Object versionAttr = ignite.cluster().localNode().attribute("org.apache.ignite.lang.IgniteProductVersion");
+        assertThat(versionAttr).isNotNull();
     }
 
     @Test

@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Module 4: Configuration and Deployment</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+    <style>
+        :root {
+            --r-heading-color: #2c3e50;
+            --r-main-color: #333;
+            --r-link-color: #e67e22;
+            --r-background-color: #fff;
+        }
+        .reveal h1, .reveal h2, .reveal h3 { text-transform: none; color: var(--r-heading-color); }
+        .reveal h1 { font-size: 1.8em; }
+        .reveal h2 { font-size: 1.4em; }
+        .reveal h3 { font-size: 1.1em; }
+        .reveal pre { width: 100%; font-size: 0.48em; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .reveal pre code { max-height: 380px; padding: 15px; }
+        .reveal ul, .reveal ol { font-size: 0.75em; }
+        .reveal li { margin-bottom: 0.4em; }
+        .reveal table { font-size: 0.65em; }
+        .reveal blockquote { font-size: 0.8em; background: #f9f9f9; border-left: 4px solid #e67e22; padding: 0.5em 1em; }
+        .reveal .small-code pre { font-size: 0.42em; }
+        .reveal .small-code pre code { max-height: 340px; }
+        .two-columns { display: flex; gap: 2em; }
+        .two-columns > * { flex: 1; }
+        .reveal section p { font-size: 0.75em; }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section>
+                <h1>Module 4</h1>
+                <h2>Configuration and Deployment</h2>
+                <p>Apache Ignite Training</p>
+            </section>
+
+            <!-- Overview -->
+            <section>
+                <h2>Module Overview</h2>
+                <h3>What You'll Learn</h3>
+                <ul>
+                    <li>XML Configuration (Spring-based)</li>
+                    <li>Programmatic Configuration in Java</li>
+                    <li>Spring Boot Integration</li>
+                    <li>Deployment Patterns: Embedded vs Client-Server</li>
+                    <li>Environment-specific Configuration</li>
+                    <li>Configuration Best Practices</li>
+                </ul>
+                <p><strong>Duration:</strong> 45 minutes</p>
+            </section>
+
+            <!-- Section 1: Configuration Approaches -->
+            <section>
+                <section>
+                    <h2>Section 1</h2>
+                    <h3>Configuration Approaches</h3>
+                </section>
+
+                <section>
+                    <h3>Two Ways to Configure Ignite</h3>
+                    <div class="two-columns">
+                        <div>
+                            <p><strong>XML Configuration</strong></p>
+                            <ul>
+                                <li>Spring-based XML files</li>
+                                <li>Externalized configuration</li>
+                                <li>No code changes needed</li>
+                                <li>Easier for operations teams</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p><strong>Programmatic Configuration</strong></p>
+                            <ul>
+                                <li>Java code configuration</li>
+                                <li>Type-safe with IDE support</li>
+                                <li>Conditional logic possible</li>
+                                <li>Compile-time validation</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>When to Use Which?</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Scenario</th><th>Recommended Approach</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Production deployments</td><td>XML - easier to change without recompiling</td></tr>
+                            <tr><td>Development/testing</td><td>Programmatic - faster iteration</td></tr>
+                            <tr><td>Dynamic configuration</td><td>Programmatic - can use logic</td></tr>
+                            <tr><td>Ops team manages config</td><td>XML - no Java knowledge needed</td></tr>
+                            <tr><td>Complex cache topologies</td><td>Hybrid - base XML + programmatic overrides</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- Section 2: XML Configuration -->
+            <section>
+                <section>
+                    <h2>Section 2</h2>
+                    <h3>XML Configuration (Spring-based)</h3>
+                </section>
+
+                <section>
+                    <h3>Basic XML Structure</h3>
+                    <pre><code class="xml" data-trim>
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd"&gt;
+
+    &lt;bean class="org.apache.ignite.configuration.IgniteConfiguration"&gt;
+        &lt;!-- Node name --&gt;
+        &lt;property name="igniteInstanceName" value="xml-configured-node"/&gt;
+
+        &lt;!-- Enable peer class loading --&gt;
+        &lt;property name="peerClassLoadingEnabled" value="true"/&gt;
+    &lt;/bean&gt;
+&lt;/beans&gt;
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Configuring Discovery SPI</h3>
+                    <pre><code class="xml" data-trim>
+&lt;property name="discoverySpi"&gt;
+    &lt;bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi"&gt;
+        &lt;property name="ipFinder"&gt;
+            &lt;bean class="org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder"&gt;
+                &lt;property name="addresses"&gt;
+                    &lt;list&gt;
+                        &lt;value&gt;127.0.0.1:47500..47509&lt;/value&gt;
+                    &lt;/list&gt;
+                &lt;/property&gt;
+            &lt;/bean&gt;
+        &lt;/property&gt;
+    &lt;/bean&gt;
+&lt;/property&gt;
+                    </code></pre>
+                    <blockquote>Port range 47500..47509 allows multiple nodes on same machine</blockquote>
+                </section>
+
+                <section>
+                    <h3>Configuring Caches in XML</h3>
+                    <pre><code class="xml" data-trim>
+&lt;property name="cacheConfiguration"&gt;
+    &lt;list&gt;
+        &lt;!-- Partitioned cache --&gt;
+        &lt;bean class="org.apache.ignite.configuration.CacheConfiguration"&gt;
+            &lt;property name="name" value="xmlPartitionedCache"/&gt;
+            &lt;property name="cacheMode" value="PARTITIONED"/&gt;
+            &lt;property name="backups" value="1"/&gt;
+            &lt;property name="atomicityMode" value="TRANSACTIONAL"/&gt;
+        &lt;/bean&gt;
+
+        &lt;!-- Replicated cache --&gt;
+        &lt;bean class="org.apache.ignite.configuration.CacheConfiguration"&gt;
+            &lt;property name="name" value="xmlReplicatedCache"/&gt;
+            &lt;property name="cacheMode" value="REPLICATED"/&gt;
+            &lt;property name="atomicityMode" value="ATOMIC"/&gt;
+        &lt;/bean&gt;
+    &lt;/list&gt;
+&lt;/property&gt;
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Data Storage Configuration</h3>
+                    <pre><code class="xml" data-trim>
+&lt;property name="dataStorageConfiguration"&gt;
+    &lt;bean class="org.apache.ignite.configuration.DataStorageConfiguration"&gt;
+        &lt;property name="defaultDataRegionConfiguration"&gt;
+            &lt;bean class="org.apache.ignite.configuration.DataRegionConfiguration"&gt;
+                &lt;property name="name" value="Default_Region"/&gt;
+                &lt;property name="initialSize" value="#{100L * 1024 * 1024}"/&gt;
+                &lt;property name="maxSize" value="#{200L * 1024 * 1024}"/&gt;
+                &lt;property name="persistenceEnabled" value="false"/&gt;
+            &lt;/bean&gt;
+        &lt;/property&gt;
+    &lt;/bean&gt;
+&lt;/property&gt;
+                    </code></pre>
+                    <p>Spring Expression Language (SpEL) for memory calculations</p>
+                </section>
+
+                <section>
+                    <h3>Loading XML Configuration</h3>
+                    <pre><code class="java" data-trim>
+public class Lab04XmlConfig {
+    public static void main(String[] args) {
+        // Load configuration from XML file
+        try (Ignite ignite = Ignition.start("ignite-config.xml")) {
+            System.out.println("Node started with XML configuration");
+            System.out.println("Node name: " + ignite.name());
+
+            // Access pre-configured caches
+            IgniteCache&lt;Integer, String&gt; partitionedCache =
+                ignite.cache("xmlPartitionedCache");
+
+            System.out.println("Available Caches:");
+            ignite.cacheNames().forEach(name ->
+                System.out.println("  - " + name));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+                    </code></pre>
+                </section>
+            </section>
+
+            <!-- Section 3: Programmatic Configuration -->
+            <section>
+                <section>
+                    <h2>Section 3</h2>
+                    <h3>Programmatic Configuration</h3>
+                </section>
+
+                <section>
+                    <h3>Basic Programmatic Setup</h3>
+                    <pre><code class="java" data-trim>
+private static IgniteConfiguration createIgniteConfiguration() {
+    IgniteConfiguration cfg = new IgniteConfiguration();
+
+    // Basic settings
+    cfg.setIgniteInstanceName("programmatic-node");
+    cfg.setClientMode(false);
+    cfg.setPeerClassLoadingEnabled(true);
+
+    // Discovery configuration
+    cfg.setDiscoverySpi(createDiscoverySpi());
+
+    // Data storage configuration
+    cfg.setDataStorageConfiguration(createDataStorageConfig());
+
+    // Cache configurations
+    cfg.setCacheConfiguration(
+        createPartitionedCache(),
+        createReplicatedCache(),
+        createTransactionalCache()
+    );
+
+    return cfg;
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Discovery SPI Configuration</h3>
+                    <pre><code class="java" data-trim>
+private static TcpDiscoverySpi createDiscoverySpi() {
+    TcpDiscoverySpi spi = new TcpDiscoverySpi();
+
+    TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+    ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
+
+    spi.setIpFinder(ipFinder);
+    spi.setLocalPort(47500);
+    spi.setLocalPortRange(10);
+
+    return spi;
+}
+                    </code></pre>
+                    <blockquote>TcpDiscoveryVmIpFinder for static IP addresses; use TcpDiscoveryMulticastIpFinder for multicast discovery</blockquote>
+                </section>
+
+                <section>
+                    <h3>Data Region Configuration</h3>
+                    <pre><code class="java" data-trim>
+private static DataStorageConfiguration createDataStorageConfig() {
+    DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+    // Default data region
+    DataRegionConfiguration defaultRegion = new DataRegionConfiguration();
+    defaultRegion.setName("Default_Region");
+    defaultRegion.setInitialSize(100L * 1024 * 1024);  // 100 MB
+    defaultRegion.setMaxSize(500L * 1024 * 1024);      // 500 MB
+    defaultRegion.setPageEvictionMode(DataPageEvictionMode.RANDOM_2_LRU);
+    defaultRegion.setMetricsEnabled(true);
+
+    storageCfg.setDefaultDataRegionConfiguration(defaultRegion);
+
+    // Additional persistent data region
+    DataRegionConfiguration persistentRegion = new DataRegionConfiguration();
+    persistentRegion.setName("Persistent_Region");
+    persistentRegion.setPersistenceEnabled(true);
+
+    storageCfg.setDataRegionConfigurations(persistentRegion);
+
+    return storageCfg;
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Cache Configuration</h3>
+                    <pre><code class="java" data-trim>
+private static CacheConfiguration&lt;Integer, String&gt; createPartitionedCache() {
+    CacheConfiguration&lt;Integer, String&gt; cacheCfg =
+        new CacheConfiguration&lt;&gt;("programmaticPartitioned");
+
+    cacheCfg.setCacheMode(CacheMode.PARTITIONED);
+    cacheCfg.setBackups(1);
+    cacheCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+    cacheCfg.setWriteSynchronizationMode(
+        CacheWriteSynchronizationMode.PRIMARY_SYNC);
+    cacheCfg.setStatisticsEnabled(true);
+
+    return cacheCfg;
+}
+
+private static CacheConfiguration&lt;Integer, String&gt; createReplicatedCache() {
+    CacheConfiguration&lt;Integer, String&gt; cacheCfg =
+        new CacheConfiguration&lt;&gt;("programmaticReplicated");
+
+    cacheCfg.setCacheMode(CacheMode.REPLICATED);
+    cacheCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+    cacheCfg.setStatisticsEnabled(true);
+
+    return cacheCfg;
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Network and Thread Pool Settings</h3>
+                    <pre><code class="java" data-trim>
+// Thread pool configuration
+cfg.setPublicThreadPoolSize(8);
+cfg.setSystemThreadPoolSize(8);
+
+// Network configuration
+cfg.setNetworkTimeout(5000);
+cfg.setFailureDetectionTimeout(10000);
+                    </code></pre>
+                    <p><strong>Key Settings:</strong></p>
+                    <ul>
+                        <li><strong>publicThreadPoolSize</strong> - Handles user cache operations</li>
+                        <li><strong>systemThreadPoolSize</strong> - Internal system operations</li>
+                        <li><strong>networkTimeout</strong> - Max wait for network responses</li>
+                        <li><strong>failureDetectionTimeout</strong> - Node failure detection</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Section 4: Spring Boot Integration -->
+            <section>
+                <section>
+                    <h2>Section 4</h2>
+                    <h3>Spring Boot Integration</h3>
+                </section>
+
+                <section>
+                    <h3>Maven Dependencies</h3>
+                    <pre><code class="xml" data-trim>
+&lt;dependencies&gt;
+    &lt;!-- Spring Boot --&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-boot-starter-web&lt;/artifactId&gt;
+        &lt;version&gt;2.7.14&lt;/version&gt;
+    &lt;/dependency&gt;
+
+    &lt;!-- Ignite Spring Boot Starter --&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.apache.ignite&lt;/groupId&gt;
+        &lt;artifactId&gt;ignite-spring-boot-autoconfigure-ext&lt;/artifactId&gt;
+        &lt;version&gt;1.0.0&lt;/version&gt;
+    &lt;/dependency&gt;
+
+    &lt;!-- Ignite Core --&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.apache.ignite&lt;/groupId&gt;
+        &lt;artifactId&gt;ignite-core&lt;/artifactId&gt;
+        &lt;version&gt;2.16.0&lt;/version&gt;
+    &lt;/dependency&gt;
+&lt;/dependencies&gt;
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>application.yml Configuration</h3>
+                    <pre><code class="yaml" data-trim>
+spring:
+  application:
+    name: ignite-springboot-app
+
+ignite:
+  instance-name: springboot-ignite-node
+  peer-class-loading-enabled: true
+
+  discovery:
+    spi:
+      local-port: 47500
+      local-port-range: 10
+      addresses:
+        - 127.0.0.1:47500..47509
+
+  caches:
+    - name: springbootCache
+      cache-mode: PARTITIONED
+      backups: 1
+      atomicity-mode: TRANSACTIONAL
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Spring Configuration Bean</h3>
+                    <pre><code class="java" data-trim>
+@Configuration
+public class IgniteConfig {
+
+    @Bean
+    public Ignite igniteInstance() {
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setIgniteInstanceName("springboot-node");
+        cfg.setPeerClassLoadingEnabled(true);
+
+        // Cache configuration
+        CacheConfiguration&lt;Integer, String&gt; cacheCfg =
+            new CacheConfiguration&lt;&gt;("springCache");
+        cacheCfg.setBackups(1);
+
+        cfg.setCacheConfiguration(cacheCfg);
+
+        return Ignition.start(cfg);
+    }
+}
+                    </code></pre>
+                    <blockquote>Spring manages the Ignite lifecycle automatically</blockquote>
+                </section>
+
+                <section>
+                    <h3>Spring Boot Application</h3>
+                    <pre><code class="java" data-trim>
+@SpringBootApplication
+public class Lab04SpringBootApp implements CommandLineRunner {
+
+    @Autowired
+    private Ignite ignite;
+
+    public static void main(String[] args) {
+        SpringApplication.run(Lab04SpringBootApp.class, args);
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        System.out.println("Ignite node: " + ignite.name());
+        System.out.println("Cluster size: " + ignite.cluster().nodes().size());
+
+        // Use Spring-managed Ignite instance
+        IgniteCache&lt;Integer, String&gt; cache =
+            ignite.getOrCreateCache("springbootCache");
+
+        cache.put(1, "Spring Boot Value");
+        System.out.println("Cached value: " + cache.get(1));
+    }
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>REST Controller with Ignite</h3>
+                    <pre><code class="java" data-trim>
+@RestController
+@RequestMapping("/api/cache")
+public class CacheController {
+
+    @Autowired
+    private Ignite ignite;
+
+    @PostMapping("/{key}")
+    public Map&lt;String, String&gt; put(@PathVariable String key,
+                                     @RequestBody String value) {
+        IgniteCache&lt;String, String&gt; cache = ignite.cache("springCache");
+        cache.put(key, value);
+        return Map.of("status", "success", "key", key);
+    }
+
+    @GetMapping("/{key}")
+    public Map&lt;String, String&gt; get(@PathVariable String key) {
+        IgniteCache&lt;String, String&gt; cache = ignite.cache("springCache");
+        return Map.of("key", key, "value", cache.get(key));
+    }
+
+    @GetMapping("/size")
+    public Map&lt;String, Integer&gt; size() {
+        return Map.of("size", ignite.cache("springCache").size());
+    }
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Testing the REST API</h3>
+                    <pre><code class="bash" data-trim>
+# Put a value
+curl -X POST http://localhost:8080/api/cache/mykey \
+  -H "Content-Type: text/plain" \
+  -d "myvalue"
+
+# Get a value
+curl http://localhost:8080/api/cache/mykey
+
+# Get cache size
+curl http://localhost:8080/api/cache/size
+                    </code></pre>
+                </section>
+            </section>
+
+            <!-- Section 5: Deployment Patterns -->
+            <section>
+                <section>
+                    <h2>Section 5</h2>
+                    <h3>Deployment Patterns</h3>
+                </section>
+
+                <section>
+                    <h3>Embedded vs Client-Server</h3>
+                    <div class="two-columns">
+                        <div>
+                            <p><strong>Embedded Mode</strong></p>
+                            <ul>
+                                <li>Ignite runs in same JVM</li>
+                                <li>Application IS a cluster node</li>
+                                <li>Stores data locally</li>
+                                <li>Fastest data access</li>
+                                <li>Tighter coupling</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p><strong>Client-Server Mode</strong></p>
+                            <ul>
+                                <li>Separate Ignite cluster</li>
+                                <li>Application connects as client</li>
+                                <li>Data on server nodes only</li>
+                                <li>Network hop for data</li>
+                                <li>Better separation</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Embedded Mode Configuration</h3>
+                    <pre><code class="java" data-trim>
+// Embedded mode - node participates in cluster
+IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setClientMode(false);  // Server node (default)
+
+// Node stores data and participates in computation
+try (Ignite ignite = Ignition.start(cfg)) {
+    // This node is part of the cluster
+    // Data may be stored on this node
+    IgniteCache&lt;Integer, String&gt; cache =
+        ignite.getOrCreateCache("myCache");
+    cache.put(1, "value");
+}
+                    </code></pre>
+                    <blockquote>Use when: tight integration, single-node deployment, or data-intensive applications</blockquote>
+                </section>
+
+                <section>
+                    <h3>Client-Server Mode Configuration</h3>
+                    <pre><code class="java" data-trim>
+// Client mode - connects to existing cluster
+IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setClientMode(true);  // Client node
+
+// Configure discovery to find server nodes
+TcpDiscoverySpi spi = new TcpDiscoverySpi();
+TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+ipFinder.setAddresses(Arrays.asList(
+    "server1:47500", "server2:47500", "server3:47500"
+));
+spi.setIpFinder(ipFinder);
+cfg.setDiscoverySpi(spi);
+
+try (Ignite ignite = Ignition.start(cfg)) {
+    // This is a thin client - no data stored locally
+    IgniteCache&lt;Integer, String&gt; cache = ignite.cache("myCache");
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Thin Client (Lightweight)</h3>
+                    <pre><code class="java" data-trim>
+// Thin client - minimal footprint, no cluster participation
+ClientConfiguration cfg = new ClientConfiguration()
+    .setAddresses("server1:10800", "server2:10800", "server3:10800");
+
+try (IgniteClient client = Ignition.startClient(cfg)) {
+    ClientCache&lt;Integer, String&gt; cache =
+        client.getOrCreateCache("myCache");
+
+    cache.put(1, "value");
+    String value = cache.get(1);
+}
+                    </code></pre>
+                    <p><strong>Thin Client Benefits:</strong></p>
+                    <ul>
+                        <li>Minimal dependencies (just ignite-core)</li>
+                        <li>No cluster topology awareness</li>
+                        <li>Available for multiple languages (Java, .NET, Python, Node.js)</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Deployment Decision Matrix</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Factor</th><th>Embedded</th><th>Client-Server</th><th>Thin Client</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Latency</td><td>Lowest</td><td>Low</td><td>Higher</td></tr>
+                            <tr><td>Resource usage</td><td>High</td><td>Medium</td><td>Low</td></tr>
+                            <tr><td>Scalability</td><td>App + Data scale together</td><td>Independent scaling</td><td>Independent scaling</td></tr>
+                            <tr><td>Coupling</td><td>Tight</td><td>Loose</td><td>Loosest</td></tr>
+                            <tr><td>Use case</td><td>Microservices, single node</td><td>Multi-tier apps</td><td>Web apps, polyglot</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- Section 6: Environment-Specific Configuration -->
+            <section>
+                <section>
+                    <h2>Section 6</h2>
+                    <h3>Environment-Specific Configuration</h3>
+                </section>
+
+                <section>
+                    <h3>Spring Profiles for Environments</h3>
+                    <pre><code class="yaml" data-trim>
+# application-dev.yml
+ignite:
+  instance-name: dev-node
+  discovery:
+    spi:
+      addresses:
+        - 127.0.0.1:47500..47509
+
+# application-prod.yml
+ignite:
+  instance-name: prod-node
+  discovery:
+    spi:
+      addresses:
+        - prod-server1:47500
+        - prod-server2:47500
+        - prod-server3:47500
+                    </code></pre>
+                    <pre><code class="bash" data-trim>
+# Run with specific profile
+java -jar myapp.jar --spring.profiles.active=prod
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Environment Variables</h3>
+                    <pre><code class="java" data-trim>
+private static IgniteConfiguration createConfig() {
+    IgniteConfiguration cfg = new IgniteConfiguration();
+
+    // Read from environment
+    String instanceName = System.getenv("IGNITE_INSTANCE_NAME");
+    String addresses = System.getenv("IGNITE_DISCOVERY_ADDRESSES");
+
+    cfg.setIgniteInstanceName(
+        instanceName != null ? instanceName : "default-node");
+
+    TcpDiscoverySpi spi = new TcpDiscoverySpi();
+    TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+    ipFinder.setAddresses(Arrays.asList(
+        addresses != null ? addresses.split(",") : new String[]{"127.0.0.1:47500"}
+    ));
+    spi.setIpFinder(ipFinder);
+    cfg.setDiscoverySpi(spi);
+
+    return cfg;
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Docker Deployment</h3>
+                    <pre><code class="bash" data-trim>
+# Dockerfile
+FROM openjdk:11-jre-slim
+
+COPY target/myapp.jar /app/myapp.jar
+COPY ignite-config.xml /app/ignite-config.xml
+
+ENV IGNITE_INSTANCE_NAME=docker-node
+ENV IGNITE_DISCOVERY_ADDRESSES=ignite-server:47500
+
+EXPOSE 47500 47100 10800
+
+CMD ["java", "-jar", "/app/myapp.jar"]
+                    </code></pre>
+                    <pre><code class="bash" data-trim>
+# docker-compose.yml example
+docker run -e IGNITE_DISCOVERY_ADDRESSES=server1:47500,server2:47500 \
+           -p 47500:47500 -p 10800:10800 myapp:latest
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Kubernetes Discovery</h3>
+                    <pre><code class="xml" data-trim>
+&lt;!-- Use Kubernetes IP Finder --&gt;
+&lt;property name="discoverySpi"&gt;
+    &lt;bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi"&gt;
+        &lt;property name="ipFinder"&gt;
+            &lt;bean class="org.apache.ignite.spi.discovery.tcp.ipfinder.kubernetes.TcpDiscoveryKubernetesIpFinder"&gt;
+                &lt;property name="namespace" value="ignite-namespace"/&gt;
+                &lt;property name="serviceName" value="ignite-service"/&gt;
+            &lt;/bean&gt;
+        &lt;/property&gt;
+    &lt;/bean&gt;
+&lt;/property&gt;
+                    </code></pre>
+                    <p>Requires: <code>ignite-kubernetes</code> dependency</p>
+                </section>
+            </section>
+
+            <!-- Section 7: Configuration Best Practices -->
+            <section>
+                <section>
+                    <h2>Section 7</h2>
+                    <h3>Configuration Best Practices</h3>
+                </section>
+
+                <section>
+                    <h3>Memory Configuration</h3>
+                    <ul>
+                        <li><strong>Size data regions appropriately</strong>
+                            <ul>
+                                <li>initialSize: Start point for memory allocation</li>
+                                <li>maxSize: Upper limit (avoid OOM)</li>
+                            </ul>
+                        </li>
+                        <li><strong>Enable eviction for bounded caches</strong>
+                            <ul>
+                                <li>RANDOM_2_LRU: Good general-purpose eviction</li>
+                                <li>RANDOM_LRU: Simpler, slightly less accurate</li>
+                            </ul>
+                        </li>
+                        <li><strong>Reserve memory for JVM heap</strong>
+                            <ul>
+                                <li>Ignite uses off-heap storage</li>
+                                <li>Still need heap for objects, GC</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Cache Configuration Tips</h3>
+                    <pre><code class="java" data-trim>
+CacheConfiguration&lt;K, V&gt; cacheCfg = new CacheConfiguration&lt;&gt;("myCache");
+
+// Choose cache mode based on access patterns
+cacheCfg.setCacheMode(CacheMode.PARTITIONED);  // Scalable
+// cacheCfg.setCacheMode(CacheMode.REPLICATED);  // Read-heavy
+
+// Backups for fault tolerance (PARTITIONED only)
+cacheCfg.setBackups(1);  // 1 backup copy
+
+// Atomicity based on requirements
+cacheCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);  // Faster
+// cacheCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);  // ACID
+
+// Write sync mode
+cacheCfg.setWriteSynchronizationMode(
+    CacheWriteSynchronizationMode.PRIMARY_SYNC);  // Balance of speed/safety
+
+// Enable statistics for monitoring
+cacheCfg.setStatisticsEnabled(true);  // Small overhead
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Logging Configuration</h3>
+                    <pre><code class="xml" data-trim>
+&lt;!-- log4j2.xml --&gt;
+&lt;Configuration status="WARN"&gt;
+    &lt;Appenders&gt;
+        &lt;Console name="Console" target="SYSTEM_OUT"&gt;
+            &lt;PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/&gt;
+        &lt;/Console&gt;
+        &lt;File name="IgniteLog" fileName="logs/ignite.log"&gt;
+            &lt;PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%t] %-5level %logger{36} - %msg%n"/&gt;
+        &lt;/File&gt;
+    &lt;/Appenders&gt;
+    &lt;Loggers&gt;
+        &lt;Logger name="org.apache.ignite" level="INFO" additivity="false"&gt;
+            &lt;AppenderRef ref="Console"/&gt;
+            &lt;AppenderRef ref="IgniteLog"/&gt;
+        &lt;/Logger&gt;
+        &lt;Root level="INFO"&gt;
+            &lt;AppenderRef ref="Console"/&gt;
+        &lt;/Root&gt;
+    &lt;/Loggers&gt;
+&lt;/Configuration&gt;
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Monitoring and Metrics</h3>
+                    <pre><code class="java" data-trim>
+// Display cache metrics
+CacheMetrics metrics = cache.metrics();
+
+System.out.println("Cache gets: " + metrics.getCacheGets());
+System.out.println("Cache puts: " + metrics.getCachePuts());
+System.out.println("Cache hits: " + metrics.getCacheHits());
+System.out.println("Hit percentage: " +
+    String.format("%.2f%%", metrics.getCacheHitPercentage()));
+System.out.println("Average get time: " +
+    String.format("%.3f ms", metrics.getAverageGetTime()));
+
+// Cluster metrics
+System.out.println("Total CPUs: " +
+    ignite.cluster().metrics().getTotalCpus());
+System.out.println("Heap memory used: " +
+    ignite.cluster().metrics().getHeapMemoryUsed() / (1024 * 1024) + " MB");
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Key Metrics to Monitor</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Metric</th><th>Why Important</th><th>Action if Issue</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Hit Ratio</td><td>Cache effectiveness</td><td>Increase cache size or TTL</td></tr>
+                            <tr><td>Avg Get/Put Time</td><td>Performance indicator</td><td>Check network, optimize queries</td></tr>
+                            <tr><td>Cache Size</td><td>Memory usage</td><td>Enable eviction, add nodes</td></tr>
+                            <tr><td>Eviction Rate</td><td>Capacity planning</td><td>Increase memory or add nodes</td></tr>
+                            <tr><td>Heap Usage</td><td>JVM health</td><td>Tune GC, increase heap</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Security Best Practices</h3>
+                    <ul>
+                        <li><strong>Enable SSL/TLS</strong> for node communication</li>
+                        <li><strong>Configure authentication</strong> for production clusters</li>
+                        <li><strong>Use separate data regions</strong> for sensitive data</li>
+                        <li><strong>Externalize secrets</strong> - never hardcode in config files</li>
+                        <li><strong>Limit network exposure</strong> - bind to internal interfaces</li>
+                    </ul>
+                    <pre><code class="java" data-trim>
+// Example: Enable authentication
+cfg.setAuthenticationEnabled(true);
+cfg.setPluginConfigurations(new SecurityPluginConfiguration());
+                    </code></pre>
+                </section>
+            </section>
+
+            <!-- Lab 4 -->
+            <section>
+                <section>
+                    <h2>Lab 4</h2>
+                    <h3>Configuration and Deployment</h3>
+                </section>
+                <section>
+                    <h3>Lab 4 Exercises</h3>
+                    <p>You will practice configuration and deployment:</p>
+                    <ul>
+                        <li>Create XML configuration with multiple caches</li>
+                        <li>Build programmatic configuration with data regions</li>
+                        <li>Integrate Ignite with Spring Boot</li>
+                        <li>Create REST endpoints for cache operations</li>
+                        <li>Configure logging and enable metrics</li>
+                        <li>Monitor cache and cluster performance</li>
+                    </ul>
+                    <p><strong>Time:</strong> 60 minutes</p>
+                    <p><strong>File:</strong> <code>labs/lab04_configuration_deployment.md</code></p>
+                </section>
+            </section>
+
+            <!-- Summary -->
+            <section>
+                <section>
+                    <h2>Module 4 Summary</h2>
+                    <h3>Key Takeaways</h3>
+                    <ol>
+                        <li><strong>XML configuration</strong> for externalized, ops-friendly settings</li>
+                        <li><strong>Programmatic configuration</strong> for type-safety and flexibility</li>
+                        <li><strong>Spring Boot integration</strong> simplifies Ignite setup</li>
+                        <li><strong>Embedded mode</strong> for tight integration, <strong>client-server</strong> for separation</li>
+                        <li><strong>Environment-specific configs</strong> via profiles and env variables</li>
+                        <li><strong>Monitor key metrics</strong>: hit ratio, latency, memory usage</li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h2>Configuration Checklist</h2>
+                    <ul>
+                        <li>Data regions sized appropriately with eviction</li>
+                        <li>Cache modes match access patterns</li>
+                        <li>Backups configured for fault tolerance</li>
+                        <li>Discovery SPI matches deployment environment</li>
+                        <li>Logging configured for troubleshooting</li>
+                        <li>Metrics enabled for monitoring</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Questions?</h2>
+                    <h3>Next Module: Data Modeling and Persistence</h3>
+                </section>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealHighlight, RevealNotes ]
+        });
+    </script>
+</body>
+</html>

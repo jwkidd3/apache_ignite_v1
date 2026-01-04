@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 07: Transactions and ACID | Apache Ignite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/intellij-light.min.css">
+    <style>
+        :root {
+            --r-heading-color: #2c3e50;
+            --r-main-color: #333;
+            --r-link-color: #e67e22;
+            --r-link-color-hover: #d35400;
+            --r-selection-background-color: #e67e22;
+            --r-heading-font: 'Source Sans Pro', Helvetica, sans-serif;
+            --r-main-font: 'Source Sans Pro', Helvetica, sans-serif;
+            --r-code-font: 'Fira Code', 'Consolas', monospace;
+        }
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: #2c3e50;
+            text-transform: none;
+        }
+        .reveal h1 { font-size: 2.2em; }
+        .reveal h2 { font-size: 1.6em; }
+        .reveal h3 { font-size: 1.3em; }
+        .reveal pre {
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        .reveal pre code {
+            max-height: 500px;
+            font-size: 0.75em;
+            line-height: 1.4;
+            padding: 20px;
+        }
+        .reveal .slides section {
+            text-align: left;
+        }
+        .reveal .slides section.center {
+            text-align: center;
+        }
+        .accent {
+            color: #e67e22;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            padding: 25px 35px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .info-box {
+            background: #f8f9fa;
+            border-left: 5px solid #e67e22;
+            padding: 20px 25px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .warning-box {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px 25px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .success-box {
+            background: #d4edda;
+            border-left: 5px solid #28a745;
+            padding: 20px 25px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+        .three-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 25px;
+            align-items: start;
+        }
+        .reveal ul, .reveal ol {
+            margin-left: 0;
+            display: block;
+        }
+        .reveal li {
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.85em;
+        }
+        .comparison-table th, .comparison-table td {
+            border: 1px solid #ddd;
+            padding: 14px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background: #2c3e50;
+            color: white;
+        }
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            margin: 3px;
+        }
+        .tag-pessimistic { background: #e74c3c; color: white; }
+        .tag-optimistic { background: #27ae60; color: white; }
+        .tag-warning { background: #f39c12; color: white; }
+        .tag-info { background: #3498db; color: white; }
+        .diagram-box {
+            background: #f8f9fa;
+            border: 2px solid #e67e22;
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #e67e22;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -26px;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e67e22;
+        }
+        footer.module-info {
+            position: absolute;
+            bottom: 20px;
+            left: 30px;
+            font-size: 0.7em;
+            color: #7f8c8d;
+        }
+        .reveal .progress {
+            color: #e67e22;
+            background: rgba(230, 126, 34, 0.2);
+        }
+        .flow-arrow {
+            font-size: 1.5em;
+            color: #e67e22;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section class="center">
+                <h1>Module 07</h1>
+                <h2 class="accent">Transactions and ACID</h2>
+                <p style="font-size: 1.2em; color: #666; margin-top: 40px;">Apache Ignite Training</p>
+                <div class="highlight-box" style="display: inline-block; margin-top: 30px;">
+                    <span style="font-size: 0.9em;">Duration: 45 minutes</span>
+                </div>
+            </section>
+
+            <!-- Module Overview -->
+            <section>
+                <h2>Module Overview</h2>
+                <div class="two-column">
+                    <div>
+                        <h3 class="accent">Topics Covered</h3>
+                        <ul>
+                            <li>ACID Properties in Ignite</li>
+                            <li>Transaction API</li>
+                            <li>Isolation Levels</li>
+                            <li>Concurrency Modes</li>
+                            <li>Deadlock Detection</li>
+                            <li>Transaction Timeout</li>
+                            <li>Cross-Cache Transactions</li>
+                            <li>Best Practices</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="accent">Learning Objectives</h3>
+                        <ul>
+                            <li>Implement transactional operations</li>
+                            <li>Choose appropriate isolation levels</li>
+                            <li>Handle deadlocks gracefully</li>
+                            <li>Apply transaction best practices</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ACID Properties Section -->
+            <section>
+                <section class="center">
+                    <h1>ACID Properties</h1>
+                    <h3 class="accent">Foundation of Data Consistency</h3>
+                </section>
+
+                <section>
+                    <h2>What is ACID?</h2>
+                    <div class="three-column">
+                        <div class="diagram-box">
+                            <h3 style="color: #e67e22;">A</h3>
+                            <h4>Atomicity</h4>
+                            <p style="font-size: 0.8em;">All or nothing - complete success or complete rollback</p>
+                        </div>
+                        <div class="diagram-box">
+                            <h3 style="color: #e67e22;">C</h3>
+                            <h4>Consistency</h4>
+                            <p style="font-size: 0.8em;">Data remains valid after transaction</p>
+                        </div>
+                        <div class="diagram-box">
+                            <h3 style="color: #e67e22;">I</h3>
+                            <h4>Isolation</h4>
+                            <p style="font-size: 0.8em;">Concurrent transactions don't interfere</p>
+                        </div>
+                    </div>
+                    <div style="width: 33%; margin: 20px auto;">
+                        <div class="diagram-box">
+                            <h3 style="color: #e67e22;">D</h3>
+                            <h4>Durability</h4>
+                            <p style="font-size: 0.8em;">Committed data survives failures</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>ACID in Distributed Systems</h2>
+                    <div class="info-box">
+                        <p><strong>Challenge:</strong> Maintaining ACID across multiple nodes is complex</p>
+                    </div>
+                    <div class="two-column" style="margin-top: 30px;">
+                        <div>
+                            <h4 class="accent">Traditional RDBMS</h4>
+                            <ul>
+                                <li>Single machine coordination</li>
+                                <li>Simple lock management</li>
+                                <li>Direct disk writes</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="accent">Apache Ignite</h4>
+                            <ul>
+                                <li>Multi-node coordination</li>
+                                <li>Distributed lock management</li>
+                                <li>Two-Phase Commit (2PC)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Enabling Transactions</h2>
+                    <div class="info-box">
+                        <p>Transactions require <strong>TRANSACTIONAL</strong> atomicity mode</p>
+                    </div>
+                    <pre><code class="language-java">CacheConfiguration&lt;Integer, Integer&gt; cfg =
+    new CacheConfiguration&lt;&gt;("accountCache");
+
+// Enable transactions
+cfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
+cfg.setBackups(1);
+
+IgniteCache&lt;Integer, Integer&gt; cache =
+    ignite.getOrCreateCache(cfg);</code></pre>
+                    <div class="warning-box">
+                        <p><strong>Note:</strong> ATOMIC mode (default) does not support transactions but offers better performance for single-key operations</p>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Transaction API Section -->
+            <section>
+                <section class="center">
+                    <h1>Transaction API</h1>
+                    <h3 class="accent">Working with Ignite Transactions</h3>
+                </section>
+
+                <section>
+                    <h2>Basic Transaction Pattern</h2>
+                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.PESSIMISTIC,
+        TransactionIsolation.REPEATABLE_READ)) {
+
+    // Read current values
+    int balance1 = cache.get(1);
+    int balance2 = cache.get(2);
+
+    // Perform transfer
+    cache.put(1, balance1 - 200);
+    cache.put(2, balance2 + 200);
+
+    // Commit the transaction
+    tx.commit();
+    System.out.println("Transaction committed successfully");
+}</code></pre>
+                    <div class="success-box">
+                        <p><strong>Key Pattern:</strong> Use try-with-resources for automatic cleanup</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Transaction Lifecycle</h2>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <strong>txStart()</strong> - Begin transaction
+                        </div>
+                        <div class="timeline-item">
+                            <strong>Operations</strong> - Read/Write cache entries
+                        </div>
+                        <div class="timeline-item">
+                            <strong>commit()</strong> - Apply all changes atomically
+                        </div>
+                        <div class="timeline-item">
+                            <strong>rollback()</strong> - Discard all changes
+                        </div>
+                        <div class="timeline-item">
+                            <strong>close()</strong> - Clean up resources
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Rollback Scenarios</h2>
+                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.PESSIMISTIC,
+        TransactionIsolation.REPEATABLE_READ)) {
+
+    int balance = cache.get(1);
+
+    // Business validation
+    if (balance < 2000) {
+        System.out.println("Insufficient funds!");
+        tx.rollback();  // Explicit rollback
+        return;
+    }
+
+    cache.put(1, balance - 2000);
+    tx.commit();
+
+} catch (Exception e) {
+    // Transaction auto-rolls back on exception
+    System.out.println("Transaction rolled back: " + e.getMessage());
+}</code></pre>
+                </section>
+
+                <section>
+                    <h2>Transaction Methods</h2>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Method</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td><code>txStart()</code></td>
+                            <td>Start with default concurrency and isolation</td>
+                        </tr>
+                        <tr>
+                            <td><code>txStart(concurrency, isolation)</code></td>
+                            <td>Start with specific settings</td>
+                        </tr>
+                        <tr>
+                            <td><code>txStart(concurrency, isolation, timeout, size)</code></td>
+                            <td>Full control including timeout</td>
+                        </tr>
+                        <tr>
+                            <td><code>commit()</code></td>
+                            <td>Apply all changes permanently</td>
+                        </tr>
+                        <tr>
+                            <td><code>rollback()</code></td>
+                            <td>Discard all changes</td>
+                        </tr>
+                        <tr>
+                            <td><code>close()</code></td>
+                            <td>Clean up (auto-rollback if not committed)</td>
+                        </tr>
+                    </table>
+                </section>
+            </section>
+
+            <!-- Isolation Levels Section -->
+            <section>
+                <section class="center">
+                    <h1>Isolation Levels</h1>
+                    <h3 class="accent">READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE</h3>
+                </section>
+
+                <section>
+                    <h2>Isolation Level Overview</h2>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Level</th>
+                            <th>Dirty Read</th>
+                            <th>Non-Repeatable</th>
+                            <th>Phantom Read</th>
+                            <th>Performance</th>
+                        </tr>
+                        <tr>
+                            <td><strong>READ_COMMITTED</strong></td>
+                            <td style="color: green;">Prevented</td>
+                            <td style="color: red;">Possible</td>
+                            <td style="color: red;">Possible</td>
+                            <td><span class="tag tag-optimistic">Fastest</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>REPEATABLE_READ</strong></td>
+                            <td style="color: green;">Prevented</td>
+                            <td style="color: green;">Prevented</td>
+                            <td style="color: red;">Possible</td>
+                            <td><span class="tag tag-info">Balanced</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>SERIALIZABLE</strong></td>
+                            <td style="color: green;">Prevented</td>
+                            <td style="color: green;">Prevented</td>
+                            <td style="color: green;">Prevented</td>
+                            <td><span class="tag tag-pessimistic">Slowest</span></td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>READ_COMMITTED</h2>
+                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.PESSIMISTIC,
+        TransactionIsolation.READ_COMMITTED)) {
+
+    // Can see committed changes from other transactions
+    Integer value1 = cache.get("key");  // Returns 100
+
+    // Another transaction commits: key -> 200
+
+    Integer value2 = cache.get("key");  // Returns 200 (different!)
+
+    tx.commit();
+}</code></pre>
+                    <div class="info-box">
+                        <p><strong>Use Case:</strong> When you need performance and can tolerate reading different values within the same transaction</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>REPEATABLE_READ</h2>
+                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.PESSIMISTIC,
+        TransactionIsolation.REPEATABLE_READ)) {
+
+    // Consistent reads throughout transaction
+    Integer value1 = cache.get("key");  // Returns 100
+
+    // Another transaction commits: key -> 200
+
+    Integer value2 = cache.get("key");  // Still returns 100!
+
+    tx.commit();
+}</code></pre>
+                    <div class="success-box">
+                        <p><strong>Recommended:</strong> Best balance of consistency and performance for most applications</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>SERIALIZABLE</h2>
+                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.OPTIMISTIC,
+        TransactionIsolation.SERIALIZABLE)) {
+
+    // Strictest isolation - prevents all anomalies
+    // Validates that no conflicting changes occurred
+
+    Integer value = cache.get("key");
+    cache.put("key", value + 1);
+
+    // At commit: validates no other transaction modified "key"
+    tx.commit();  // May throw TransactionOptimisticException
+
+} catch (TransactionOptimisticException e) {
+    // Handle conflict - typically retry
+}</code></pre>
+                    <div class="warning-box">
+                        <p><strong>Note:</strong> SERIALIZABLE with OPTIMISTIC requires handling potential commit failures</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Choosing Isolation Levels</h2>
+                    <div class="two-column">
+                        <div>
+                            <h4 class="accent">READ_COMMITTED</h4>
+                            <ul>
+                                <li>Reporting queries</li>
+                                <li>Non-critical reads</li>
+                                <li>High-throughput scenarios</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="accent">REPEATABLE_READ</h4>
+                            <ul>
+                                <li>Financial transactions</li>
+                                <li>Inventory management</li>
+                                <li>Most business operations</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <h4 class="accent" style="text-align: center;">SERIALIZABLE</h4>
+                        <ul style="text-align: center; list-style: none;">
+                            <li>Audit logs | Compliance-critical operations | Counter updates</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Concurrency Modes Section -->
+            <section>
+                <section class="center">
+                    <h1>Concurrency Modes</h1>
+                    <h3 class="accent">PESSIMISTIC vs OPTIMISTIC</h3>
+                </section>
+
+                <section>
+                    <h2>Concurrency Mode Comparison</h2>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Aspect</th>
+                            <th><span class="tag tag-pessimistic">PESSIMISTIC</span></th>
+                            <th><span class="tag tag-optimistic">OPTIMISTIC</span></th>
+                        </tr>
+                        <tr>
+                            <td>Lock Acquisition</td>
+                            <td>On first access</td>
+                            <td>At commit time</td>
+                        </tr>
+                        <tr>
+                            <td>Conflicts</td>
+                            <td>Prevented by waiting</td>
+                            <td>Detected at commit</td>
+                        </tr>
+                        <tr>
+                            <td>Deadlock Risk</td>
+                            <td>Higher</td>
+                            <td>Lower</td>
+                        </tr>
+                        <tr>
+                            <td>Throughput</td>
+                            <td>Lower under contention</td>
+                            <td>Higher for reads</td>
+                        </tr>
+                        <tr>
+                            <td>Best For</td>
+                            <td>Write-heavy workloads</td>
+                            <td>Read-heavy workloads</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>PESSIMISTIC Mode</h2>
+                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.PESSIMISTIC,
+        TransactionIsolation.REPEATABLE_READ)) {
+
+    // Lock is acquired HERE on first read
+    Integer value = cache.get("counter");
+    System.out.println("Lock acquired, value: " + value);
+
+    // Other transactions wait for this lock
+    Thread.sleep(100);  // Processing time
+
+    cache.put("counter", value + 1);
+
+    tx.commit();  // Lock released
+}</code></pre>
+                    <div class="info-box">
+                        <p><strong>Behavior:</strong> Locks acquired immediately prevent other transactions from accessing the same data</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>OPTIMISTIC Mode</h2>
+                    <pre><code class="language-java">int maxRetries = 3;
+for (int retry = 0; retry < maxRetries; retry++) {
+    try (Transaction tx = ignite.transactions().txStart(
+            TransactionConcurrency.OPTIMISTIC,
+            TransactionIsolation.SERIALIZABLE)) {
+
+        // No lock acquired - just read value
+        Integer value = cache.get("counter");
+
+        cache.put("counter", value + 1);
+
+        // Lock acquired and validated HERE
+        tx.commit();  // May fail if data changed
+        break;  // Success - exit retry loop
+
+    } catch (TransactionOptimisticException e) {
+        if (retry == maxRetries - 1) throw e;
+        // Retry the transaction
+    }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h2>Lock Timing Visualization</h2>
+                    <div class="two-column">
+                        <div>
+                            <h4 class="accent">PESSIMISTIC</h4>
+                            <div class="diagram-box" style="font-size: 0.8em;">
+                                <p>txStart()</p>
+                                <p class="flow-arrow">|</p>
+                                <p style="background: #e74c3c; color: white; padding: 5px;">get() - LOCK</p>
+                                <p class="flow-arrow">|</p>
+                                <p>put()</p>
+                                <p class="flow-arrow">|</p>
+                                <p style="background: #27ae60; color: white; padding: 5px;">commit() - UNLOCK</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="accent">OPTIMISTIC</h4>
+                            <div class="diagram-box" style="font-size: 0.8em;">
+                                <p>txStart()</p>
+                                <p class="flow-arrow">|</p>
+                                <p>get() - no lock</p>
+                                <p class="flow-arrow">|</p>
+                                <p>put() - no lock</p>
+                                <p class="flow-arrow">|</p>
+                                <p style="background: #e74c3c; color: white; padding: 5px;">commit() - LOCK + VALIDATE</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>When to Use Each Mode</h2>
+                    <div class="two-column">
+                        <div>
+                            <div class="highlight-box">
+                                <h4 style="margin: 0;">Use PESSIMISTIC When:</h4>
+                            </div>
+                            <ul style="margin-top: 15px;">
+                                <li>High write contention expected</li>
+                                <li>Conflicts are likely</li>
+                                <li>Cannot afford retry overhead</li>
+                                <li>Long-running transactions</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <div class="highlight-box">
+                                <h4 style="margin: 0;">Use OPTIMISTIC When:</h4>
+                            </div>
+                            <ul style="margin-top: 15px;">
+                                <li>Read-heavy workloads</li>
+                                <li>Low contention scenarios</li>
+                                <li>Short transactions</li>
+                                <li>Can implement retry logic</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Deadlock Detection Section -->
+            <section>
+                <section class="center">
+                    <h1>Deadlock Detection</h1>
+                    <h3 class="accent">Prevention and Resolution</h3>
+                </section>
+
+                <section>
+                    <h2>What is a Deadlock?</h2>
+                    <div class="diagram-box">
+                        <div class="two-column">
+                            <div style="text-align: center;">
+                                <p><strong>Transaction 1</strong></p>
+                                <p>Holds Lock A</p>
+                                <p>Waits for Lock B</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <p><strong>Transaction 2</strong></p>
+                                <p>Holds Lock B</p>
+                                <p>Waits for Lock A</p>
+                            </div>
+                        </div>
+                        <p style="color: #e74c3c; margin-top: 15px;"><strong>Result: Both transactions blocked forever!</strong></p>
+                    </div>
+                    <div class="warning-box" style="margin-top: 20px;">
+                        <p>Deadlocks occur with PESSIMISTIC transactions when locks are acquired in different orders</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Deadlock Scenario</h2>
+                    <pre><code class="language-java">// Thread 1: Lock A then B
+try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.PESSIMISTIC,
+        TransactionIsolation.REPEATABLE_READ, 5000, 0)) {
+
+    cache.get("resource1");  // Lock A
+    Thread.sleep(100);
+    cache.get("resource2");  // Wait for Lock B - BLOCKED!
+
+    tx.commit();
+}
+
+// Thread 2: Lock B then A
+try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.PESSIMISTIC,
+        TransactionIsolation.REPEATABLE_READ, 5000, 0)) {
+
+    cache.get("resource2");  // Lock B
+    Thread.sleep(100);
+    cache.get("resource1");  // Wait for Lock A - BLOCKED!
+
+    tx.commit();
+}</code></pre>
+                </section>
+
+                <section>
+                    <h2>Ignite's Deadlock Detection</h2>
+                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.PESSIMISTIC,
+        TransactionIsolation.REPEATABLE_READ,
+        5000,  // Timeout in milliseconds
+        0)) {
+
+    // Transaction operations...
+    tx.commit();
+
+} catch (TransactionDeadlockException e) {
+    System.out.println("DEADLOCK DETECTED!");
+    System.out.println("This transaction was chosen as victim");
+    // Transaction is automatically rolled back
+    // Implement retry logic here
+}</code></pre>
+                    <div class="info-box">
+                        <p><strong>Resolution:</strong> Ignite automatically detects deadlocks and rolls back one transaction to allow others to proceed</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Preventing Deadlocks</h2>
+                    <div class="success-box">
+                        <h4 style="margin-top: 0;">Best Practice: Consistent Lock Ordering</h4>
+                    </div>
+                    <pre><code class="language-java">// Both transactions acquire locks in the SAME order
+Runnable safeTransaction = () -> {
+    try (Transaction tx = ignite.transactions().txStart(
+            TransactionConcurrency.PESSIMISTIC,
+            TransactionIsolation.REPEATABLE_READ)) {
+
+        // Always lock resource1 first, then resource2
+        cache.get("resource1");  // Lock A first
+        cache.get("resource2");  // Then Lock B
+
+        // Perform operations
+        tx.commit();
+    }
+};
+
+// Both threads use the same lock order - no deadlock!</code></pre>
+                </section>
+
+                <section>
+                    <h2>Deadlock Prevention Strategies</h2>
+                    <div class="three-column">
+                        <div class="diagram-box">
+                            <h4 style="color: #e67e22;">Lock Ordering</h4>
+                            <p style="font-size: 0.85em;">Always acquire locks in consistent order</p>
+                        </div>
+                        <div class="diagram-box">
+                            <h4 style="color: #e67e22;">Timeouts</h4>
+                            <p style="font-size: 0.85em;">Set reasonable transaction timeouts</p>
+                        </div>
+                        <div class="diagram-box">
+                            <h4 style="color: #e67e22;">Use OPTIMISTIC</h4>
+                            <p style="font-size: 0.85em;">Eliminates lock-based deadlocks</p>
+                        </div>
+                    </div>
+                    <div class="info-box" style="margin-top: 25px;">
+                        <p><strong>Tip:</strong> Sort keys before accessing them to ensure consistent ordering</p>
+                        <pre style="margin-top: 10px;"><code class="language-java">List&lt;String&gt; keys = Arrays.asList("keyC", "keyA", "keyB");
+Collections.sort(keys);  // Consistent order
+for (String key : keys) cache.get(key);</code></pre>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Transaction Timeout Section -->
+            <section>
+                <section class="center">
+                    <h1>Transaction Timeout</h1>
+                    <h3 class="accent">Managing Long-Running Transactions</h3>
+                </section>
+
+                <section>
+                    <h2>Setting Transaction Timeout</h2>
+                    <pre><code class="language-java">// Method 1: Per-transaction timeout
+try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.PESSIMISTIC,
+        TransactionIsolation.REPEATABLE_READ,
+        10000,  // 10 second timeout
+        0)) {   // 0 = unlimited transaction size
+
+    // Operations must complete within 10 seconds
+    tx.commit();
+
+} catch (TransactionTimeoutException e) {
+    System.out.println("Transaction exceeded timeout!");
+}</code></pre>
+                </section>
+
+                <section>
+                    <h2>Default Timeout Configuration</h2>
+                    <pre><code class="language-java">// Configure default timeout for all transactions
+TransactionConfiguration txCfg = new TransactionConfiguration();
+txCfg.setDefaultTxTimeout(30000);  // 30 seconds default
+txCfg.setDefaultTxConcurrency(TransactionConcurrency.PESSIMISTIC);
+txCfg.setDefaultTxIsolation(TransactionIsolation.REPEATABLE_READ);
+
+IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setTransactionConfiguration(txCfg);
+
+Ignite ignite = Ignition.start(cfg);
+
+// Now transactions use default settings
+try (Transaction tx = ignite.transactions().txStart()) {
+    // Uses 30 second timeout automatically
+    tx.commit();
+}</code></pre>
+                </section>
+
+                <section>
+                    <h2>Timeout Best Practices</h2>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Scenario</th>
+                            <th>Recommended Timeout</th>
+                        </tr>
+                        <tr>
+                            <td>Simple CRUD operations</td>
+                            <td>5-10 seconds</td>
+                        </tr>
+                        <tr>
+                            <td>Batch processing</td>
+                            <td>30-60 seconds</td>
+                        </tr>
+                        <tr>
+                            <td>Complex business logic</td>
+                            <td>15-30 seconds</td>
+                        </tr>
+                        <tr>
+                            <td>Cross-cache operations</td>
+                            <td>20-45 seconds</td>
+                        </tr>
+                    </table>
+                    <div class="warning-box" style="margin-top: 20px;">
+                        <p><strong>Warning:</strong> Never use unlimited timeout (0) in production - it can cause resource exhaustion</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Handling Timeout Exceptions</h2>
+                    <pre><code class="language-java">public void executeWithRetry(Runnable txOperation, int maxRetries) {
+    int attempt = 0;
+
+    while (attempt < maxRetries) {
+        try (Transaction tx = ignite.transactions().txStart(
+                TransactionConcurrency.PESSIMISTIC,
+                TransactionIsolation.REPEATABLE_READ,
+                10000, 0)) {
+
+            txOperation.run();
+            tx.commit();
+            return;  // Success
+
+        } catch (TransactionTimeoutException e) {
+            attempt++;
+            log.warn("Transaction timeout, attempt " + attempt);
+
+            if (attempt >= maxRetries) {
+                throw new RuntimeException("Max retries exceeded", e);
+            }
+
+            // Exponential backoff
+            Thread.sleep(100 * (long)Math.pow(2, attempt));
+        }
+    }
+}</code></pre>
+                </section>
+            </section>
+
+            <!-- Cross-Cache Transactions Section -->
+            <section>
+                <section class="center">
+                    <h1>Cross-Cache Transactions</h1>
+                    <h3 class="accent">Atomic Operations Across Multiple Caches</h3>
+                </section>
+
+                <section>
+                    <h2>Multi-Cache Transaction Example</h2>
+                    <pre><code class="language-java">// Create two transactional caches
+CacheConfiguration&lt;Integer, Double&gt; accountCfg =
+    new CacheConfiguration&lt;&gt;("accounts");
+accountCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
+
+CacheConfiguration&lt;Integer, String&gt; auditCfg =
+    new CacheConfiguration&lt;&gt;("auditLog");
+auditCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
+
+IgniteCache&lt;Integer, Double&gt; accounts = ignite.getOrCreateCache(accountCfg);
+IgniteCache&lt;Integer, String&gt; auditLog = ignite.getOrCreateCache(auditCfg);</code></pre>
+                </section>
+
+                <section>
+                    <h2>Cross-Cache Transfer</h2>
+                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.PESSIMISTIC,
+        TransactionIsolation.REPEATABLE_READ)) {
+
+    // Operation 1: Debit from accounts cache
+    Double balance = accounts.get(fromAccount);
+    if (balance < amount) {
+        tx.rollback();
+        throw new InsufficientFundsException();
+    }
+    accounts.put(fromAccount, balance - amount);
+
+    // Operation 2: Credit to accounts cache
+    Double toBalance = accounts.get(toAccount);
+    accounts.put(toAccount, toBalance + amount);
+
+    // Operation 3: Log to audit cache
+    String logEntry = String.format("Transfer: %d -> %d: $%.2f",
+        fromAccount, toAccount, amount);
+    auditLog.put(auditId++, logEntry);
+
+    tx.commit();  // All three operations commit atomically
+}</code></pre>
+                </section>
+
+                <section>
+                    <h2>Cross-Cache Requirements</h2>
+                    <div class="info-box">
+                        <h4 style="margin-top: 0;">All Caches Must:</h4>
+                        <ul style="margin-bottom: 0;">
+                            <li>Have <code>TRANSACTIONAL</code> atomicity mode</li>
+                            <li>Be on the same Ignite cluster</li>
+                            <li>Be accessible from the same transaction context</li>
+                        </ul>
+                    </div>
+                    <div class="warning-box" style="margin-top: 20px;">
+                        <h4 style="margin-top: 0;">Limitations:</h4>
+                        <ul style="margin-bottom: 0;">
+                            <li>Cannot mix ATOMIC and TRANSACTIONAL caches</li>
+                            <li>Cross-cluster transactions not supported</li>
+                            <li>Performance overhead increases with more caches</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Two-Phase Commit Protocol</h2>
+                    <div class="diagram-box">
+                        <h4 style="color: #e67e22;">How Cross-Cache Transactions Work</h4>
+                        <div style="font-size: 0.9em; text-align: left; padding-left: 50px;">
+                            <p><strong>Phase 1: Prepare</strong></p>
+                            <ul>
+                                <li>Coordinator sends prepare request to all nodes</li>
+                                <li>Each node acquires locks and prepares changes</li>
+                                <li>Nodes vote: COMMIT or ABORT</li>
+                            </ul>
+                            <p><strong>Phase 2: Commit/Rollback</strong></p>
+                            <ul>
+                                <li>If all vote COMMIT: coordinator sends commit</li>
+                                <li>If any vote ABORT: coordinator sends rollback</li>
+                                <li>All nodes apply or discard changes</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Best Practices Section -->
+            <section>
+                <section class="center">
+                    <h1>Transaction Best Practices</h1>
+                    <h3 class="accent">Writing Efficient and Safe Transactions</h3>
+                </section>
+
+                <section>
+                    <h2>1. Keep Transactions Short</h2>
+                    <div class="two-column">
+                        <div>
+                            <h4 style="color: #e74c3c;">Bad Practice</h4>
+                            <pre><code class="language-java">try (Transaction tx = ...) {
+    // Heavy computation inside tx
+    String result = compute();
+    cache.put(key, result);
+    tx.commit();
+}</code></pre>
+                        </div>
+                        <div>
+                            <h4 style="color: #27ae60;">Good Practice</h4>
+                            <pre><code class="language-java">// Compute OUTSIDE transaction
+String result = compute();
+
+try (Transaction tx = ...) {
+    cache.put(key, result);
+    tx.commit();
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="success-box" style="margin-top: 20px;">
+                        <p><strong>Principle:</strong> Do heavy work outside, only data operations inside</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>2. Use Batch Operations</h2>
+                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart(
+        TransactionConcurrency.PESSIMISTIC,
+        TransactionIsolation.REPEATABLE_READ)) {
+
+    // Instead of multiple puts:
+    // cache.put(1, "a");
+    // cache.put(2, "b");
+    // cache.put(3, "c");
+
+    // Use putAll for better performance
+    Map&lt;Integer, String&gt; batch = new HashMap&lt;&gt;();
+    batch.put(1, "a");
+    batch.put(2, "b");
+    batch.put(3, "c");
+    cache.putAll(batch);  // Single network round-trip
+
+    tx.commit();
+}</code></pre>
+                </section>
+
+                <section>
+                    <h2>3. Proper Exception Handling</h2>
+                    <pre><code class="language-java">public void safeTransaction() {
+    Transaction tx = null;
+    try {
+        tx = ignite.transactions().txStart(
+            TransactionConcurrency.PESSIMISTIC,
+            TransactionIsolation.REPEATABLE_READ);
+
+        // Perform operations
+        performBusinessLogic();
+
+        tx.commit();
+
+    } catch (TransactionOptimisticException e) {
+        log.warn("Optimistic conflict - retry needed");
+    } catch (TransactionDeadlockException e) {
+        log.warn("Deadlock detected - will retry");
+    } catch (Exception e) {
+        log.error("Transaction failed", e);
+    } finally {
+        if (tx != null) {
+            tx.close();  // Ensures cleanup, auto-rollback if not committed
+        }
+    }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h2>4. Avoid Nested Transactions</h2>
+                    <div class="warning-box">
+                        <p><strong>Ignite does not support nested transactions!</strong></p>
+                    </div>
+                    <pre><code class="language-java">// This will throw an exception!
+try (Transaction tx1 = ignite.transactions().txStart()) {
+    cache.put(1, "value1");
+
+    // ERROR: Cannot start nested transaction
+    try (Transaction tx2 = ignite.transactions().txStart()) {
+        cache.put(2, "value2");
+        tx2.commit();
+    }
+
+    tx1.commit();
+}</code></pre>
+                    <div class="info-box" style="margin-top: 15px;">
+                        <p><strong>Solution:</strong> Complete all operations in a single transaction or use separate sequential transactions</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>5. Choose Right Concurrency Mode</h2>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Workload Type</th>
+                            <th>Recommended Mode</th>
+                            <th>Reason</th>
+                        </tr>
+                        <tr>
+                            <td>Read-heavy, low contention</td>
+                            <td><span class="tag tag-optimistic">OPTIMISTIC</span></td>
+                            <td>Better throughput</td>
+                        </tr>
+                        <tr>
+                            <td>Write-heavy, high contention</td>
+                            <td><span class="tag tag-pessimistic">PESSIMISTIC</span></td>
+                            <td>Avoids retry overhead</td>
+                        </tr>
+                        <tr>
+                            <td>Mixed workload</td>
+                            <td><span class="tag tag-pessimistic">PESSIMISTIC</span></td>
+                            <td>More predictable</td>
+                        </tr>
+                        <tr>
+                            <td>Long-running transactions</td>
+                            <td><span class="tag tag-pessimistic">PESSIMISTIC</span></td>
+                            <td>Avoids late failures</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>6. Monitor Transaction Metrics</h2>
+                    <pre><code class="language-java">// Get transaction metrics
+TransactionMetrics metrics = ignite.transactions().metrics();
+
+System.out.println("Committed transactions: " + metrics.txCommits());
+System.out.println("Rolled back transactions: " + metrics.txRollbacks());
+
+// JMX monitoring
+// org.apache:group=Transactions,name=TransactionMetrics
+
+// Key metrics to monitor:
+// - Average commit time
+// - Rollback rate
+// - Active transaction count
+// - Lock wait times</code></pre>
+                    <div class="info-box">
+                        <p><strong>Tip:</strong> Set up alerts for high rollback rates or long commit times</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Summary: Best Practices Checklist</h2>
+                    <div class="success-box">
+                        <ul>
+                            <li>Keep transactions short - minimize time locks are held</li>
+                            <li>Use batch operations (putAll, getAll) within transactions</li>
+                            <li>Always use try-with-resources or explicit close()</li>
+                            <li>Handle all transaction-specific exceptions</li>
+                            <li>Avoid nested transactions</li>
+                            <li>Use consistent lock ordering to prevent deadlocks</li>
+                            <li>Set appropriate timeouts</li>
+                            <li>Choose the right concurrency mode for your workload</li>
+                            <li>Monitor transaction metrics in production</li>
+                            <li>Test deadlock scenarios before deployment</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Summary Slide -->
+            <section>
+                <section class="center">
+                    <h1>Module Summary</h1>
+                </section>
+
+                <section>
+                    <h2>Key Takeaways</h2>
+                    <div class="two-column">
+                        <div>
+                            <h4 class="accent">ACID in Ignite</h4>
+                            <ul>
+                                <li>Full ACID compliance</li>
+                                <li>Two-Phase Commit protocol</li>
+                                <li>Distributed coordination</li>
+                            </ul>
+                            <h4 class="accent" style="margin-top: 20px;">Isolation Levels</h4>
+                            <ul>
+                                <li>READ_COMMITTED - fastest</li>
+                                <li>REPEATABLE_READ - balanced</li>
+                                <li>SERIALIZABLE - strictest</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="accent">Concurrency Modes</h4>
+                            <ul>
+                                <li>PESSIMISTIC - lock early</li>
+                                <li>OPTIMISTIC - validate late</li>
+                            </ul>
+                            <h4 class="accent" style="margin-top: 20px;">Best Practices</h4>
+                            <ul>
+                                <li>Keep transactions short</li>
+                                <li>Use batch operations</li>
+                                <li>Handle exceptions properly</li>
+                                <li>Set appropriate timeouts</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Decision Matrix</h2>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Scenario</th>
+                            <th>Concurrency</th>
+                            <th>Isolation</th>
+                        </tr>
+                        <tr>
+                            <td>Banking transfer</td>
+                            <td>PESSIMISTIC</td>
+                            <td>REPEATABLE_READ</td>
+                        </tr>
+                        <tr>
+                            <td>Inventory update</td>
+                            <td>PESSIMISTIC</td>
+                            <td>REPEATABLE_READ</td>
+                        </tr>
+                        <tr>
+                            <td>Read-mostly analytics</td>
+                            <td>OPTIMISTIC</td>
+                            <td>READ_COMMITTED</td>
+                        </tr>
+                        <tr>
+                            <td>Counter increment</td>
+                            <td>OPTIMISTIC</td>
+                            <td>SERIALIZABLE</td>
+                        </tr>
+                        <tr>
+                            <td>Audit logging</td>
+                            <td>PESSIMISTIC</td>
+                            <td>SERIALIZABLE</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section class="center">
+                    <h2>Lab Exercise</h2>
+                    <div class="highlight-box" style="max-width: 700px; margin: 0 auto;">
+                        <h3 style="color: white; margin-top: 0;">Lab 7: Transactions and ACID</h3>
+                        <p>Duration: 30 minutes</p>
+                        <ul style="text-align: left;">
+                            <li>Implement bank transfer transactions</li>
+                            <li>Compare PESSIMISTIC vs OPTIMISTIC</li>
+                            <li>Handle deadlock scenarios</li>
+                            <li>Apply transaction best practices</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section class="center">
+                    <h2>Questions?</h2>
+                    <div class="info-box" style="max-width: 600px; margin: 30px auto; text-align: center;">
+                        <p style="font-size: 1.1em;">Next Module: Advanced Caching Patterns</p>
+                        <p>Near Caches, Expiry Policies, Entry Processors</p>
+                    </div>
+                </section>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all',
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            center: false,
+            width: 1200,
+            height: 700,
+            margin: 0.1,
+            plugins: [RevealHighlight, RevealNotes]
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 11: Performance Tuning and Monitoring - Apache Ignite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/vs.min.css">
+    <style>
+        :root {
+            --accent-color: #e67e22;
+            --heading-color: #2c3e50;
+            --text-color: #333;
+        }
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--heading-color);
+            font-weight: 600;
+        }
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+        .reveal h3 {
+            font-size: 1.3em;
+        }
+        .reveal .accent {
+            color: var(--accent-color);
+        }
+        .reveal .highlight-box {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .reveal .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid var(--accent-color);
+            padding: 15px 20px;
+            margin: 15px 0;
+            text-align: left;
+        }
+        .reveal .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 15px 0;
+            text-align: left;
+        }
+        .reveal .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px 20px;
+            margin: 15px 0;
+            text-align: left;
+        }
+        .reveal .danger-box {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px 20px;
+            margin: 15px 0;
+            text-align: left;
+        }
+        .reveal pre {
+            width: 100%;
+            font-size: 0.55em;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .reveal pre code {
+            max-height: 500px;
+            padding: 15px;
+        }
+        .reveal ul, .reveal ol {
+            display: block;
+            text-align: left;
+            margin-left: 1em;
+        }
+        .reveal li {
+            margin: 0.5em 0;
+            line-height: 1.4;
+        }
+        .reveal .two-column {
+            display: flex;
+            gap: 30px;
+        }
+        .reveal .two-column > div {
+            flex: 1;
+        }
+        .reveal .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .reveal .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-top: 3px solid var(--accent-color);
+        }
+        .reveal .metric-card h4 {
+            margin: 0 0 10px 0;
+            font-size: 0.9em;
+        }
+        .reveal .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7em;
+            margin: 15px 0;
+        }
+        .reveal .comparison-table th {
+            background: var(--heading-color);
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        .reveal .comparison-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .reveal .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .reveal .anti-pattern {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+            text-align: left;
+        }
+        .reveal .anti-pattern .wrong {
+            flex: 1;
+            background: #f8d7da;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .reveal .anti-pattern .right {
+            flex: 1;
+            background: #d4edda;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .reveal .slide-number {
+            color: var(--accent-color);
+        }
+        .reveal .progress span {
+            background: var(--accent-color);
+        }
+        .reveal .controls button {
+            color: var(--accent-color);
+        }
+        .title-slide h1 {
+            font-size: 2.5em;
+            margin-bottom: 0.3em;
+        }
+        .title-slide .subtitle {
+            color: var(--accent-color);
+            font-size: 1.2em;
+            margin-bottom: 1em;
+        }
+        .title-slide .meta {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .reveal .checklist {
+            list-style: none;
+            margin-left: 0;
+            padding-left: 0;
+        }
+        .reveal .checklist li::before {
+            content: "[ ] ";
+            font-family: monospace;
+            color: var(--accent-color);
+        }
+        .reveal .section-title {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+        }
+        .reveal .section-title h2 {
+            color: white;
+            margin-bottom: 20px;
+        }
+        .reveal .section-title p {
+            color: rgba(255,255,255,0.9);
+        }
+        .small-code pre {
+            font-size: 0.5em !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Title Slide -->
+            <section class="title-slide">
+                <h1>Module 11</h1>
+                <div class="subtitle">Performance Tuning and Monitoring</div>
+                <h3>Apache Ignite</h3>
+                <div class="meta">
+                    <p>Duration: 45 minutes</p>
+                </div>
+            </section>
+
+            <!-- Agenda -->
+            <section>
+                <h2>Module Agenda</h2>
+                <ol>
+                    <li><strong>JVM Tuning for Ignite</strong> - Heap, GC, and Off-Heap</li>
+                    <li><strong>Memory Management</strong> - Data Regions and Configuration</li>
+                    <li><strong>Performance Metrics</strong> - Cache and Cluster Monitoring</li>
+                    <li><strong>Benchmarking</strong> - Load Testing Strategies</li>
+                    <li><strong>Anti-Patterns</strong> - Common Mistakes to Avoid</li>
+                </ol>
+                <div class="info-box">
+                    <strong>Goal:</strong> Learn to optimize, monitor, and troubleshoot Apache Ignite performance
+                </div>
+            </section>
+
+            <!-- Section 1: JVM Tuning -->
+            <section>
+                <section class="section-title">
+                    <h2>Section 1: JVM Tuning</h2>
+                    <p>Optimizing the Java Virtual Machine for Ignite Workloads</p>
+                </section>
+
+                <section>
+                    <h2>JVM Tuning Overview</h2>
+                    <div class="highlight-box">
+                        Proper JVM configuration is critical for Ignite performance
+                    </div>
+                    <ul>
+                        <li><strong>Heap Size</strong> - Memory for Java objects and metadata</li>
+                        <li><strong>Garbage Collection</strong> - Minimize pause times</li>
+                        <li><strong>Off-Heap Memory</strong> - Native memory for data storage</li>
+                        <li><strong>Thread Pools</strong> - Concurrent processing capacity</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Heap Size Configuration</h2>
+                    <div class="two-column">
+                        <div>
+                            <h4>Rules of Thumb</h4>
+                            <ul>
+                                <li>60-70% of available RAM for Ignite</li>
+                                <li>Set <code>-Xms</code> equal to <code>-Xmx</code></li>
+                                <li>Reserve memory for off-heap and OS</li>
+                            </ul>
+                            <div class="info-box">
+                                <strong>Example:</strong> 32GB RAM<br>
+                                Heap: 20GB | Off-Heap: 10GB | OS: 2GB
+                            </div>
+                        </div>
+                        <div>
+                            <pre><code class="language-bash"># Heap Configuration
+HEAP_SIZE="-Xms4g -Xmx4g"
+
+# Why equal values?
+# - Avoids heap resizing
+# - Predictable memory usage
+# - Reduces GC overhead</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>G1GC: Recommended Garbage Collector</h2>
+                    <div class="info-box">
+                        <strong>G1GC (Garbage First)</strong> is recommended for Apache Ignite due to its balance of throughput and latency
+                    </div>
+                    <pre><code class="language-bash"># G1GC Configuration for Ignite
+GC_SETTINGS="-XX:+UseG1GC \
+  -XX:+ParallelRefProcEnabled \
+  -XX:MaxGCPauseMillis=200 \
+  -XX:InitiatingHeapOccupancyPercent=45 \
+  -XX:G1HeapRegionSize=32m"</code></pre>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Purpose</th>
+                            <th>Recommended Value</th>
+                        </tr>
+                        <tr>
+                            <td><code>MaxGCPauseMillis</code></td>
+                            <td>Target pause time</td>
+                            <td>200-500ms</td>
+                        </tr>
+                        <tr>
+                            <td><code>G1HeapRegionSize</code></td>
+                            <td>Region granularity</td>
+                            <td>16-64MB</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>G1GC vs Other Collectors</h2>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Collector</th>
+                            <th>Best For</th>
+                            <th>Ignite Use Case</th>
+                        </tr>
+                        <tr>
+                            <td><strong>G1GC</strong></td>
+                            <td>Large heaps, balanced workloads</td>
+                            <td>Recommended default</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ZGC</strong></td>
+                            <td>Ultra-low latency (Java 15+)</td>
+                            <td>Real-time applications</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Shenandoah</strong></td>
+                            <td>Low pause times</td>
+                            <td>Alternative to ZGC</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CMS</strong></td>
+                            <td>Legacy applications</td>
+                            <td>Deprecated - Avoid</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>GC Logging Configuration</h2>
+                    <div class="two-column">
+                        <div>
+                            <h4>Java 8</h4>
+                            <pre><code class="language-bash"># Java 8 GC Logging
+GC_LOG="-Xloggc:gc.log \
+  -XX:+PrintGCDetails \
+  -XX:+PrintGCDateStamps \
+  -XX:+PrintGCTimeStamps \
+  -XX:+UseGCLogFileRotation \
+  -XX:NumberOfGCLogFiles=10 \
+  -XX:GCLogFileSize=100M"</code></pre>
+                        </div>
+                        <div>
+                            <h4>Java 11+</h4>
+                            <pre><code class="language-bash"># Java 11+ Unified Logging
+GC_LOG="-Xlog:gc*:file=gc.log:\
+time,uptime,level,tags:\
+filecount=10,filesize=100M"</code></pre>
+                        </div>
+                    </div>
+                    <div class="warning-box">
+                        <strong>Always enable GC logging in production!</strong><br>
+                        Essential for diagnosing performance issues
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Performance JVM Options</h2>
+                    <pre><code class="language-bash"># Performance Settings
+PERFORMANCE="-XX:+AlwaysPreTouch \
+  -XX:+UseStringDeduplication \
+  -XX:+DisableExplicitGC"
+
+# Off-heap memory (for data regions)
+OFF_HEAP="-XX:MaxDirectMemorySize=8g"
+
+# Diagnostic options
+DIAGNOSTIC="-XX:+HeapDumpOnOutOfMemoryError \
+  -XX:HeapDumpPath=./heapdump.hprof"</code></pre>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Option</th>
+                            <th>Purpose</th>
+                        </tr>
+                        <tr>
+                            <td><code>AlwaysPreTouch</code></td>
+                            <td>Pre-allocate memory at startup</td>
+                        </tr>
+                        <tr>
+                            <td><code>UseStringDeduplication</code></td>
+                            <td>Reduce string memory usage</td>
+                        </tr>
+                        <tr>
+                            <td><code>DisableExplicitGC</code></td>
+                            <td>Ignore System.gc() calls</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>Complete JVM Configuration Script</h2>
+                    <pre><code class="language-bash">#!/bin/bash
+# ignite-jvm.sh - Optimized JVM settings for Apache Ignite
+
+# Heap size (adjust based on available RAM)
+HEAP_SIZE="-Xms4g -Xmx4g"
+
+# G1GC Configuration
+GC_SETTINGS="-XX:+UseG1GC \
+  -XX:+ParallelRefProcEnabled \
+  -XX:MaxGCPauseMillis=200 \
+  -XX:InitiatingHeapOccupancyPercent=45 \
+  -XX:G1HeapRegionSize=32m"
+
+# GC Logging (Java 11+)
+GC_LOG="-Xlog:gc*:file=gc.log:time,uptime,level,tags:filecount=10,filesize=100M"
+
+# Performance and Off-heap
+PERFORMANCE="-XX:+AlwaysPreTouch -XX:+UseStringDeduplication -XX:+DisableExplicitGC"
+OFF_HEAP="-XX:MaxDirectMemorySize=8g"
+DIAGNOSTIC="-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=./heapdump.hprof"
+
+# Export all options
+export JVM_OPTS="$HEAP_SIZE $GC_SETTINGS $GC_LOG $PERFORMANCE $OFF_HEAP $DIAGNOSTIC"</code></pre>
+                </section>
+            </section>
+
+            <!-- Section 2: Memory Management -->
+            <section>
+                <section class="section-title">
+                    <h2>Section 2: Memory Management</h2>
+                    <p>Heap vs Off-Heap and Data Region Configuration</p>
+                </section>
+
+                <section>
+                    <h2>Heap vs Off-Heap Memory</h2>
+                    <div class="two-column">
+                        <div>
+                            <h4>Heap Memory</h4>
+                            <ul>
+                                <li>Managed by JVM GC</li>
+                                <li>Java objects and metadata</li>
+                                <li>Ignite internals</li>
+                                <li>Query results</li>
+                            </ul>
+                            <div class="info-box">
+                                Subject to GC pauses
+                            </div>
+                        </div>
+                        <div>
+                            <h4>Off-Heap Memory</h4>
+                            <ul>
+                                <li>Native memory (DirectByteBuffer)</li>
+                                <li>Data storage (Data Regions)</li>
+                                <li>No GC overhead</li>
+                                <li>Controlled by Ignite</li>
+                            </ul>
+                            <div class="success-box">
+                                Recommended for data
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Why Off-Heap?</h2>
+                    <div class="highlight-box">
+                        Off-heap storage eliminates GC pressure from large datasets
+                    </div>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Aspect</th>
+                            <th>Heap Storage</th>
+                            <th>Off-Heap Storage</th>
+                        </tr>
+                        <tr>
+                            <td>GC Impact</td>
+                            <td>High - scanned during GC</td>
+                            <td>None - invisible to GC</td>
+                        </tr>
+                        <tr>
+                            <td>Memory Limit</td>
+                            <td>Limited by heap size</td>
+                            <td>Limited by physical RAM</td>
+                        </tr>
+                        <tr>
+                            <td>Serialization</td>
+                            <td>Java objects</td>
+                            <td>Binary format (compact)</td>
+                        </tr>
+                        <tr>
+                            <td>Access Speed</td>
+                            <td>Fast (direct reference)</td>
+                            <td>Slightly slower (deserialization)</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>Data Region Configuration</h2>
+                    <pre><code class="language-java">DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+// Default data region (off-heap)
+DataRegionConfiguration defaultRegion = new DataRegionConfiguration();
+defaultRegion.setName("Default_Region");
+defaultRegion.setInitialSize(512L * 1024 * 1024);  // 512 MB
+defaultRegion.setMaxSize(2L * 1024 * 1024 * 1024); // 2 GB
+defaultRegion.setPageEvictionMode(DataPageEvictionMode.RANDOM_2_LRU);
+defaultRegion.setEvictionThreshold(0.9);
+defaultRegion.setMetricsEnabled(true);
+
+storageCfg.setDefaultDataRegionConfiguration(defaultRegion);
+cfg.setDataStorageConfiguration(storageCfg);</code></pre>
+                </section>
+
+                <section>
+                    <h2>Data Region Parameters</h2>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Description</th>
+                            <th>Recommendation</th>
+                        </tr>
+                        <tr>
+                            <td><code>initialSize</code></td>
+                            <td>Memory allocated at startup</td>
+                            <td>Start with expected baseline</td>
+                        </tr>
+                        <tr>
+                            <td><code>maxSize</code></td>
+                            <td>Maximum memory allowed</td>
+                            <td>Leave room for growth</td>
+                        </tr>
+                        <tr>
+                            <td><code>pageEvictionMode</code></td>
+                            <td>How to evict pages when full</td>
+                            <td>RANDOM_2_LRU for most cases</td>
+                        </tr>
+                        <tr>
+                            <td><code>evictionThreshold</code></td>
+                            <td>When to start evicting (0-1)</td>
+                            <td>0.9 (90% full)</td>
+                        </tr>
+                        <tr>
+                            <td><code>metricsEnabled</code></td>
+                            <td>Collect region metrics</td>
+                            <td>true (essential for monitoring)</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>Multiple Data Regions</h2>
+                    <pre><code class="language-java">DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+// Hot data region (fast, smaller)
+DataRegionConfiguration hotRegion = new DataRegionConfiguration();
+hotRegion.setName("Hot_Region");
+hotRegion.setInitialSize(256L * 1024 * 1024);   // 256 MB
+hotRegion.setMaxSize(1L * 1024 * 1024 * 1024);  // 1 GB
+hotRegion.setPersistenceEnabled(false);         // In-memory only
+
+// Cold data region (larger, persistent)
+DataRegionConfiguration coldRegion = new DataRegionConfiguration();
+coldRegion.setName("Cold_Region");
+coldRegion.setInitialSize(1L * 1024 * 1024 * 1024);  // 1 GB
+coldRegion.setMaxSize(8L * 1024 * 1024 * 1024);      // 8 GB
+coldRegion.setPersistenceEnabled(true);
+
+storageCfg.setDataRegionConfigurations(hotRegion, coldRegion);</code></pre>
+                    <div class="info-box">
+                        Use multiple regions to separate hot and cold data with different policies
+                    </div>
+                </section>
+
+                <section>
+                    <h2>WAL Configuration</h2>
+                    <pre><code class="language-java">// WAL (Write-Ahead Log) configuration for better performance
+storageCfg.setWalMode(WALMode.LOG_ONLY);
+storageCfg.setWalSegmentSize(64 * 1024 * 1024);  // 64 MB
+
+// Checkpointing
+storageCfg.setCheckpointFrequency(180000);  // 3 minutes</code></pre>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>WAL Mode</th>
+                            <th>Performance</th>
+                            <th>Durability</th>
+                        </tr>
+                        <tr>
+                            <td><code>LOG_ONLY</code></td>
+                            <td>Best</td>
+                            <td>Good (async fsync)</td>
+                        </tr>
+                        <tr>
+                            <td><code>FSYNC</code></td>
+                            <td>Moderate</td>
+                            <td>Best (sync fsync)</td>
+                        </tr>
+                        <tr>
+                            <td><code>BACKGROUND</code></td>
+                            <td>Good</td>
+                            <td>Moderate</td>
+                        </tr>
+                        <tr>
+                            <td><code>NONE</code></td>
+                            <td>Fastest</td>
+                            <td>No durability</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>Thread Pool Configuration</h2>
+                    <pre><code class="language-java">// Configure thread pools based on workload
+IgniteConfiguration cfg = new IgniteConfiguration();
+
+// Public thread pool (user operations)
+cfg.setPublicThreadPoolSize(Runtime.getRuntime().availableProcessors() * 2);
+
+// System thread pool (internal operations)
+cfg.setSystemThreadPoolSize(Runtime.getRuntime().availableProcessors());
+
+// Query thread pool
+cfg.setQueryThreadPoolSize(Runtime.getRuntime().availableProcessors());
+
+// Data streamer pool
+cfg.setDataStreamerThreadPoolSize(Runtime.getRuntime().availableProcessors());</code></pre>
+                    <div class="warning-box">
+                        Default pool sizes may cause thread starvation under high load
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 3: Performance Metrics -->
+            <section>
+                <section class="section-title">
+                    <h2>Section 3: Performance Metrics</h2>
+                    <p>Monitoring Cache, Cluster, and Data Region Metrics</p>
+                </section>
+
+                <section>
+                    <h2>Enabling Metrics</h2>
+                    <pre><code class="language-java">// Enable cache statistics
+CacheConfiguration<Integer, String> cfg =
+    new CacheConfiguration<>("monitoredCache");
+cfg.setStatisticsEnabled(true);  // Essential!
+
+IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cfg);
+
+// Enable data region metrics
+DataRegionConfiguration regionCfg = new DataRegionConfiguration();
+regionCfg.setMetricsEnabled(true);</code></pre>
+                    <div class="warning-box">
+                        Statistics are <strong>disabled by default</strong>. You must explicitly enable them!
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Cache Metrics</h2>
+                    <pre><code class="language-java">CacheMetrics metrics = cache.metrics();
+
+// Operation Counts
+System.out.println("Gets: " + metrics.getCacheGets());
+System.out.println("Puts: " + metrics.getCachePuts());
+System.out.println("Hits: " + metrics.getCacheHits());
+System.out.println("Misses: " + metrics.getCacheMisses());
+
+// Hit Rate (crucial metric!)
+System.out.println("Hit Rate: " +
+    String.format("%.2f%%", metrics.getCacheHitPercentage()));
+
+// Timing
+System.out.println("Avg Get Time: " +
+    String.format("%.3f ms", metrics.getAverageGetTime()));
+System.out.println("Avg Put Time: " +
+    String.format("%.3f ms", metrics.getAveragePutTime()));</code></pre>
+                </section>
+
+                <section>
+                    <h2>Key Cache Metrics</h2>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <h4>Hit Ratio</h4>
+                            <p>Percentage of cache hits vs total accesses</p>
+                            <p><strong>Target:</strong> > 90%</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Average Latency</h4>
+                            <p>Time for get/put operations</p>
+                            <p><strong>Target:</strong> < 1ms for local</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Throughput</h4>
+                            <p>Operations per second</p>
+                            <p><strong>Monitor:</strong> Trends over time</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Entry Count</h4>
+                            <p>Heap vs Off-Heap entries</p>
+                            <p><strong>Check:</strong> Memory distribution</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Cluster Metrics</h2>
+                    <pre><code class="language-java">ClusterMetrics clusterMetrics = ignite.cluster().metrics();
+
+// Cluster Performance
+System.out.println("Total Nodes: " + ignite.cluster().nodes().size());
+System.out.println("Total CPUs: " + clusterMetrics.getTotalCpus());
+System.out.println("Current CPU Load: " +
+    String.format("%.2f%%", clusterMetrics.getCurrentCpuLoad() * 100));
+System.out.println("Average CPU Load: " +
+    String.format("%.2f%%", clusterMetrics.getAverageCpuLoad() * 100));
+
+// Memory
+System.out.println("Heap Memory Used: " +
+    clusterMetrics.getHeapMemoryUsed() / (1024 * 1024) + " MB");
+System.out.println("Heap Memory Max: " +
+    clusterMetrics.getHeapMemoryMaximum() / (1024 * 1024) + " MB");
+
+// Jobs
+System.out.println("Active Jobs: " + clusterMetrics.getCurrentActiveJobs());
+System.out.println("Total Executed Jobs: " + clusterMetrics.getTotalExecutedJobs());</code></pre>
+                </section>
+
+                <section>
+                    <h2>Data Region Metrics</h2>
+                    <pre><code class="language-java">ignite.dataRegionMetrics().forEach(metrics -> {
+    System.out.println("Region: " + metrics.getName());
+
+    // Memory Usage
+    System.out.println("  Total Allocated: " +
+        metrics.getTotalAllocatedSize() / (1024 * 1024) + " MB");
+    System.out.println("  Physical Memory: " +
+        metrics.getPhysicalMemorySize() / (1024 * 1024) + " MB");
+    System.out.println("  Checkpoint Buffer: " +
+        metrics.getCheckpointBufferSize() / (1024 * 1024) + " MB");
+
+    // Page Activity
+    System.out.println("  Pages Read: " + metrics.getPagesRead());
+    System.out.println("  Pages Written: " + metrics.getPagesWritten());
+    System.out.println("  Pages Replaced: " + metrics.getPagesReplaced());
+    System.out.println("  Allocation Rate: " +
+        String.format("%.2f", metrics.getAllocationRate()) + " pages/sec");
+});</code></pre>
+                </section>
+
+                <section>
+                    <h2>Monitoring Tools</h2>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Tool</th>
+                            <th>Purpose</th>
+                            <th>Best For</th>
+                        </tr>
+                        <tr>
+                            <td><strong>JConsole / VisualVM</strong></td>
+                            <td>JMX monitoring</td>
+                            <td>Development, quick checks</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ignite Web Console</strong></td>
+                            <td>Cluster management UI</td>
+                            <td>Cluster administration</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Prometheus + Grafana</strong></td>
+                            <td>Metrics collection and visualization</td>
+                            <td>Production monitoring</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Control Center</strong></td>
+                            <td>Enterprise monitoring</td>
+                            <td>Enterprise deployments</td>
+                        </tr>
+                    </table>
+                    <div class="info-box">
+                        All Ignite metrics are exposed via JMX for integration with monitoring systems
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Critical Metrics to Monitor</h2>
+                    <div class="two-column">
+                        <div>
+                            <h4>Performance</h4>
+                            <ul>
+                                <li>Cache hit ratio (> 90%)</li>
+                                <li>Average get/put times</li>
+                                <li>Query execution times</li>
+                                <li>Throughput (ops/sec)</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4>Resources</h4>
+                            <ul>
+                                <li>CPU utilization</li>
+                                <li>Heap memory usage</li>
+                                <li>Off-heap memory usage</li>
+                                <li>GC pause times</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="highlight-box">
+                        "You can't optimize what you don't measure"
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 4: Benchmarking -->
+            <section>
+                <section class="section-title">
+                    <h2>Section 4: Benchmarking</h2>
+                    <p>Load Testing and Performance Measurement Strategies</p>
+                </section>
+
+                <section>
+                    <h2>Benchmarking Best Practices</h2>
+                    <ul>
+                        <li><strong>Warmup phase</strong> - Let JIT compiler optimize before measuring</li>
+                        <li><strong>Consistent environment</strong> - Same hardware, config, data</li>
+                        <li><strong>Multiple iterations</strong> - Statistical significance</li>
+                        <li><strong>Realistic workload</strong> - Match production patterns</li>
+                        <li><strong>Measure what matters</strong> - Latency, throughput, percentiles</li>
+                    </ul>
+                    <pre><code class="language-java">private static final int WARMUP_ITERATIONS = 1000;
+private static final int TEST_ITERATIONS = 10000;
+private static final int THREAD_COUNT = 10;</code></pre>
+                </section>
+
+                <section>
+                    <h2>Atomic vs Transactional Benchmark</h2>
+                    <pre><code class="language-java">// Atomic Cache (faster, no transactions)
+CacheConfiguration<Integer, String> atomicCfg = new CacheConfiguration<>("atomicCache");
+atomicCfg.setCacheMode(CacheMode.PARTITIONED);
+atomicCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+atomicCfg.setBackups(1);
+
+// Transactional Cache (ACID guarantees)
+CacheConfiguration<Integer, String> txCfg = new CacheConfiguration<>("txCache");
+txCfg.setCacheMode(CacheMode.PARTITIONED);
+txCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
+txCfg.setBackups(1);</code></pre>
+                    <div class="info-box">
+                        Atomic operations are typically 2-10x faster than transactional
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Batch Operations Benchmark</h2>
+                    <pre><code class="language-java">// Individual operations (slow)
+long startTime = System.currentTimeMillis();
+for (int i = 0; i < TEST_ITERATIONS; i++) {
+    cache.put(i, "Value-" + i);
+}
+long individualTime = System.currentTimeMillis() - startTime;
+
+// Batch operations (fast!)
+cache.clear();
+startTime = System.currentTimeMillis();
+Map<Integer, String> batch = new HashMap<>();
+for (int i = 0; i < TEST_ITERATIONS; i++) {
+    batch.put(i, "Value-" + i);
+    if (batch.size() >= 500) {
+        cache.putAll(batch);  // Batch write
+        batch.clear();
+    }
+}
+long batchTime = System.currentTimeMillis() - startTime;
+
+System.out.println("Speedup: " + (float)individualTime / batchTime + "x");</code></pre>
+                </section>
+
+                <section>
+                    <h2>Batch Operations: Results</h2>
+                    <div class="highlight-box">
+                        Batch operations can provide <strong>10-100x speedup</strong> over individual operations
+                    </div>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Operation</th>
+                            <th>Individual</th>
+                            <th>Batch (500)</th>
+                            <th>Speedup</th>
+                        </tr>
+                        <tr>
+                            <td>10,000 PUTs</td>
+                            <td>~500ms</td>
+                            <td>~50ms</td>
+                            <td>10x</td>
+                        </tr>
+                        <tr>
+                            <td>10,000 GETs</td>
+                            <td>~300ms</td>
+                            <td>~30ms</td>
+                            <td>10x</td>
+                        </tr>
+                    </table>
+                    <div class="success-box">
+                        <strong>Key Insight:</strong> Reduce network round trips with batch APIs
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Concurrent Access Benchmark</h2>
+                    <pre><code class="language-java">ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
+AtomicLong operations = new AtomicLong(0);
+Random random = new Random();
+
+long startTime = System.currentTimeMillis();
+
+for (int i = 0; i < THREAD_COUNT; i++) {
+    executor.submit(() -> {
+        for (int j = 0; j < TEST_ITERATIONS / THREAD_COUNT; j++) {
+            int key = random.nextInt(10000);
+
+            // Mix of read/write operations
+            if (j % 3 == 0) {
+                cache.put(key, "Updated-" + key);
+            } else {
+                cache.get(key);
+            }
+            operations.incrementAndGet();
+        }
+    });
+}
+
+executor.shutdown();
+executor.awaitTermination(1, TimeUnit.MINUTES);
+
+long elapsed = System.currentTimeMillis() - startTime;
+System.out.println("Throughput: " + (operations.get() * 1000 / elapsed) + " ops/sec");</code></pre>
+                </section>
+
+                <section>
+                    <h2>Benchmark Output Example</h2>
+                    <pre><code class="language-text">=== Benchmark 1: Atomic Cache ===
+PUT: 10000 operations in 89 ms
+Throughput: 112,359 ops/sec
+GET: 10000 operations in 45 ms
+Throughput: 222,222 ops/sec
+
+=== Benchmark 2: Transactional Cache ===
+Transactional PUT: 10000 operations in 342 ms
+Throughput: 29,239 ops/sec
+
+=== Benchmark 3: Batch Operations ===
+Individual PUT: 523 ms
+Batch PUT: 47 ms
+Speedup: 11.1x
+
+=== Benchmark 4: Concurrent Access ===
+Threads: 10
+Total operations: 10000
+Time: 156 ms
+Throughput: 64,102 ops/sec</code></pre>
+                </section>
+            </section>
+
+            <!-- Section 5: Anti-Patterns -->
+            <section>
+                <section class="section-title">
+                    <h2>Section 5: Common Anti-Patterns</h2>
+                    <p>Performance Mistakes to Avoid</p>
+                </section>
+
+                <section>
+                    <h2>Anti-Pattern 1: Small Heap, Large Off-Heap</h2>
+                    <div class="anti-pattern">
+                        <div class="wrong">
+                            <h4>Wrong</h4>
+                            <pre><code>-Xmx1g (heap)
+with 10GB off-heap</code></pre>
+                            <p>GC overhead, metadata needs heap space</p>
+                        </div>
+                        <div class="right">
+                            <h4>Correct</h4>
+                            <pre><code>-Xmx4g (heap)
+with 10GB off-heap</code></pre>
+                            <p>Proportional heap for metadata</p>
+                        </div>
+                    </div>
+                    <div class="info-box">
+                        <strong>Rule:</strong> Heap should be at least 20-30% of off-heap size
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Anti-Pattern 2: Too Many Backups</h2>
+                    <div class="anti-pattern">
+                        <div class="wrong">
+                            <h4>Wrong</h4>
+                            <pre><code>cfg.setBackups(3);
+// In a 4-node cluster</code></pre>
+                            <p>4x memory usage, 4x write overhead</p>
+                        </div>
+                        <div class="right">
+                            <h4>Correct</h4>
+                            <pre><code>cfg.setBackups(1);
+// or setBackups(2)</code></pre>
+                            <p>Balanced redundancy and performance</p>
+                        </div>
+                    </div>
+                    <div class="warning-box">
+                        Each backup multiplies memory usage and network traffic
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Anti-Pattern 3: Large Transactions</h2>
+                    <div class="anti-pattern">
+                        <div class="wrong">
+                            <h4>Wrong</h4>
+                            <pre><code>tx.begin();
+for (int i = 0; i < 10000; i++) {
+    cache.put(i, value);
+}
+tx.commit();</code></pre>
+                            <p>Lock contention, memory pressure</p>
+                        </div>
+                        <div class="right">
+                            <h4>Correct</h4>
+                            <pre><code>for (int batch = 0; batch < 100; batch++) {
+    tx.begin();
+    // 100 ops per transaction
+    cache.putAll(batchData);
+    tx.commit();
+}</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Anti-Pattern 4: Synchronous Loops</h2>
+                    <div class="anti-pattern">
+                        <div class="wrong">
+                            <h4>Wrong</h4>
+                            <pre><code>for (Integer key : keys) {
+    cache.put(key, value);
+}
+// 1000 network round trips!</code></pre>
+                        </div>
+                        <div class="right">
+                            <h4>Correct</h4>
+                            <pre><code>Map<Integer, String> data = new HashMap<>();
+for (Integer key : keys) {
+    data.put(key, value);
+}
+cache.putAll(data);
+// Single network operation!</code></pre>
+                        </div>
+                    </div>
+                    <div class="success-box">
+                        Use <code>putAll()</code>, <code>getAll()</code>, <code>invokeAll()</code> for batch operations
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Anti-Pattern 5: No Affinity Keys</h2>
+                    <div class="anti-pattern">
+                        <div class="wrong">
+                            <h4>Wrong</h4>
+                            <pre><code>// Orders on random nodes
+// Customers on different nodes
+// Distributed joins required</code></pre>
+                        </div>
+                        <div class="right">
+                            <h4>Correct</h4>
+                            <pre><code>class OrderKey {
+    @AffinityKeyMapped
+    private int customerId;
+    private int orderId;
+}
+// Colocated data = local joins</code></pre>
+                        </div>
+                    </div>
+                    <div class="info-box">
+                        Distributed joins are 10-100x slower than colocated joins
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Anti-Pattern 6: Missing Indexes</h2>
+                    <div class="anti-pattern">
+                        <div class="wrong">
+                            <h4>Wrong</h4>
+                            <pre><code>SELECT * FROM Customer
+WHERE name = 'John'
+-- Full table scan!</code></pre>
+                        </div>
+                        <div class="right">
+                            <h4>Correct</h4>
+                            <pre><code>CREATE INDEX idx_name
+ON Customer(name);
+
+SELECT * FROM Customer
+WHERE name = 'John'
+-- Index lookup</code></pre>
+                        </div>
+                    </div>
+                    <div class="warning-box">
+                        Use <code>EXPLAIN</code> to verify query plans use indexes
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Anti-Pattern 7: Overusing Distributed Joins</h2>
+                    <div class="anti-pattern">
+                        <div class="wrong">
+                            <h4>Wrong</h4>
+                            <pre><code>// Enable everywhere
+SqlFieldsQuery query = new SqlFieldsQuery(
+    "SELECT * FROM A JOIN B ON ...")
+    .setDistributedJoins(true);</code></pre>
+                        </div>
+                        <div class="right">
+                            <h4>Correct</h4>
+                            <pre><code>// Design for colocation first
+// Use affinity keys
+// Only enable when necessary
+// Consider data denormalization</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>More Anti-Patterns</h2>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Anti-Pattern</th>
+                            <th>Problem</th>
+                            <th>Solution</th>
+                        </tr>
+                        <tr>
+                            <td>No GC Monitoring</td>
+                            <td>Hidden performance issues</td>
+                            <td>Enable and analyze GC logs</td>
+                        </tr>
+                        <tr>
+                            <td>Default Thread Pools</td>
+                            <td>Thread starvation under load</td>
+                            <td>Tune pools for workload</td>
+                        </tr>
+                        <tr>
+                            <td>Ignoring Metrics</td>
+                            <td>Can't identify bottlenecks</td>
+                            <td>Enable statistics, monitor</td>
+                        </tr>
+                        <tr>
+                            <td>Large Objects</td>
+                            <td>Serialization overhead</td>
+                            <td>Optimize object size</td>
+                        </tr>
+                    </table>
+                </section>
+            </section>
+
+            <!-- Performance Checklist -->
+            <section>
+                <h2>Performance Checklist</h2>
+                <div class="two-column">
+                    <div>
+                        <h4>JVM Configuration</h4>
+                        <ul class="checklist">
+                            <li>Heap size = 60-70% of RAM</li>
+                            <li>-Xms equals -Xmx</li>
+                            <li>G1GC enabled</li>
+                            <li>GC logs configured</li>
+                            <li>Off-heap memory sized</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4>Application Design</h4>
+                        <ul class="checklist">
+                            <li>Batch operations used</li>
+                            <li>Affinity keys configured</li>
+                            <li>Indexes created for queries</li>
+                            <li>Statistics enabled</li>
+                            <li>Thread pools tuned</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Troubleshooting -->
+            <section>
+                <h2>Common Issues and Solutions</h2>
+                <table class="comparison-table">
+                    <tr>
+                        <th>Issue</th>
+                        <th>Cause</th>
+                        <th>Solution</th>
+                    </tr>
+                    <tr>
+                        <td>High GC Overhead</td>
+                        <td>Small heap, large data</td>
+                        <td>Increase heap, use off-heap</td>
+                    </tr>
+                    <tr>
+                        <td>Poor Hit Ratio</td>
+                        <td>Wrong cache sizing</td>
+                        <td>Review eviction, increase size</td>
+                    </tr>
+                    <tr>
+                        <td>Slow Queries</td>
+                        <td>Missing indexes</td>
+                        <td>Add indexes, check EXPLAIN</td>
+                    </tr>
+                    <tr>
+                        <td>High Latency</td>
+                        <td>Network round trips</td>
+                        <td>Use batch operations</td>
+                    </tr>
+                    <tr>
+                        <td>Memory Pressure</td>
+                        <td>Too many backups</td>
+                        <td>Reduce backup count</td>
+                    </tr>
+                </table>
+            </section>
+
+            <!-- Summary -->
+            <section>
+                <h2>Module Summary</h2>
+                <div class="two-column">
+                    <div>
+                        <h4>Key Takeaways</h4>
+                        <ul>
+                            <li>Use G1GC with proper heap sizing</li>
+                            <li>Configure off-heap data regions</li>
+                            <li>Enable and monitor metrics</li>
+                            <li>Benchmark before production</li>
+                            <li>Avoid common anti-patterns</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4>Critical Metrics</h4>
+                        <ul>
+                            <li>Cache hit ratio > 90%</li>
+                            <li>GC pause times < 200ms</li>
+                            <li>Query execution times</li>
+                            <li>Memory utilization</li>
+                            <li>Operation throughput</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Lab Exercise -->
+            <section>
+                <h2>Lab Exercise: Performance Tuning</h2>
+                <div class="info-box">
+                    <strong>Lab 11:</strong> Performance Tuning and Monitoring (45 minutes)
+                </div>
+                <ol>
+                    <li>Configure optimized JVM settings</li>
+                    <li>Set up data regions with metrics</li>
+                    <li>Implement monitoring for cache and cluster</li>
+                    <li>Run benchmarks comparing configurations</li>
+                    <li>Identify and fix anti-patterns in sample code</li>
+                </ol>
+                <p><strong>See:</strong> <code>labs/lab11_performance_tuning.md</code></p>
+            </section>
+
+            <!-- Questions -->
+            <section>
+                <h2>Questions?</h2>
+                <div class="highlight-box">
+                    <h3>Discussion Topics</h3>
+                </div>
+                <ul>
+                    <li>What garbage collector is recommended for Ignite?</li>
+                    <li>How much heap memory should you allocate?</li>
+                    <li>What metrics are most important to monitor?</li>
+                    <li>What is the most common performance anti-pattern?</li>
+                </ul>
+            </section>
+
+            <!-- Next Module -->
+            <section>
+                <h2>Next Module</h2>
+                <div class="highlight-box">
+                    <h3>Module 12: Production Deployment</h3>
+                </div>
+                <ul>
+                    <li>Production-ready cluster configuration</li>
+                    <li>Security (SSL/TLS, Authentication)</li>
+                    <li>Backup and Disaster Recovery</li>
+                    <li>Rolling Updates</li>
+                    <li>Docker and Kubernetes Deployment</li>
+                </ul>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all',
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            center: true,
+            plugins: [RevealHighlight, RevealNotes],
+            width: 1200,
+            height: 700,
+            margin: 0.1
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 12: Production Deployment and Best Practices - Apache Ignite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+    <style>
+        :root {
+            --accent-color: #e67e22;
+            --heading-color: #2c3e50;
+        }
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4, .reveal h5, .reveal h6 {
+            color: var(--heading-color);
+            font-weight: 600;
+        }
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+        .reveal h2 {
+            font-size: 1.8em;
+        }
+        .reveal h3 {
+            font-size: 1.4em;
+        }
+        .reveal .accent {
+            color: var(--accent-color);
+        }
+        .reveal .accent-bg {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 0.2em 0.5em;
+            border-radius: 4px;
+        }
+        .reveal pre {
+            width: 100%;
+            font-size: 0.55em;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .reveal pre code {
+            max-height: 500px;
+            padding: 15px;
+        }
+        .reveal ul, .reveal ol {
+            display: block;
+            text-align: left;
+        }
+        .reveal li {
+            margin-bottom: 0.5em;
+            font-size: 0.9em;
+        }
+        .reveal .small-list li {
+            font-size: 0.75em;
+            margin-bottom: 0.3em;
+        }
+        .reveal .two-column {
+            display: flex;
+            justify-content: space-between;
+            gap: 2em;
+        }
+        .reveal .two-column > div {
+            flex: 1;
+        }
+        .reveal .checklist li {
+            list-style-type: none;
+            position: relative;
+            padding-left: 1.5em;
+        }
+        .reveal .checklist li::before {
+            content: "\2610";
+            position: absolute;
+            left: 0;
+            color: var(--accent-color);
+        }
+        .reveal .checkmark li::before {
+            content: "\2713";
+            color: #27ae60;
+        }
+        .reveal .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 1em;
+            margin: 1em 0;
+            text-align: left;
+        }
+        .reveal .info-box {
+            background-color: #e8f4fd;
+            border-left: 4px solid #3498db;
+            padding: 1em;
+            margin: 1em 0;
+            text-align: left;
+        }
+        .reveal .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #27ae60;
+            padding: 1em;
+            margin: 1em 0;
+            text-align: left;
+        }
+        .reveal .danger-box {
+            background-color: #f8d7da;
+            border-left: 4px solid #c0392b;
+            padding: 1em;
+            margin: 1em 0;
+            text-align: left;
+        }
+        .reveal table {
+            font-size: 0.7em;
+            margin: 0 auto;
+        }
+        .reveal table th {
+            background-color: var(--heading-color);
+            color: white;
+            padding: 0.5em 1em;
+        }
+        .reveal table td {
+            padding: 0.4em 0.8em;
+            border: 1px solid #ddd;
+        }
+        .reveal table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .reveal .slide-number {
+            color: var(--accent-color);
+        }
+        .reveal .progress span {
+            background-color: var(--accent-color);
+        }
+        .reveal .controls button {
+            color: var(--accent-color);
+        }
+        .reveal .diagram {
+            font-family: monospace;
+            font-size: 0.6em;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 8px;
+            text-align: left;
+            white-space: pre;
+        }
+        .reveal .badge {
+            display: inline-block;
+            padding: 0.3em 0.6em;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: bold;
+            margin: 0.2em;
+        }
+        .reveal .badge-security {
+            background-color: #c0392b;
+            color: white;
+        }
+        .reveal .badge-docker {
+            background-color: #2496ed;
+            color: white;
+        }
+        .reveal .badge-k8s {
+            background-color: #326ce5;
+            color: white;
+        }
+        .reveal .badge-backup {
+            background-color: #27ae60;
+            color: white;
+        }
+        .title-slide h1 {
+            color: var(--heading-color);
+            font-size: 2em;
+        }
+        .title-slide h2 {
+            color: var(--accent-color);
+            font-size: 1.4em;
+        }
+        .title-slide h3 {
+            color: #7f8c8d;
+            font-size: 1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section class="title-slide">
+                <h1>Module 12</h1>
+                <h2>Production Deployment and Best Practices</h2>
+                <h3>Apache Ignite Training Course</h3>
+                <p style="margin-top: 2em; color: #7f8c8d;">Duration: 60 minutes</p>
+            </section>
+
+            <!-- Objectives -->
+            <section>
+                <h2>Learning Objectives</h2>
+                <ul>
+                    <li>Configure <span class="accent">security</span> (authentication, SSL/TLS)</li>
+                    <li>Deploy Ignite on <span class="accent">Docker</span> and <span class="accent">Kubernetes</span></li>
+                    <li>Implement <span class="accent">backup and disaster recovery</span> strategies</li>
+                    <li>Perform <span class="accent">rolling updates</span> with zero downtime</li>
+                    <li>Troubleshoot common production issues</li>
+                    <li>Apply the <span class="accent">production readiness checklist</span></li>
+                </ul>
+            </section>
+
+            <!-- Agenda -->
+            <section>
+                <h2>Agenda</h2>
+                <table>
+                    <tr>
+                        <th>Topic</th>
+                        <th>Duration</th>
+                    </tr>
+                    <tr>
+                        <td>Security Configuration</td>
+                        <td>10 min</td>
+                    </tr>
+                    <tr>
+                        <td>Docker Deployment</td>
+                        <td>10 min</td>
+                    </tr>
+                    <tr>
+                        <td>Kubernetes Deployment</td>
+                        <td>15 min</td>
+                    </tr>
+                    <tr>
+                        <td>Backup and Disaster Recovery</td>
+                        <td>10 min</td>
+                    </tr>
+                    <tr>
+                        <td>Rolling Updates and Troubleshooting</td>
+                        <td>10 min</td>
+                    </tr>
+                    <tr>
+                        <td>Production Readiness Checklist</td>
+                        <td>5 min</td>
+                    </tr>
+                </table>
+            </section>
+
+            <!-- SECTION 1: Security -->
+            <section>
+                <section>
+                    <h2><span class="badge badge-security">SECURITY</span></h2>
+                    <h3>Authentication and SSL/TLS</h3>
+                    <p>Securing your Ignite cluster for production</p>
+                </section>
+
+                <section>
+                    <h3>Security Overview</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 class="accent">Authentication</h4>
+                            <ul class="small-list">
+                                <li>User credentials required</li>
+                                <li>Role-based access control</li>
+                                <li>Permission management</li>
+                                <li>Audit logging</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="accent">Encryption</h4>
+                            <ul class="small-list">
+                                <li>SSL/TLS communication</li>
+                                <li>Node-to-node encryption</li>
+                                <li>Client connections</li>
+                                <li>Data at rest encryption</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Authentication Configuration</h3>
+                    <pre><code class="language-java">package com.example.ignite;
+
+import org.apache.ignite.Ignite;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+
+public class SecureNodeConfiguration {
+    public static void main(String[] args) {
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setIgniteInstanceName("secure-node");
+
+        // Configure discovery
+        TcpDiscoverySpi spi = new TcpDiscoverySpi();
+        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+        ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
+        spi.setIpFinder(ipFinder);
+        cfg.setDiscoverySpi(spi);
+
+        // Authentication is configured via security plugin
+        // See Ignite Security documentation for plugin setup
+
+        try (Ignite ignite = Ignition.start(cfg)) {
+            System.out.println("Secure node started!");
+        }
+    }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>SSL/TLS Configuration</h3>
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd"&gt;
+
+    &lt;bean class="org.apache.ignite.configuration.IgniteConfiguration"&gt;
+        &lt;!-- SSL Context Factory --&gt;
+        &lt;property name="sslContextFactory"&gt;
+            &lt;bean class="org.apache.ignite.ssl.SslContextFactory"&gt;
+                &lt;property name="keyStoreFilePath" value="keystore.jks"/&gt;
+                &lt;property name="keyStorePassword" value="${KEYSTORE_PASS}"/&gt;
+                &lt;property name="trustStoreFilePath" value="truststore.jks"/&gt;
+                &lt;property name="trustStorePassword" value="${TRUSTSTORE_PASS}"/&gt;
+                &lt;property name="protocol" value="TLSv1.2"/&gt;
+            &lt;/bean&gt;
+        &lt;/property&gt;
+
+        &lt;!-- Enable SSL for connectors --&gt;
+        &lt;property name="connectorConfiguration"&gt;
+            &lt;bean class="org.apache.ignite.configuration.ConnectorConfiguration"&gt;
+                &lt;property name="sslEnabled" value="true"/&gt;
+            &lt;/bean&gt;
+        &lt;/property&gt;
+    &lt;/bean&gt;
+&lt;/beans&gt;</code></pre>
+                </section>
+
+                <section>
+                    <h3>Generate SSL Certificates</h3>
+                    <pre><code class="language-bash">#!/bin/bash
+
+# Generate keystore with server certificate
+keytool -genkeypair -alias ignite-server \
+    -keyalg RSA -keysize 2048 \
+    -validity 365 \
+    -keystore keystore.jks \
+    -storepass changeit \
+    -keypass changeit \
+    -dname "CN=ignite.example.com, OU=Ignite, O=MyOrg, L=City, ST=State, C=US"
+
+# Export certificate
+keytool -exportcert -alias ignite-server \
+    -keystore keystore.jks \
+    -storepass changeit \
+    -file server.cer
+
+# Create truststore with server certificate
+keytool -importcert -alias ignite-server \
+    -file server.cer \
+    -keystore truststore.jks \
+    -storepass changeit \
+    -noprompt
+
+echo "SSL certificates generated successfully!"
+echo "  - Keystore: keystore.jks"
+echo "  - Truststore: truststore.jks"</code></pre>
+                </section>
+
+                <section>
+                    <h3>Security Best Practices</h3>
+                    <ul class="checklist checkmark">
+                        <li>Use strong passwords (rotate regularly)</li>
+                        <li>Enable SSL/TLS for all communication</li>
+                        <li>Implement role-based access control</li>
+                        <li>Enable audit logging</li>
+                        <li>Configure firewall rules (ports 47500-47509, 47100, 10800)</li>
+                        <li>Use secure credential storage (HashiCorp Vault, etc.)</li>
+                        <li>Keep Ignite and dependencies updated</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Production Security Checklist</h3>
+                    <div class="warning">
+                        <strong>Required for Production:</strong>
+                        <ul class="small-list checklist">
+                            <li>Authentication enabled</li>
+                            <li>SSL/TLS configured and tested</li>
+                            <li>Firewall rules in place</li>
+                            <li>Audit logging enabled</li>
+                            <li>Regular security updates scheduled</li>
+                            <li>Encrypted node-to-node communication</li>
+                            <li>Secure credential management</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- SECTION 2: Docker -->
+            <section>
+                <section>
+                    <h2><span class="badge badge-docker">DOCKER</span></h2>
+                    <h3>Container Deployment</h3>
+                    <p>Containerizing Apache Ignite for modern deployments</p>
+                </section>
+
+                <section>
+                    <h3>Dockerfile</h3>
+                    <pre><code class="language-dockerfile">FROM openjdk:11-jre-slim
+
+# Install Ignite
+ENV IGNITE_VERSION 2.16.0
+ENV IGNITE_HOME /opt/ignite
+
+RUN apt-get update && \
+    apt-get install -y wget unzip && \
+    wget https://archive.apache.org/dist/ignite/${IGNITE_VERSION}/apache-ignite-${IGNITE_VERSION}-bin.zip && \
+    unzip apache-ignite-${IGNITE_VERSION}-bin.zip -d /opt && \
+    mv /opt/apache-ignite-${IGNITE_VERSION}-bin ${IGNITE_HOME} && \
+    rm apache-ignite-${IGNITE_VERSION}-bin.zip && \
+    apt-get clean
+
+# Copy configuration
+COPY ignite-config.xml ${IGNITE_HOME}/config/
+
+WORKDIR ${IGNITE_HOME}
+
+# Expose ports: REST, Thin Client, Communication, Discovery
+EXPOSE 8080 10800 47100 47500
+
+# JVM options for containerized environment
+ENV JVM_OPTS="-Xms1g -Xmx1g -XX:+UseG1GC -XX:+UseContainerSupport"
+
+CMD ${IGNITE_HOME}/bin/ignite.sh ${IGNITE_HOME}/config/ignite-config.xml</code></pre>
+                </section>
+
+                <section>
+                    <h3>Docker Compose - 3 Node Cluster</h3>
+                    <pre><code class="language-yaml">version: '3.8'
+
+services:
+  ignite-node1:
+    build: .
+    container_name: ignite-node1
+    hostname: ignite-node1
+    environment:
+      - IGNITE_INSTANCE_NAME=node1
+      - JVM_OPTS=-Xms2g -Xmx2g -XX:+UseG1GC
+    ports:
+      - "10800:10800"   # Thin client port
+      - "8080:8080"     # REST API
+    networks:
+      - ignite-net
+    volumes:
+      - ignite-data-1:/persistence
+
+  ignite-node2:
+    build: .
+    container_name: ignite-node2
+    hostname: ignite-node2
+    environment:
+      - IGNITE_INSTANCE_NAME=node2
+      - JVM_OPTS=-Xms2g -Xmx2g -XX:+UseG1GC
+    networks:
+      - ignite-net
+    volumes:
+      - ignite-data-2:/persistence
+
+  ignite-node3:
+    build: .
+    container_name: ignite-node3
+    hostname: ignite-node3
+    environment:
+      - IGNITE_INSTANCE_NAME=node3
+      - JVM_OPTS=-Xms2g -Xmx2g -XX:+UseG1GC
+    networks:
+      - ignite-net
+    volumes:
+      - ignite-data-3:/persistence
+
+networks:
+  ignite-net:
+    driver: bridge
+
+volumes:
+  ignite-data-1:
+  ignite-data-2:
+  ignite-data-3:</code></pre>
+                </section>
+
+                <section>
+                    <h3>Docker Discovery Configuration</h3>
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd"&gt;
+
+    &lt;bean class="org.apache.ignite.configuration.IgniteConfiguration"&gt;
+        &lt;!-- Discovery for Docker network --&gt;
+        &lt;property name="discoverySpi"&gt;
+            &lt;bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi"&gt;
+                &lt;property name="ipFinder"&gt;
+                    &lt;bean class="org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder"&gt;
+                        &lt;property name="addresses"&gt;
+                            &lt;list&gt;
+                                &lt;value&gt;ignite-node1:47500..47509&lt;/value&gt;
+                                &lt;value&gt;ignite-node2:47500..47509&lt;/value&gt;
+                                &lt;value&gt;ignite-node3:47500..47509&lt;/value&gt;
+                            &lt;/list&gt;
+                        &lt;/property&gt;
+                    &lt;/bean&gt;
+                &lt;/property&gt;
+            &lt;/bean&gt;
+        &lt;/property&gt;
+    &lt;/bean&gt;
+&lt;/beans&gt;</code></pre>
+                </section>
+
+                <section>
+                    <h3>Docker Commands</h3>
+                    <pre><code class="language-bash"># Build and start cluster
+docker-compose up -d
+
+# Check cluster status
+docker-compose ps
+
+# View logs
+docker-compose logs -f ignite-node1
+
+# Scale to 5 nodes (if using replicas)
+docker-compose up -d --scale ignite-node2=5
+
+# Execute command in container
+docker exec -it ignite-node1 /opt/ignite/bin/ignite.sh --baseline
+
+# Stop cluster gracefully
+docker-compose down
+
+# Stop and remove volumes (WARNING: deletes data)
+docker-compose down -v</code></pre>
+                </section>
+
+                <section>
+                    <h3>Docker Best Practices</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 class="accent">Do</h4>
+                            <ul class="small-list checkmark checklist">
+                                <li>Use volume mounts for persistence</li>
+                                <li>Configure resource limits</li>
+                                <li>Use container-aware JVM flags</li>
+                                <li>Use health checks</li>
+                                <li>Plan network topology</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: #c0392b;">Avoid</h4>
+                            <ul class="small-list">
+                                <li>Running without resource limits</li>
+                                <li>Storing data in container layer</li>
+                                <li>Using host networking blindly</li>
+                                <li>Ignoring container logs</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- SECTION 3: Kubernetes -->
+            <section>
+                <section>
+                    <h2><span class="badge badge-k8s">KUBERNETES</span></h2>
+                    <h3>Cloud-Native Deployment</h3>
+                    <p>Production-grade Ignite on Kubernetes</p>
+                </section>
+
+                <section>
+                    <h3>Kubernetes Architecture</h3>
+                    <div class="diagram">
++----------------------------------------------------------+
+|                    Kubernetes Cluster                     |
+|  +----------------------------------------------------+  |
+|  |                  ignite namespace                  |  |
+|  |  +------------+  +------------+  +------------+    |  |
+|  |  | ignite-0   |  | ignite-1   |  | ignite-2   |    |  |
+|  |  | (Pod)      |  | (Pod)      |  | (Pod)      |    |  |
+|  |  | PVC: 10Gi  |  | PVC: 10Gi  |  | PVC: 10Gi  |    |  |
+|  |  +------------+  +------------+  +------------+    |  |
+|  |         ^              ^              ^            |  |
+|  |         |              |              |            |  |
+|  |  +--------------------------------------------+   |  |
+|  |  |      ignite-discovery (Headless Service)   |   |  |
+|  |  +--------------------------------------------+   |  |
+|  |                        |                          |  |
+|  |  +--------------------------------------------+   |  |
+|  |  |      ignite-service (LoadBalancer)         |   |  |
+|  |  |      Ports: 8080, 10800, 47100             |   |  |
+|  |  +--------------------------------------------+   |  |
+|  +----------------------------------------------------+  |
++----------------------------------------------------------+
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Namespace and Services</h3>
+                    <pre><code class="language-yaml">apiVersion: v1
+kind: Namespace
+metadata:
+  name: ignite
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ignite-service
+  namespace: ignite
+spec:
+  type: LoadBalancer
+  ports:
+    - name: rest
+      port: 8080
+      targetPort: 8080
+    - name: thin-client
+      port: 10800
+      targetPort: 10800
+    - name: thick-client
+      port: 47100
+      targetPort: 47100
+  selector:
+    app: ignite
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ignite-discovery
+  namespace: ignite
+spec:
+  clusterIP: None    # Headless service for discovery
+  ports:
+    - name: discovery
+      port: 47500
+      targetPort: 47500
+  selector:
+    app: ignite</code></pre>
+                </section>
+
+                <section>
+                    <h3>StatefulSet Configuration</h3>
+                    <pre><code class="language-yaml">apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ignite-cluster
+  namespace: ignite
+spec:
+  serviceName: ignite-discovery
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ignite
+  template:
+    metadata:
+      labels:
+        app: ignite
+    spec:
+      containers:
+      - name: ignite
+        image: apacheignite/ignite:2.16.0
+        ports:
+        - containerPort: 47100  # Communication
+        - containerPort: 47500  # Discovery
+        - containerPort: 10800  # Thin clients
+        - containerPort: 8080   # REST API
+        env:
+        - name: IGNITE_INSTANCE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: JVM_OPTS
+          value: "-Xms2g -Xmx2g -XX:+UseG1GC"
+        - name: OPTION_LIBS
+          value: "ignite-kubernetes,ignite-rest-http"</code></pre>
+                </section>
+
+                <section>
+                    <h3>StatefulSet - Resources and Storage</h3>
+                    <pre><code class="language-yaml">        # Resource limits
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        # Volume mount for persistence
+        volumeMounts:
+        - name: ignite-storage
+          mountPath: /persistence
+        # Health checks
+        readinessProbe:
+          httpGet:
+            path: /ignite?cmd=version
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 47500
+          initialDelaySeconds: 60
+          periodSeconds: 20
+  volumeClaimTemplates:
+  - metadata:
+      name: ignite-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi</code></pre>
+                </section>
+
+                <section>
+                    <h3>Kubernetes Discovery ConfigMap</h3>
+                    <pre><code class="language-yaml">apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ignite-config
+  namespace: ignite
+data:
+  ignite-config.xml: |
+    &lt;?xml version="1.0" encoding="UTF-8"?&gt;
+    &lt;beans xmlns="http://www.springframework.org/schema/beans"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://www.springframework.org/schema/beans
+               http://www.springframework.org/schema/beans/spring-beans.xsd"&gt;
+        &lt;bean class="org.apache.ignite.configuration.IgniteConfiguration"&gt;
+            &lt;property name="discoverySpi"&gt;
+                &lt;bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi"&gt;
+                    &lt;property name="ipFinder"&gt;
+                        &lt;bean class="org.apache.ignite.spi.discovery.tcp.ipfinder.kubernetes.TcpDiscoveryKubernetesIpFinder"&gt;
+                            &lt;property name="namespace" value="ignite"/&gt;
+                            &lt;property name="serviceName" value="ignite-discovery"/&gt;
+                        &lt;/bean&gt;
+                    &lt;/property&gt;
+                &lt;/bean&gt;
+            &lt;/property&gt;
+        &lt;/bean&gt;
+    &lt;/beans&gt;</code></pre>
+                </section>
+
+                <section>
+                    <h3>Kubernetes Deployment Commands</h3>
+                    <pre><code class="language-bash"># Create namespace
+kubectl apply -f ignite-namespace.yaml
+
+# Deploy ConfigMap
+kubectl apply -f ignite-configmap.yaml
+
+# Deploy Services
+kubectl apply -f ignite-service.yaml
+
+# Deploy StatefulSet
+kubectl apply -f ignite-statefulset.yaml
+
+# Check pods status
+kubectl get pods -n ignite -w
+
+# View pod logs
+kubectl logs -f ignite-cluster-0 -n ignite
+
+# Scale cluster to 5 nodes
+kubectl scale statefulset ignite-cluster --replicas=5 -n ignite
+
+# Port forward for local access
+kubectl port-forward svc/ignite-service 10800:10800 -n ignite
+
+# Check cluster baseline
+kubectl exec -it ignite-cluster-0 -n ignite -- /opt/ignite/bin/ignite.sh --baseline</code></pre>
+                </section>
+
+                <section>
+                    <h3>StatefulSet vs Deployment</h3>
+                    <table>
+                        <tr>
+                            <th>Feature</th>
+                            <th>StatefulSet</th>
+                            <th>Deployment</th>
+                        </tr>
+                        <tr>
+                            <td>Pod Identity</td>
+                            <td class="accent">Stable, ordered</td>
+                            <td>Random</td>
+                        </tr>
+                        <tr>
+                            <td>Storage</td>
+                            <td class="accent">Persistent, per-pod</td>
+                            <td>Shared or ephemeral</td>
+                        </tr>
+                        <tr>
+                            <td>Network</td>
+                            <td class="accent">Predictable DNS</td>
+                            <td>Random</td>
+                        </tr>
+                        <tr>
+                            <td>Scaling</td>
+                            <td>Ordered (0, 1, 2...)</td>
+                            <td>Parallel</td>
+                        </tr>
+                        <tr>
+                            <td>Use Case</td>
+                            <td class="accent">Ignite, Databases</td>
+                            <td>Stateless apps</td>
+                        </tr>
+                    </table>
+                    <div class="info-box" style="margin-top: 1em;">
+                        <strong>Recommendation:</strong> Always use StatefulSet for Ignite clusters to ensure stable network identity and persistent storage.
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Kubernetes Best Practices</h3>
+                    <ul class="small-list">
+                        <li><strong>Use StatefulSets:</strong> Stable pod identity and persistent storage</li>
+                        <li><strong>Configure Resource Limits:</strong> Prevent noisy neighbor issues</li>
+                        <li><strong>Use PodDisruptionBudgets:</strong> Ensure quorum during updates</li>
+                        <li><strong>Enable Health Probes:</strong> Automatic pod recovery</li>
+                        <li><strong>Use Kubernetes Discovery:</strong> TcpDiscoveryKubernetesIpFinder</li>
+                        <li><strong>Plan Storage:</strong> Use appropriate StorageClass (SSD preferred)</li>
+                        <li><strong>Network Policies:</strong> Restrict cluster communication</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- SECTION 4: Backup and Disaster Recovery -->
+            <section>
+                <section>
+                    <h2><span class="badge badge-backup">BACKUP</span></h2>
+                    <h3>Backup and Disaster Recovery</h3>
+                    <p>Protecting your data for business continuity</p>
+                </section>
+
+                <section>
+                    <h3>Backup Strategies Overview</h3>
+                    <table>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Type</th>
+                            <th>Use Case</th>
+                        </tr>
+                        <tr>
+                            <td>Snapshots</td>
+                            <td>Full backup</td>
+                            <td>Point-in-time recovery</td>
+                        </tr>
+                        <tr>
+                            <td>WAL Archiving</td>
+                            <td>Incremental</td>
+                            <td>Continuous protection</td>
+                        </tr>
+                        <tr>
+                            <td>Persistence Backup</td>
+                            <td>File-based</td>
+                            <td>Offline backup</td>
+                        </tr>
+                        <tr>
+                            <td>Cross-DC Replication</td>
+                            <td>Real-time</td>
+                            <td>Disaster recovery</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Snapshot Backups</h3>
+                    <pre><code class="language-bash"># Create cluster snapshot
+bin/ignite.sh --snapshot create my_snapshot_20240115
+
+# List available snapshots
+bin/ignite.sh --snapshot list
+
+# Check snapshot status
+bin/ignite.sh --snapshot status
+
+# Restore from snapshot (cluster must be stopped)
+bin/ignite.sh --snapshot restore my_snapshot_20240115
+
+# Cancel snapshot operation
+bin/ignite.sh --snapshot cancel</code></pre>
+                    <div class="info-box">
+                        <strong>Snapshot Features:</strong>
+                        <ul class="small-list">
+                            <li>Full cluster point-in-time backup</li>
+                            <li>Consistent across all nodes</li>
+                            <li>Includes all caches and metadata</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Write-Ahead Log (WAL)</h3>
+                    <div class="diagram">
++-------------------+     +-------------------+     +-------------------+
+|   Application     |     |   WAL Segments    |     |   Archive         |
+|   Write           | --> |   (Active)        | --> |   (Backup)        |
++-------------------+     +-------------------+     +-------------------+
+                                   |
+                                   v
+                          +-------------------+
+                          |   Checkpoint      |
+                          |   (Persistence)   |
+                          +-------------------+
+                    </div>
+                    <ul class="small-list">
+                        <li><strong>WAL:</strong> Records all changes before applying to data regions</li>
+                        <li><strong>Archiving:</strong> Move WAL segments to backup storage</li>
+                        <li><strong>Recovery:</strong> Replay WAL to restore to specific point</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>WAL Configuration</h3>
+                    <pre><code class="language-java">// Configure WAL for incremental backup
+DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+
+// Enable WAL archiving
+storageCfg.setWalMode(WALMode.FSYNC);
+storageCfg.setWalArchivePath("/backup/wal-archive");
+storageCfg.setWalPath("/data/wal");
+
+// WAL segment size (default 64MB)
+storageCfg.setWalSegmentSize(64 * 1024 * 1024);
+
+// WAL history size for point-in-time recovery
+storageCfg.setWalHistorySize(20);
+
+// Enable checkpointing
+storageCfg.setCheckpointFrequency(180_000); // 3 minutes
+
+IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setDataStorageConfiguration(storageCfg);</code></pre>
+                </section>
+
+                <section>
+                    <h3>Disaster Recovery Strategies</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 class="accent">Active-Passive</h4>
+                            <ul class="small-list">
+                                <li>Primary cluster handles traffic</li>
+                                <li>Secondary on standby</li>
+                                <li>Manual or automated failover</li>
+                                <li>Lower cost</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="accent">Active-Active</h4>
+                            <ul class="small-list">
+                                <li>Both clusters handle traffic</li>
+                                <li>Bi-directional replication</li>
+                                <li>Automatic load distribution</li>
+                                <li>Higher complexity</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Recovery Procedures</h3>
+                    <pre><code class="language-bash"># 1. Recovery from Snapshot
+# Stop cluster
+# Restore snapshot
+bin/ignite.sh --snapshot restore my_snapshot
+# Start cluster
+# Activate cluster
+bin/ignite.sh --set-state ACTIVE
+
+# 2. Recovery from Persistence Files
+# Stop cluster
+# Copy persistence files from backup to all nodes
+rsync -av /backup/persistence/ /data/persistence/
+# Start cluster
+# Activate and verify
+
+# 3. WAL-based Recovery (automatic on startup)
+# Node automatically replays WAL on startup
+# No manual intervention required
+# Ensures data consistency after crash</code></pre>
+                </section>
+
+                <section>
+                    <h3>Backup Best Practices</h3>
+                    <ul class="checklist checkmark">
+                        <li>Schedule regular automated backups</li>
+                        <li>Test recovery procedures quarterly</li>
+                        <li>Store backups in geographically separate location</li>
+                        <li>Monitor backup job success/failure</li>
+                        <li>Document recovery runbooks</li>
+                        <li>Keep multiple backup generations</li>
+                        <li>Verify backup integrity with checksums</li>
+                        <li>Define RTO/RPO based on business needs</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- SECTION 5: Rolling Updates -->
+            <section>
+                <section>
+                    <h2>Rolling Updates</h2>
+                    <h3>Zero-Downtime Upgrades</h3>
+                    <p>Maintaining availability during maintenance</p>
+                </section>
+
+                <section>
+                    <h3>Rolling Update Process</h3>
+                    <div class="diagram">
+Step 1: Cluster Running (v2.15)
++--------+  +--------+  +--------+
+| Node 1 |  | Node 2 |  | Node 3 |
+| v2.15  |  | v2.15  |  | v2.15  |
++--------+  +--------+  +--------+
+
+Step 2: Update Node 1
++--------+  +--------+  +--------+
+| Node 1 |  | Node 2 |  | Node 3 |
+| v2.16  |  | v2.15  |  | v2.15  |
+| (new)  |  |        |  |        |
++--------+  +--------+  +--------+
+
+Step 3: Continue for Each Node...
+
+Step 4: All Updated
++--------+  +--------+  +--------+
+| Node 1 |  | Node 2 |  | Node 3 |
+| v2.16  |  | v2.16  |  | v2.16  |
++--------+  +--------+  +--------+
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Rolling Update Procedure</h3>
+                    <pre><code class="language-bash">#!/bin/bash
+# Rolling Update Script for Apache Ignite
+
+echo "=== Rolling Update Procedure ==="
+
+# Prerequisites checklist
+echo "Pre-update checklist:"
+echo "  [x] Backup completed"
+echo "  [x] New version tested in staging"
+echo "  [x] Maintenance window scheduled"
+echo "  [x] Rollback plan ready"
+
+# For each node (one at a time):
+for node in node1 node2 node3; do
+    echo "Updating $node..."
+
+    # 1. Stop node gracefully
+    ssh $node "kill -SIGTERM \$(cat /var/run/ignite.pid)"
+    sleep 30  # Wait for graceful shutdown
+
+    # 2. Update binaries
+    ssh $node "cp -r /opt/ignite-2.16.0/* /opt/ignite/"
+
+    # 3. Start node
+    ssh $node "/opt/ignite/bin/ignite.sh &"
+
+    # 4. Wait for node to rejoin
+    sleep 60
+
+    # 5. Verify cluster health
+    ./bin/ignite.sh --baseline
+
+    # 6. Wait for rebalancing
+    echo "Waiting for rebalancing to complete..."
+    sleep 120
+done
+
+echo "Rolling update complete!"</code></pre>
+                </section>
+
+                <section>
+                    <h3>Kubernetes Rolling Update</h3>
+                    <pre><code class="language-yaml"># Update StatefulSet with rolling update strategy
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ignite-cluster
+spec:
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0  # Update all pods
+  # ... rest of spec
+
+---
+# Pod Disruption Budget for safety
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ignite-pdb
+  namespace: ignite
+spec:
+  minAvailable: 2    # Keep at least 2 pods running
+  selector:
+    matchLabels:
+      app: ignite</code></pre>
+                    <pre><code class="language-bash"># Trigger rolling update
+kubectl set image statefulset/ignite-cluster \
+  ignite=apacheignite/ignite:2.16.0 -n ignite
+
+# Monitor rollout
+kubectl rollout status statefulset/ignite-cluster -n ignite</code></pre>
+                </section>
+
+                <section>
+                    <h3>Rolling Update Best Practices</h3>
+                    <div class="warning">
+                        <strong>Critical Points:</strong>
+                        <ul class="small-list">
+                            <li>Update ONE node at a time</li>
+                            <li>Wait for rebalancing to complete before proceeding</li>
+                            <li>Monitor cluster health throughout</li>
+                            <li>Have rollback plan ready</li>
+                        </ul>
+                    </div>
+                    <ul class="small-list" style="margin-top: 1em;">
+                        <li><strong>Version Compatibility:</strong> Check compatibility matrix</li>
+                        <li><strong>Configuration Changes:</strong> Apply config changes separately</li>
+                        <li><strong>Testing:</strong> Test upgrade path in staging first</li>
+                        <li><strong>Timing:</strong> Schedule during low-traffic periods</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- SECTION 6: Troubleshooting -->
+            <section>
+                <section>
+                    <h2>Troubleshooting Guide</h2>
+                    <h3>Common Issues and Solutions</h3>
+                </section>
+
+                <section>
+                    <h3>Issue: Node Cannot Join Cluster</h3>
+                    <div class="danger-box">
+                        <strong>Symptoms:</strong> Node starts but doesn't discover others, segmentation errors
+                    </div>
+                    <div class="success-box">
+                        <strong>Solutions:</strong>
+                        <ul class="small-list">
+                            <li>Check network connectivity between nodes</li>
+                            <li>Verify discovery configuration matches</li>
+                            <li>Open firewall ports: 47500-47509, 47100</li>
+                            <li>Ensure consistent cluster configuration</li>
+                            <li>Check for IP address conflicts</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Issue: Out of Memory Errors</h3>
+                    <div class="danger-box">
+                        <strong>Symptoms:</strong> OutOfMemoryError, node crashes, slow performance
+                    </div>
+                    <div class="success-box">
+                        <strong>Solutions:</strong>
+                        <ul class="small-list">
+                            <li>Increase heap size: -Xms4g -Xmx4g</li>
+                            <li>Review data region configuration</li>
+                            <li>Enable eviction policies</li>
+                            <li>Check for memory leaks (heap dump analysis)</li>
+                            <li>Monitor GC logs: -Xlog:gc*</li>
+                            <li>Consider off-heap memory allocation</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Issue: Slow Query Performance</h3>
+                    <div class="danger-box">
+                        <strong>Symptoms:</strong> Queries taking too long, high CPU usage
+                    </div>
+                    <div class="success-box">
+                        <strong>Solutions:</strong>
+                        <ul class="small-list">
+                            <li>Add appropriate indexes</li>
+                            <li>Use EXPLAIN to analyze query plan</li>
+                            <li>Avoid distributed joins (use colocation)</li>
+                            <li>Check data colocation with affinity keys</li>
+                            <li>Enable lazy query execution for large results</li>
+                            <li>Review cache configuration</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Diagnostic Commands</h3>
+                    <pre><code class="language-bash"># Check cluster state and baseline
+./bin/ignite.sh --baseline
+
+# View cluster topology via REST
+curl "http://localhost:8080/ignite?cmd=top"
+
+# View cache metrics
+curl "http://localhost:8080/ignite?cmd=cache&cacheName=myCache"
+
+# Thread dump for deadlock analysis
+jstack $(pgrep -f ignite) > thread-dump.txt
+
+# Heap dump for memory analysis
+jmap -dump:format=b,file=heap-dump.hprof $(pgrep -f ignite)
+
+# GC statistics
+jstat -gcutil $(pgrep -f ignite) 1000
+
+# Check logs for errors
+tail -f work/log/ignite*.log | grep -E "(ERROR|WARN)"</code></pre>
+                </section>
+
+                <section>
+                    <h3>Log Messages to Watch</h3>
+                    <table>
+                        <tr>
+                            <th>Pattern</th>
+                            <th>Meaning</th>
+                        </tr>
+                        <tr>
+                            <td><code>Topology snapshot</code></td>
+                            <td>Node joined/left cluster</td>
+                        </tr>
+                        <tr>
+                            <td><code>Rebalancing started</code></td>
+                            <td>Data redistribution in progress</td>
+                        </tr>
+                        <tr>
+                            <td><code>Possible split brain</code></td>
+                            <td class="accent">CRITICAL: Network partition</td>
+                        </tr>
+                        <tr>
+                            <td><code>OutOfMemory</code></td>
+                            <td class="accent">Memory exhausted</td>
+                        </tr>
+                        <tr>
+                            <td><code>Transaction timeout</code></td>
+                            <td>Long-running transaction</td>
+                        </tr>
+                        <tr>
+                            <td><code>Checkpoint started</code></td>
+                            <td>Persistence checkpoint</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Common Port Reference</h3>
+                    <table>
+                        <tr>
+                            <th>Port</th>
+                            <th>Purpose</th>
+                            <th>Firewall</th>
+                        </tr>
+                        <tr>
+                            <td>47500-47509</td>
+                            <td>Discovery</td>
+                            <td>Internal only</td>
+                        </tr>
+                        <tr>
+                            <td>47100</td>
+                            <td>Communication</td>
+                            <td>Internal only</td>
+                        </tr>
+                        <tr>
+                            <td>10800</td>
+                            <td>Thin clients</td>
+                            <td>Client access</td>
+                        </tr>
+                        <tr>
+                            <td>8080</td>
+                            <td>REST API</td>
+                            <td>Admin/monitoring</td>
+                        </tr>
+                        <tr>
+                            <td>11211</td>
+                            <td>Memcached</td>
+                            <td>If enabled</td>
+                        </tr>
+                    </table>
+                </section>
+            </section>
+
+            <!-- SECTION 7: Production Readiness Checklist -->
+            <section>
+                <section>
+                    <h2>Production Readiness Checklist</h2>
+                    <h3>Are You Ready for Production?</h3>
+                </section>
+
+                <section>
+                    <h3>Security Checklist</h3>
+                    <ul class="checklist">
+                        <li>Authentication enabled and tested</li>
+                        <li>SSL/TLS configured for all communication</li>
+                        <li>Firewall rules configured</li>
+                        <li>Audit logging enabled</li>
+                        <li>Regular security updates scheduled</li>
+                        <li>Credentials stored securely</li>
+                        <li>Network policies defined (Kubernetes)</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>High Availability Checklist</h3>
+                    <ul class="checklist">
+                        <li>Minimum 3 nodes deployed</li>
+                        <li>Backup copies configured (1-2 backups)</li>
+                        <li>Cross-datacenter setup (if required)</li>
+                        <li>PodDisruptionBudget configured (K8s)</li>
+                        <li>Anti-affinity rules for pod placement</li>
+                        <li>Health probes configured</li>
+                        <li>Baseline topology documented</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Performance Checklist</h3>
+                    <ul class="checklist">
+                        <li>JVM properly tuned</li>
+                        <li>Memory regions sized appropriately</li>
+                        <li>Indexes created for frequent queries</li>
+                        <li>Affinity keys used for colocation</li>
+                        <li>GC logs enabled</li>
+                        <li>Baseline performance metrics captured</li>
+                        <li>Load testing completed</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Monitoring Checklist</h3>
+                    <ul class="checklist">
+                        <li>Metrics collection enabled (JMX/Prometheus)</li>
+                        <li>Alerting configured for critical events</li>
+                        <li>Log aggregation in place</li>
+                        <li>Dashboards created</li>
+                        <li>Disk space monitoring</li>
+                        <li>Network latency monitoring</li>
+                        <li>Query performance tracking</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Operations Checklist</h3>
+                    <ul class="checklist">
+                        <li>Backup procedures tested</li>
+                        <li>Recovery procedures documented and tested</li>
+                        <li>Rolling update procedure defined</li>
+                        <li>Troubleshooting guide available</li>
+                        <li>Runbooks created for common scenarios</li>
+                        <li>On-call rotation established</li>
+                        <li>Escalation paths defined</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Documentation Checklist</h3>
+                    <ul class="checklist">
+                        <li>Architecture documented</li>
+                        <li>Configuration files version controlled</li>
+                        <li>Operations procedures documented</li>
+                        <li>Contact information available</li>
+                        <li>Change management process defined</li>
+                        <li>Capacity planning documented</li>
+                        <li>SLAs defined and agreed</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Final Go-Live Checklist</h3>
+                    <div class="success-box">
+                        <strong>Ready for Production When:</strong>
+                        <ul class="small-list checkmark checklist">
+                            <li>All security controls implemented</li>
+                            <li>HA and DR tested successfully</li>
+                            <li>Performance benchmarks met</li>
+                            <li>Monitoring and alerting operational</li>
+                            <li>Team trained on operations</li>
+                            <li>Runbooks reviewed and approved</li>
+                            <li>Stakeholder sign-off obtained</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Summary -->
+            <section>
+                <section>
+                    <h2>Course Summary</h2>
+                    <h3>What You've Learned</h3>
+                </section>
+
+                <section>
+                    <h3>Module 12 Key Takeaways</h3>
+                    <ul>
+                        <li><strong>Security:</strong> Enable authentication, SSL/TLS, and audit logging</li>
+                        <li><strong>Docker:</strong> Use proper networking and volume mounts</li>
+                        <li><strong>Kubernetes:</strong> StatefulSets for stable identity and storage</li>
+                        <li><strong>Backup:</strong> Snapshots + WAL for comprehensive protection</li>
+                        <li><strong>Rolling Updates:</strong> One node at a time, wait for rebalancing</li>
+                        <li><strong>Troubleshooting:</strong> Check logs, metrics, and network first</li>
+                        <li><strong>Checklist:</strong> Verify all items before go-live</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Course Completion</h3>
+                    <div class="success-box">
+                        <h4>Congratulations!</h4>
+                        <p>You have completed all 12 modules of the Apache Ignite training course.</p>
+                    </div>
+                    <div class="two-column" style="margin-top: 1em;">
+                        <div>
+                            <h4 class="accent">Skills Acquired</h4>
+                            <ul class="small-list">
+                                <li>In-memory computing fundamentals</li>
+                                <li>Cluster architecture</li>
+                                <li>Cache operations and modes</li>
+                                <li>SQL and indexing</li>
+                                <li>Transactions</li>
+                                <li>Distributed computing</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="accent">Next Steps</h4>
+                            <ul class="small-list">
+                                <li>Deploy in your environment</li>
+                                <li>Join Apache Ignite community</li>
+                                <li>Explore advanced features</li>
+                                <li>Contribute to open source</li>
+                                <li>Share knowledge with team</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><strong>Documentation:</strong> <a href="https://ignite.apache.org/docs">ignite.apache.org/docs</a></li>
+                        <li><strong>GitHub:</strong> <a href="https://github.com/apache/ignite">github.com/apache/ignite</a></li>
+                        <li><strong>Mailing Lists:</strong> <a href="https://ignite.apache.org/community/resources.html">ignite.apache.org/community</a></li>
+                        <li><strong>Stack Overflow:</strong> [apache-ignite] tag</li>
+                        <li><strong>YouTube:</strong> Apache Ignite Channel</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Questions?</h2>
+                    <p style="margin-top: 2em; color: #7f8c8d;">
+                        Continue to Lab 12: Production Deployment and Best Practices
+                    </p>
+                    <p style="margin-top: 1em;">
+                        <span class="accent-bg">Duration: 60 minutes</span>
+                    </p>
+                </section>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/zoom/zoom.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all',
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            width: 1200,
+            height: 700,
+            margin: 0.1,
+            center: true,
+            plugins: [RevealHighlight, RevealNotes, RevealZoom]
+        });
+    </script>
+</body>
+</html>

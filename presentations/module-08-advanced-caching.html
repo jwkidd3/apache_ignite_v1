@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 08: Advanced Caching Patterns - Apache Ignite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/intellij-light.min.css">
+    <style>
+        :root {
+            --r-heading-color: #2c3e50;
+            --r-main-color: #333;
+            --r-link-color: #e67e22;
+            --r-link-color-hover: #d35400;
+            --r-selection-background-color: #e67e22;
+            --r-heading-font: 'Source Sans Pro', Helvetica, sans-serif;
+            --r-main-font: 'Source Sans Pro', Helvetica, sans-serif;
+        }
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: #2c3e50;
+            text-transform: none;
+        }
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+        .reveal h3 {
+            font-size: 1.3em;
+        }
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .reveal pre code {
+            max-height: 500px;
+            padding: 20px;
+        }
+        .reveal .accent {
+            color: #e67e22;
+        }
+        .reveal .highlight-box {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .reveal .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #e67e22;
+            padding: 15px 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .reveal .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7em;
+            margin: 20px 0;
+        }
+        .reveal .comparison-table th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        .reveal .comparison-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        .reveal .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .reveal .two-column {
+            display: flex;
+            gap: 40px;
+        }
+        .reveal .two-column > div {
+            flex: 1;
+        }
+        .reveal ul {
+            display: block;
+        }
+        .reveal li {
+            margin: 10px 0;
+        }
+        .reveal .diagram-box {
+            background: #f0f0f0;
+            border: 2px solid #e67e22;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px;
+            display: inline-block;
+            min-width: 150px;
+        }
+        .reveal .arrow {
+            color: #e67e22;
+            font-size: 1.5em;
+            margin: 0 10px;
+        }
+        .reveal .flow-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .reveal .subtitle {
+            color: #7f8c8d;
+            font-size: 0.8em;
+            margin-top: -10px;
+        }
+        .reveal .benefit-list li::marker {
+            color: #e67e22;
+        }
+        .reveal .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .reveal .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .slide-number {
+            color: #e67e22 !important;
+        }
+        .progress span {
+            background: #e67e22 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section>
+                <h1>Module 08</h1>
+                <h2 class="accent">Advanced Caching Patterns</h2>
+                <p>Apache Ignite Training Course</p>
+                <p class="subtitle">Duration: 60 minutes</p>
+            </section>
+
+            <!-- Agenda -->
+            <section>
+                <h2>Module Agenda</h2>
+                <ul>
+                    <li><strong>Near Caches</strong> - Client-side caching</li>
+                    <li><strong>Expiry Policies</strong> - TTL management</li>
+                    <li><strong>Eviction Policies</strong> - Memory management</li>
+                    <li><strong>Cache Entry Processors</strong> - Atomic operations</li>
+                    <li><strong>Cache Events</strong> - Event handling</li>
+                    <li><strong>Continuous Queries</strong> - Real-time notifications</li>
+                </ul>
+            </section>
+
+            <!-- Section 1: Near Caches -->
+            <section>
+                <section>
+                    <h2>Near Caches</h2>
+                    <p class="subtitle">Client-Side Caching for Performance</p>
+                </section>
+
+                <section>
+                    <h3>What is a Near Cache?</h3>
+                    <div class="info-box">
+                        <p>A <strong>near cache</strong> is a local cache on client nodes that stores frequently accessed data, reducing network latency for repeated reads.</p>
+                    </div>
+                    <div class="flow-container">
+                        <div class="diagram-box">Client Node<br><small>(Near Cache)</small></div>
+                        <span class="arrow">&#8594;</span>
+                        <div class="diagram-box">Server Node<br><small>(Primary Data)</small></div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Near Cache Benefits</h3>
+                    <ul class="benefit-list">
+                        <li><strong>Reduced Latency</strong> - Local data access</li>
+                        <li><strong>Lower Server Load</strong> - Fewer network requests</li>
+                        <li><strong>Better Performance</strong> - For frequently accessed data</li>
+                        <li><strong>Automatic Invalidation</strong> - Updates propagated from server</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Near Cache Architecture</h3>
+                    <pre><code class="text">First Access:
+Client --[GET key=100]--> Server --[Return value]--> Client
+                                                       |
+                                                  [Store in
+                                                   Near Cache]
+
+Subsequent Access:
+Client --[GET key=100]--> Near Cache --[Return value]--> Client
+         (No network call!)
+</code></pre>
+                </section>
+
+                <section>
+                    <h3>Configuring Near Cache</h3>
+                    <pre><code class="language-java">// Create near cache configuration
+NearCacheConfiguration&lt;Integer, String&gt; nearCfg =
+    new NearCacheConfiguration&lt;&gt;();
+
+// Set eviction policy for near cache (max 100 entries)
+nearCfg.setNearEvictionPolicyFactory(
+    () -> new LruEvictionPolicy&lt;&gt;(100)
+);
+
+// Create cache with near cache on client
+IgniteCache&lt;Integer, String&gt; cache =
+    ignite.getOrCreateNearCache("dataCache", nearCfg);</code></pre>
+                </section>
+
+                <section>
+                    <h3>Near Cache Performance Example</h3>
+                    <pre><code class="language-java">// First access - fetches from server
+long start = System.currentTimeMillis();
+String value1 = cache.get(100);  // Network call
+long time1 = System.currentTimeMillis() - start;
+System.out.println("First access: " + time1 + " ms");
+
+// Second access - from near cache
+start = System.currentTimeMillis();
+String value2 = cache.get(100);  // Local access
+long time2 = System.currentTimeMillis() - start;
+System.out.println("Second access: " + time2 + " ms");
+System.out.println("Speedup: " + (float)time1/time2 + "x faster");</code></pre>
+                </section>
+
+                <section>
+                    <h3>Complete Near Cache Example</h3>
+                    <pre><code class="language-java">public class NearCacheDemo {
+    public static void main(String[] args) {
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setClientMode(true);  // Must be client mode
+
+        try (Ignite ignite = Ignition.start(cfg)) {
+            // Near cache configuration
+            NearCacheConfiguration&lt;Integer, String&gt; nearCfg =
+                new NearCacheConfiguration&lt;&gt;();
+            nearCfg.setNearEvictionPolicyFactory(
+                () -> new LruEvictionPolicy&lt;&gt;(100));
+
+            // Get cache with near cache
+            IgniteCache&lt;Integer, String&gt; cache =
+                ignite.getOrCreateNearCache("dataCache", nearCfg);
+
+            // Access data - first from server, then from near cache
+            for (int i = 0; i &lt; 50; i++) {
+                cache.get(i);
+            }
+            System.out.println("50 entries now in near cache");
+        }
+    }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>When to Use Near Caches</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 style="color: #27ae60;">Good Use Cases</h4>
+                            <ul>
+                                <li>Read-heavy workloads</li>
+                                <li>Reference data</li>
+                                <li>Client-side processing</li>
+                                <li>Tolerable staleness</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: #e74c3c;">Avoid When</h4>
+                            <ul>
+                                <li>Write-heavy workloads</li>
+                                <li>Strict consistency needed</li>
+                                <li>Memory constrained clients</li>
+                                <li>Random access patterns</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 2: Expiry Policies -->
+            <section>
+                <section>
+                    <h2>Expiry Policies</h2>
+                    <p class="subtitle">Time-to-Live Management</p>
+                </section>
+
+                <section>
+                    <h3>Expiry Policy Types</h3>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Policy</th>
+                            <th>Timer Starts</th>
+                            <th>Timer Resets</th>
+                            <th>Use Case</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Created</strong></td>
+                            <td>On creation</td>
+                            <td>Never</td>
+                            <td>Session tokens</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Modified</strong></td>
+                            <td>On creation</td>
+                            <td>On update</td>
+                            <td>Active data</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Touched</strong></td>
+                            <td>On creation</td>
+                            <td>On access/update</td>
+                            <td>LRU-like behavior</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Created Expiry Policy</h3>
+                    <p>Entry expires a fixed time after creation</p>
+                    <pre><code class="language-java">import javax.cache.expiry.CreatedExpiryPolicy;
+import javax.cache.expiry.Duration;
+
+CacheConfiguration&lt;Integer, String&gt; cfg =
+    new CacheConfiguration&lt;&gt;("sessionCache");
+
+// Expire 5 seconds after creation
+cfg.setExpiryPolicyFactory(
+    CreatedExpiryPolicy.factoryOf(Duration.FIVE_SECONDS)
+);
+
+IgniteCache&lt;Integer, String&gt; cache = ignite.getOrCreateCache(cfg);
+
+cache.put(1, "Session data");    // Timer starts
+Thread.sleep(6000);              // Wait 6 seconds
+cache.get(1);                    // Returns null - expired!</code></pre>
+                </section>
+
+                <section>
+                    <h3>Modified Expiry Policy</h3>
+                    <p>Timer resets on every update</p>
+                    <pre><code class="language-java">import javax.cache.expiry.ModifiedExpiryPolicy;
+
+CacheConfiguration&lt;Integer, String&gt; cfg =
+    new CacheConfiguration&lt;&gt;("activeDataCache");
+
+// Expire 3 seconds after last modification
+cfg.setExpiryPolicyFactory(
+    ModifiedExpiryPolicy.factoryOf(new Duration(TimeUnit.SECONDS, 3))
+);
+
+IgniteCache&lt;Integer, String&gt; cache = ignite.getOrCreateCache(cfg);
+
+cache.put(1, "Initial value");   // Timer starts (3 sec)
+Thread.sleep(2000);
+cache.put(1, "Updated value");   // Timer resets (3 sec)
+Thread.sleep(2000);
+cache.get(1);                    // Still there! (only 2 sec elapsed)
+Thread.sleep(4000);
+cache.get(1);                    // null - expired after 3 seconds</code></pre>
+                </section>
+
+                <section>
+                    <h3>Touched Expiry Policy</h3>
+                    <p>Timer resets on any access (read or write)</p>
+                    <pre><code class="language-java">import javax.cache.expiry.TouchedExpiryPolicy;
+
+CacheConfiguration&lt;Integer, String&gt; cfg =
+    new CacheConfiguration&lt;&gt;("frequentAccessCache");
+
+// Expire 4 seconds after last access
+cfg.setExpiryPolicyFactory(
+    TouchedExpiryPolicy.factoryOf(new Duration(TimeUnit.SECONDS, 4))
+);
+
+IgniteCache&lt;Integer, String&gt; cache = ignite.getOrCreateCache(cfg);
+
+cache.put(1, "Touched expiry value");
+for (int i = 0; i &lt; 5; i++) {
+    Thread.sleep(2000);
+    cache.get(1);  // Each read resets the 4-second timer
+    System.out.println("Still alive after " + ((i+1)*2) + " seconds");
+}
+Thread.sleep(5000);
+cache.get(1);  // null - no access for 5 seconds</code></pre>
+                </section>
+
+                <section>
+                    <h3>Per-Entry Expiry Policy</h3>
+                    <p>Different TTL for different entries</p>
+                    <pre><code class="language-java">IgniteCache&lt;Integer, String&gt; baseCache =
+    ignite.getOrCreateCache("dynamicExpiryCache");
+
+// Create view with 2-second TTL
+IgniteCache&lt;Integer, String&gt; shortTTL = baseCache.withExpiryPolicy(
+    CreatedExpiryPolicy.factoryOf(
+        new Duration(TimeUnit.SECONDS, 2)).create()
+);
+
+// Create view with 10-second TTL
+IgniteCache&lt;Integer, String&gt; longTTL = baseCache.withExpiryPolicy(
+    CreatedExpiryPolicy.factoryOf(
+        new Duration(TimeUnit.SECONDS, 10)).create()
+);
+
+shortTTL.put(1, "Quick expiry");    // 2-second TTL
+longTTL.put(2, "Long expiry");      // 10-second TTL
+
+Thread.sleep(3000);
+baseCache.get(1);  // null (expired)
+baseCache.get(2);  // Still there</code></pre>
+                </section>
+
+                <section>
+                    <h3>Expiry Policy Use Cases</h3>
+                    <div class="info-box">
+                        <ul style="margin: 0;">
+                            <li><strong>Created</strong>: Session data, JWT tokens, OTP codes</li>
+                            <li><strong>Modified</strong>: Configuration that updates periodically</li>
+                            <li><strong>Touched</strong>: Recently accessed data (keep hot data)</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 3: Eviction Policies -->
+            <section>
+                <section>
+                    <h2>Eviction Policies</h2>
+                    <p class="subtitle">Memory Management Strategies</p>
+                </section>
+
+                <section>
+                    <h3>Eviction vs Expiry</h3>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Aspect</th>
+                            <th>Eviction</th>
+                            <th>Expiry</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Purpose</strong></td>
+                            <td>Memory management</td>
+                            <td>Data freshness</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Trigger</strong></td>
+                            <td>Memory pressure</td>
+                            <td>Time elapsed</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Data Location</strong></td>
+                            <td>Moves to off-heap/disk</td>
+                            <td>Completely removed</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Recoverable</strong></td>
+                            <td>Yes (from off-heap)</td>
+                            <td>No</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>LRU Eviction Policy</h3>
+                    <p>Least Recently Used - evicts oldest accessed entries</p>
+                    <pre><code class="language-java">import org.apache.ignite.cache.eviction.lru.LruEvictionPolicy;
+
+CacheConfiguration&lt;Integer, String&gt; cfg =
+    new CacheConfiguration&lt;&gt;("lruCache");
+
+// Enable on-heap caching
+cfg.setOnheapCacheEnabled(true);
+
+// Configure LRU eviction - max 100 entries on heap
+LruEvictionPolicy&lt;Integer, String&gt; policy = new LruEvictionPolicy&lt;&gt;();
+policy.setMaxSize(100);
+
+cfg.setEvictionPolicyFactory(() -> policy);
+
+IgniteCache&lt;Integer, String&gt; cache = ignite.getOrCreateCache(cfg);
+
+// Add 200 entries - 100 oldest will be evicted to off-heap
+for (int i = 0; i &lt; 200; i++) {
+    cache.put(i, "Value-" + i);
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>FIFO Eviction Policy</h3>
+                    <p>First In, First Out - evicts in insertion order</p>
+                    <pre><code class="language-java">import org.apache.ignite.cache.eviction.fifo.FifoEvictionPolicy;
+
+CacheConfiguration&lt;Integer, String&gt; cfg =
+    new CacheConfiguration&lt;&gt;("fifoCache");
+
+cfg.setOnheapCacheEnabled(true);
+
+// Configure FIFO eviction - max 1000 entries
+FifoEvictionPolicy&lt;Integer, String&gt; policy = new FifoEvictionPolicy&lt;&gt;();
+policy.setMaxSize(1000);
+
+cfg.setEvictionPolicyFactory(() -> policy);
+
+IgniteCache&lt;Integer, String&gt; cache = ignite.getOrCreateCache(cfg);</code></pre>
+                </section>
+
+                <section>
+                    <h3>Memory-Based Eviction</h3>
+                    <pre><code class="language-java">LruEvictionPolicy&lt;Integer, String&gt; policy = new LruEvictionPolicy&lt;&gt;();
+
+// Size-based eviction
+policy.setMaxSize(10000);           // Max entries
+
+// Or memory-based eviction
+policy.setMaxMemorySize(100_000_000); // Max 100 MB
+
+// Batch eviction for better performance
+policy.setBatchSize(10);            // Evict 10 at a time
+
+cfg.setEvictionPolicyFactory(() -> policy);</code></pre>
+                </section>
+
+                <section>
+                    <h3>Eviction Flow</h3>
+                    <pre><code class="text">
+[Put Entry] --> [On-Heap Cache]
+                    |
+                    v
+            [Max Size Reached?]
+                    |
+          Yes       |        No
+            v       |         |
+    [Eviction Policy]        v
+            |           [Store Entry]
+            v
+    [Remove Oldest/LRU]
+            |
+            v
+    [Move to Off-Heap]
+</code></pre>
+                </section>
+
+                <section>
+                    <h3>Complete Eviction Example</h3>
+                    <pre><code class="language-java">public class EvictionDemo {
+    public static void main(String[] args) throws Exception {
+        try (Ignite ignite = Ignition.start()) {
+            CacheConfiguration&lt;Integer, String&gt; cfg =
+                new CacheConfiguration&lt;&gt;("evictionCache");
+
+            cfg.setOnheapCacheEnabled(true);
+
+            LruEvictionPolicy&lt;Integer, String&gt; policy =
+                new LruEvictionPolicy&lt;&gt;();
+            policy.setMaxSize(100);
+
+            cfg.setEvictionPolicyFactory(() -> policy);
+
+            IgniteCache&lt;Integer, String&gt; cache =
+                ignite.getOrCreateCache(cfg);
+
+            // Add 200 entries
+            for (int i = 0; i &lt; 200; i++) {
+                cache.put(i, "Value-" + i);
+            }
+
+            System.out.println("Total size: " + cache.size());
+            System.out.println("On-heap: ~100 (LRU managed)");
+
+            // Access entries 0-9 to make them "recent"
+            for (int i = 0; i &lt; 10; i++) {
+                cache.get(i);  // Now protected from eviction
+            }
+        }
+    }
+}</code></pre>
+                </section>
+            </section>
+
+            <!-- Section 4: Cache Entry Processors -->
+            <section>
+                <section>
+                    <h2>Cache Entry Processors</h2>
+                    <p class="subtitle">Atomic Server-Side Operations</p>
+                </section>
+
+                <section>
+                    <h3>Why Entry Processors?</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4>Without Entry Processor</h4>
+                            <pre><code class="language-java">// 3 network calls!
+Integer value = cache.get(key);
+value = value + 10;
+cache.put(key, value);
+// Race condition possible!</code></pre>
+                        </div>
+                        <div>
+                            <h4>With Entry Processor</h4>
+                            <pre><code class="language-java">// 1 network call, atomic!
+cache.invoke(key,
+    new IncrementProcessor(10));
+// No race condition!</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Entry Processor Interface</h3>
+                    <pre><code class="language-java">public interface CacheEntryProcessor&lt;K, V, T&gt; extends Serializable {
+    /**
+     * @param entry   The mutable cache entry
+     * @param args    Optional arguments
+     * @return        The result of processing
+     */
+    T process(MutableEntry&lt;K, V&gt; entry, Object... args)
+        throws EntryProcessorException;
+}</code></pre>
+                    <div class="info-box">
+                        <ul style="margin: 0;">
+                            <li><strong>K</strong> - Key type</li>
+                            <li><strong>V</strong> - Value type</li>
+                            <li><strong>T</strong> - Return type</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Increment Processor Example</h3>
+                    <pre><code class="language-java">public class IncrementProcessor
+    implements CacheEntryProcessor&lt;String, Integer, Integer&gt; {
+
+    private final int increment;
+
+    public IncrementProcessor(int increment) {
+        this.increment = increment;
+    }
+
+    @Override
+    public Integer process(MutableEntry&lt;String, Integer&gt; entry,
+                          Object... args) throws EntryProcessorException {
+        Integer current = entry.getValue();
+        if (current == null) {
+            current = 0;
+        }
+        Integer newValue = current + increment;
+        entry.setValue(newValue);  // Atomic update
+        return newValue;
+    }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Using the Increment Processor</h3>
+                    <pre><code class="language-java">CacheConfiguration&lt;String, Integer&gt; cfg =
+    new CacheConfiguration&lt;&gt;("counters");
+cfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+
+IgniteCache&lt;String, Integer&gt; cache = ignite.getOrCreateCache(cfg);
+
+cache.put("pageViews", 0);
+
+// Atomic increment - returns new value
+Integer newCount = cache.invoke("pageViews",
+    new IncrementProcessor(1));
+
+System.out.println("New count: " + newCount);  // 1
+
+// Increment by 10
+newCount = cache.invoke("pageViews",
+    new IncrementProcessor(10));
+
+System.out.println("New count: " + newCount);  // 11</code></pre>
+                </section>
+
+                <section>
+                    <h3>Conditional Update Processor</h3>
+                    <pre><code class="language-java">public class WithdrawProcessor
+    implements CacheEntryProcessor&lt;String, Integer, Boolean&gt; {
+
+    private final int amount;
+
+    public WithdrawProcessor(int amount) {
+        this.amount = amount;
+    }
+
+    @Override
+    public Boolean process(MutableEntry&lt;String, Integer&gt; entry,
+                          Object... args) throws EntryProcessorException {
+        Integer balance = entry.getValue();
+
+        if (balance != null && balance >= amount) {
+            entry.setValue(balance - amount);
+            return true;   // Withdrawal successful
+        }
+        return false;      // Insufficient funds
+    }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Using Conditional Processor</h3>
+                    <pre><code class="language-java">cache.put("account:1234", 100);  // $100 balance
+
+// Try to withdraw $30
+Boolean success = cache.invoke("account:1234",
+    new WithdrawProcessor(30));
+
+System.out.println("Withdraw $30: " + success);     // true
+System.out.println("Balance: $" + cache.get("account:1234")); // 70
+
+// Try to withdraw $100 (more than available)
+success = cache.invoke("account:1234",
+    new WithdrawProcessor(100));
+
+System.out.println("Withdraw $100: " + success);    // false
+System.out.println("Balance: $" + cache.get("account:1234")); // 70</code></pre>
+                </section>
+
+                <section>
+                    <h3>Batch Processing with invokeAll</h3>
+                    <pre><code class="language-java">// Initialize counters
+cache.put("metric1", 0);
+cache.put("metric2", 0);
+cache.put("metric3", 0);
+
+Set&lt;String&gt; keys = new HashSet&lt;&gt;(
+    Arrays.asList("metric1", "metric2", "metric3")
+);
+
+// Increment all counters atomically
+Map&lt;String, EntryProcessorResult&lt;Integer&gt;&gt; results =
+    cache.invokeAll(keys, new IncrementProcessor(5));
+
+// Check results
+for (Map.Entry&lt;String, EntryProcessorResult&lt;Integer&gt;&gt; e :
+        results.entrySet()) {
+    System.out.println(e.getKey() + ": " + e.getValue().get());
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Entry Processor Benefits</h3>
+                    <div class="success-box">
+                        <ul style="margin: 0;">
+                            <li><strong>Atomic operations</strong> - No race conditions</li>
+                            <li><strong>Single network call</strong> - Reduced latency</li>
+                            <li><strong>Server-side processing</strong> - Less data transfer</li>
+                            <li><strong>Guaranteed consistency</strong> - Under contention</li>
+                            <li><strong>Transactional support</strong> - Works with transactions</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 5: Cache Events -->
+            <section>
+                <section>
+                    <h2>Cache Events</h2>
+                    <p class="subtitle">Monitoring Cache Activity</p>
+                </section>
+
+                <section>
+                    <h3>Event Types</h3>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Event Type</th>
+                            <th>Constant</th>
+                            <th>Triggered When</th>
+                        </tr>
+                        <tr>
+                            <td>Put</td>
+                            <td>EVT_CACHE_OBJECT_PUT</td>
+                            <td>Entry created or updated</td>
+                        </tr>
+                        <tr>
+                            <td>Read</td>
+                            <td>EVT_CACHE_OBJECT_READ</td>
+                            <td>Entry accessed</td>
+                        </tr>
+                        <tr>
+                            <td>Removed</td>
+                            <td>EVT_CACHE_OBJECT_REMOVED</td>
+                            <td>Entry deleted</td>
+                        </tr>
+                        <tr>
+                            <td>Expired</td>
+                            <td>EVT_CACHE_OBJECT_EXPIRED</td>
+                            <td>Entry expired</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Enabling Events</h3>
+                    <pre><code class="language-java">// Enable specific events locally
+ignite.events().enableLocal(
+    EventType.EVT_CACHE_OBJECT_PUT,
+    EventType.EVT_CACHE_OBJECT_REMOVED,
+    EventType.EVT_CACHE_OBJECT_READ
+);
+
+// Or enable via configuration
+IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setIncludeEventTypes(
+    EventType.EVT_CACHE_OBJECT_PUT,
+    EventType.EVT_CACHE_OBJECT_REMOVED,
+    EventType.EVT_CACHE_OBJECT_READ
+);</code></pre>
+                    <div class="warning-box">
+                        <strong>Note:</strong> Events are disabled by default for performance. Enable only what you need.
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Creating Event Listeners</h3>
+                    <pre><code class="language-java">IgnitePredicate&lt;CacheEvent&gt; listener = evt -> {
+    System.out.println("Event Type: " + evt.name());
+    System.out.println("Cache: " + evt.cacheName());
+    System.out.println("Key: " + evt.key());
+    System.out.println("Old Value: " + evt.oldValue());
+    System.out.println("New Value: " + evt.newValue());
+    System.out.println("Node: " + evt.node().id());
+    return true;  // Continue listening
+};
+
+// Register listener
+ignite.events().localListen(listener,
+    EventType.EVT_CACHE_OBJECT_PUT,
+    EventType.EVT_CACHE_OBJECT_REMOVED);</code></pre>
+                </section>
+
+                <section>
+                    <h3>Complete Events Example</h3>
+                    <pre><code class="language-java">public class CacheEventsDemo {
+    public static void main(String[] args) throws Exception {
+        try (Ignite ignite = Ignition.start()) {
+            // Enable events
+            ignite.events().enableLocal(
+                EventType.EVT_CACHE_OBJECT_PUT,
+                EventType.EVT_CACHE_OBJECT_REMOVED,
+                EventType.EVT_CACHE_OBJECT_READ);
+
+            // Create listener
+            IgnitePredicate&lt;CacheEvent&gt; listener = evt -> {
+                System.out.println("[" + evt.name() + "] " +
+                    evt.key() + " = " + evt.newValue());
+                return true;
+            };
+
+            ignite.events().localListen(listener,
+                EventType.EVT_CACHE_OBJECT_PUT,
+                EventType.EVT_CACHE_OBJECT_REMOVED);
+
+            IgniteCache&lt;Integer, String&gt; cache =
+                ignite.getOrCreateCache("eventCache");
+
+            cache.put(1, "Hello");      // Triggers PUT event
+            cache.put(1, "Updated");    // Triggers PUT event
+            cache.remove(1);            // Triggers REMOVED event
+        }
+    }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Event Use Cases</h3>
+                    <ul>
+                        <li><strong>Audit Logging</strong> - Track all data changes</li>
+                        <li><strong>Cache Statistics</strong> - Monitor hit/miss ratios</li>
+                        <li><strong>Workflow Triggers</strong> - Start processes on changes</li>
+                        <li><strong>Replication</strong> - Sync to external systems</li>
+                        <li><strong>Alerting</strong> - Notify on specific conditions</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Stopping Event Listeners</h3>
+                    <pre><code class="language-java">// Keep reference to listener
+IgnitePredicate&lt;CacheEvent&gt; listener = evt -> {
+    // Handle event
+    return true;
+};
+
+// Register
+ignite.events().localListen(listener,
+    EventType.EVT_CACHE_OBJECT_PUT);
+
+// Later: unregister when done
+ignite.events().stopLocalListen(listener);</code></pre>
+                </section>
+            </section>
+
+            <!-- Section 6: Continuous Queries -->
+            <section>
+                <section>
+                    <h2>Continuous Queries</h2>
+                    <p class="subtitle">Real-Time Notifications</p>
+                </section>
+
+                <section>
+                    <h3>What are Continuous Queries?</h3>
+                    <div class="info-box">
+                        <p><strong>Continuous Queries</strong> provide real-time notifications when cache data matching specific criteria changes.</p>
+                    </div>
+                    <ul>
+                        <li>Server-side filtering</li>
+                        <li>Push-based notifications</li>
+                        <li>Low latency updates</li>
+                        <li>Reduced network traffic</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Continuous Query Components</h3>
+                    <pre><code class="text">
++-------------------+     +-------------------+
+|   Cache Entry     |     |   Remote Filter   |
+|   (on server)     | --> |   (on server)     |
++-------------------+     +-------------------+
+                                   |
+                              [matches?]
+                                   |
+                    Yes            v            No
+                     +-------------------------+
+                     |                         |
+                     v                         v
+          +------------------+          [discard]
+          | Local Listener   |
+          | (on client)      |
+          +------------------+
+                     |
+                     v
+          [Process notification]
+</code></pre>
+                </section>
+
+                <section>
+                    <h3>Creating a Continuous Query</h3>
+                    <pre><code class="language-java">ContinuousQuery&lt;Integer, Double&gt; query = new ContinuousQuery&lt;&gt;();
+
+// Local listener - called when filter matches
+query.setLocalListener(events -> {
+    for (CacheEntryEvent&lt;? extends Integer, ? extends Double&gt; e : events) {
+        System.out.println("Key: " + e.getKey());
+        System.out.println("Old: " + e.getOldValue());
+        System.out.println("New: " + e.getValue());
+    }
+});
+
+// Remote filter - runs on server, filters what gets sent
+query.setRemoteFilterFactory(() ->
+    event -> event.getValue() > 100.0  // Only notify if value > 100
+);
+
+// Start the continuous query
+QueryCursor&lt;Cache.Entry&lt;Integer, Double&gt;&gt; cursor =
+    cache.query(query);</code></pre>
+                </section>
+
+                <section>
+                    <h3>Stock Price Alert Example</h3>
+                    <pre><code class="language-java">CacheConfiguration&lt;String, Double&gt; cfg =
+    new CacheConfiguration&lt;&gt;("stockPrices");
+IgniteCache&lt;String, Double&gt; cache = ignite.getOrCreateCache(cfg);
+
+ContinuousQuery&lt;String, Double&gt; alertQuery = new ContinuousQuery&lt;&gt;();
+
+// Alert when any stock goes above $150
+alertQuery.setLocalListener(events -> {
+    for (var event : events) {
+        System.out.println("ALERT: " + event.getKey() +
+            " price spiked to $" + event.getValue());
+    }
+});
+
+alertQuery.setRemoteFilterFactory(() ->
+    event -> event.getValue() > 150.0
+);
+
+try (QueryCursor&lt;?&gt; cursor = cache.query(alertQuery)) {
+    cache.put("AAPL", 145.0);   // No alert
+    cache.put("GOOGL", 155.0);  // ALERT!
+    cache.put("AAPL", 160.0);   // ALERT!
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Complete Continuous Query Example</h3>
+                    <pre><code class="language-java">public class ContinuousQueryDemo {
+    public static void main(String[] args) throws Exception {
+        try (Ignite ignite = Ignition.start()) {
+            IgniteCache&lt;Integer, Double&gt; cache =
+                ignite.getOrCreateCache("prices");
+
+            ContinuousQuery&lt;Integer, Double&gt; query =
+                new ContinuousQuery&lt;&gt;();
+
+            query.setLocalListener(events -> {
+                for (var e : events) {
+                    System.out.printf("Stock %d: $%.2f -> $%.2f%n",
+                        e.getKey(), e.getOldValue(), e.getValue());
+                }
+            });
+
+            // Filter: only prices > $100
+            query.setRemoteFilterFactory(() -> evt -> evt.getValue() > 100.0);
+
+            try (QueryCursor&lt;?&gt; cursor = cache.query(query)) {
+                cache.put(1, 50.0);   // Below threshold - no notification
+                cache.put(2, 150.0);  // Above - notification!
+                cache.put(1, 120.0);  // Crosses threshold - notification!
+
+                Thread.sleep(1000);   // Wait for notifications
+            }
+        }
+    }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Initial Query Option</h3>
+                    <pre><code class="language-java">ContinuousQuery&lt;String, Double&gt; query = new ContinuousQuery&lt;&gt;();
+
+// Set listener for updates
+query.setLocalListener(events -> { /* handle updates */ });
+
+// Also get existing entries matching a condition
+query.setInitialQuery(new ScanQuery&lt;&gt;(
+    (k, v) -> v > 100.0  // Get all stocks > $100
+));
+
+try (QueryCursor&lt;Cache.Entry&lt;String, Double&gt;&gt; cursor =
+        cache.query(query)) {
+
+    // First: iterate existing entries
+    for (Cache.Entry&lt;String, Double&gt; entry : cursor) {
+        System.out.println("Existing: " + entry.getKey() +
+            " = $" + entry.getValue());
+    }
+
+    // Then: receive real-time updates via listener
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Continuous Query Use Cases</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 style="color: #27ae60;">Best For</h4>
+                            <ul>
+                                <li>Real-time dashboards</li>
+                                <li>Alert systems</li>
+                                <li>Live data feeds</li>
+                                <li>Event-driven architecture</li>
+                                <li>Cache invalidation</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: #e74c3c;">Consider Carefully</h4>
+                            <ul>
+                                <li>High-frequency updates</li>
+                                <li>Many active queries</li>
+                                <li>Complex filter logic</li>
+                                <li>Large result sets</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Continuous Queries vs Events</h3>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Feature</th>
+                            <th>Continuous Query</th>
+                            <th>Cache Events</th>
+                        </tr>
+                        <tr>
+                            <td>Filtering</td>
+                            <td>Server-side (efficient)</td>
+                            <td>Client-side only</td>
+                        </tr>
+                        <tr>
+                            <td>Scope</td>
+                            <td>Specific cache</td>
+                            <td>All caches</td>
+                        </tr>
+                        <tr>
+                            <td>Initial Data</td>
+                            <td>Yes (optional)</td>
+                            <td>No</td>
+                        </tr>
+                        <tr>
+                            <td>Use Case</td>
+                            <td>Real-time updates</td>
+                            <td>Audit/monitoring</td>
+                        </tr>
+                    </table>
+                </section>
+            </section>
+
+            <!-- Section 7: Real-Time Notifications Summary -->
+            <section>
+                <section>
+                    <h2>Real-Time Notifications</h2>
+                    <p class="subtitle">Choosing the Right Approach</p>
+                </section>
+
+                <section>
+                    <h3>Notification Options Summary</h3>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Method</th>
+                            <th>Use When</th>
+                            <th>Filtering</th>
+                        </tr>
+                        <tr>
+                            <td>Cache Events</td>
+                            <td>Audit, monitoring all changes</td>
+                            <td>Client-side</td>
+                        </tr>
+                        <tr>
+                            <td>Continuous Queries</td>
+                            <td>Targeted real-time updates</td>
+                            <td>Server-side</td>
+                        </tr>
+                        <tr>
+                            <td>Messaging (Pub/Sub)</td>
+                            <td>Custom notifications</td>
+                            <td>Topic-based</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Decision Flow</h3>
+                    <pre><code class="text">
+Need real-time cache updates?
+           |
+     +-----+-----+
+     |           |
+    Yes          No --> Consider polling
+     |
+Need server-side filtering?
+     |
++----+----+
+|         |
+Yes       No
+|         |
+|         +--> Cache Events
+|              (all changes, filter client-side)
+|
++--> Continuous Query
+     (filtered updates, efficient)
+</code></pre>
+                </section>
+
+                <section>
+                    <h3>Performance Considerations</h3>
+                    <div class="warning-box">
+                        <h4 style="margin-top: 0;">Keep in Mind:</h4>
+                        <ul style="margin-bottom: 0;">
+                            <li>Continuous queries have overhead - use selectively</li>
+                            <li>Events are disabled by default for performance</li>
+                            <li>Remote filters reduce network traffic</li>
+                            <li>Too many listeners can impact performance</li>
+                            <li>Always close query cursors when done</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Summary and Lab -->
+            <section>
+                <section>
+                    <h2>Module Summary</h2>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Pattern</th>
+                            <th>Purpose</th>
+                            <th>Key Benefit</th>
+                        </tr>
+                        <tr>
+                            <td>Near Cache</td>
+                            <td>Client-side caching</td>
+                            <td>Reduced latency</td>
+                        </tr>
+                        <tr>
+                            <td>Expiry Policies</td>
+                            <td>TTL management</td>
+                            <td>Data freshness</td>
+                        </tr>
+                        <tr>
+                            <td>Eviction Policies</td>
+                            <td>Memory management</td>
+                            <td>Controlled memory</td>
+                        </tr>
+                        <tr>
+                            <td>Entry Processors</td>
+                            <td>Atomic operations</td>
+                            <td>No race conditions</td>
+                        </tr>
+                        <tr>
+                            <td>Cache Events</td>
+                            <td>Monitoring</td>
+                            <td>Audit trail</td>
+                        </tr>
+                        <tr>
+                            <td>Continuous Queries</td>
+                            <td>Real-time updates</td>
+                            <td>Push notifications</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>Lab 8 Exercises</h2>
+                    <div class="info-box">
+                        <ol>
+                            <li><strong>Near Cache</strong> - Configure client-side caching</li>
+                            <li><strong>Expiry Policies</strong> - Implement Created, Modified, Touched</li>
+                            <li><strong>Eviction</strong> - Configure LRU eviction</li>
+                            <li><strong>Entry Processors</strong> - Build atomic operations</li>
+                            <li><strong>Cache Events</strong> - Create event listeners</li>
+                            <li><strong>Continuous Queries</strong> - Implement real-time alerts</li>
+                        </ol>
+                    </div>
+                    <p>Duration: 60 minutes</p>
+                </section>
+
+                <section>
+                    <h2>Key Takeaways</h2>
+                    <ul>
+                        <li><span class="accent">Near caches</span> reduce latency for read-heavy client workloads</li>
+                        <li><span class="accent">Expiry policies</span> manage data freshness (Created, Modified, Touched)</li>
+                        <li><span class="accent">Eviction policies</span> manage memory, not data lifetime</li>
+                        <li><span class="accent">Entry processors</span> enable atomic read-modify-write operations</li>
+                        <li><span class="accent">Cache events</span> provide monitoring and audit capabilities</li>
+                        <li><span class="accent">Continuous queries</span> deliver efficient real-time notifications</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Next Module</h2>
+                    <h3>Module 09: Distributed Computing</h3>
+                    <ul>
+                        <li>Compute Grid Architecture</li>
+                        <li>Compute Closures and Jobs</li>
+                        <li>Affinity-Aware Computing</li>
+                        <li>MapReduce Operations</li>
+                        <li>Parallel Processing</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h1>Questions?</h1>
+                    <p class="subtitle">Module 08: Advanced Caching Patterns</p>
+                </section>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all',
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            center: true,
+            plugins: [ RevealHighlight, RevealNotes ]
+        });
+    </script>
+</body>
+</html>

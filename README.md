@@ -123,9 +123,7 @@ Professional training course for Apache Ignite, covering fundamentals through pr
 apache_ignite_v1/
 ├── README.md                    # This file
 ├── .gitignore                   # Git ignore rules
-├── GITIGNORE_GUIDE.md          # Detailed gitignore documentation
-├── init-git.sh                 # Git repository setup script
-├── labs/                       # All 12 hands-on labs
+├── labs/                        # All 12 hands-on labs
 │   ├── README.md
 │   ├── lab01_environment_setup.md
 │   ├── lab02_multinode_cluster.md
@@ -139,11 +137,36 @@ apache_ignite_v1/
 │   ├── lab10_integration_connectivity.md
 │   ├── lab11_performance_tuning.md
 │   └── lab12_production_deployment.md
-└── presentations/              # Presentation content
-    ├── README.md
-    ├── module01_intro_inmemory_computing.md
-    ├── module02_architecture_deep_dive.md
-    └── module03_basic_cache_operations.md
+├── presentations/               # reveal.js presentations
+│   ├── README.md
+│   ├── module-01-intro-inmemory-computing.html
+│   ├── module-02-architecture-deep-dive.html
+│   ├── module-03-basic-cache-operations.html
+│   ├── module-04-configuration-deployment.html
+│   ├── module-05-data-modeling-persistence.html
+│   ├── module-06-sql-indexing.html
+│   ├── module-07-transactions-acid.html
+│   ├── module-08-advanced-caching.html
+│   ├── module-09-compute-grid.html
+│   ├── module-10-integration-connectivity.html
+│   ├── module-11-performance-tuning.html
+│   └── module-12-production-deployment.html
+└── tests/                       # JUnit test suite
+    ├── pom.xml
+    └── src/test/java/com/example/ignite/tests/
+        ├── BaseIgniteTest.java
+        ├── Lab01EnvironmentSetupTest.java
+        ├── Lab02MultiNodeClusterTest.java
+        ├── Lab03BasicCacheOperationsTest.java
+        ├── Lab04ConfigurationDeploymentTest.java
+        ├── Lab05DataModelingPersistenceTest.java
+        ├── Lab06SqlIndexingTest.java
+        ├── Lab07TransactionsAcidTest.java
+        ├── Lab08AdvancedCachingTest.java
+        ├── Lab09ComputeGridTest.java
+        ├── Lab10IntegrationConnectivityTest.java
+        ├── Lab11PerformanceTuningTest.java
+        └── Lab12ProductionDeploymentTest.java
 ```
 
 ## Getting Started
@@ -216,15 +239,14 @@ Each lab includes:
 
 ## Presentation Materials
 
-The `presentations/` directory contains detailed slide content for all modules:
+The `presentations/` directory contains reveal.js HTML presentations for all 12 modules:
 
-- **26-30 slides per module** with full content
-- **Code examples** ready to copy and demonstrate
-- **Diagrams and visual aids** (ASCII art)
-- **Instructor notes** with timing and key points
-- **Common questions** and discussion prompts
+- **Interactive HTML slides** - open directly in any browser
+- **Code examples** with syntax highlighting
+- **Clean visual design** with responsive layout
+- **Navigation** via keyboard arrows, space bar, or touch
 
-Perfect for self-study or instructor-led delivery.
+Simply open any `.html` file in a browser to view the presentation.
 
 ## Daily Schedule
 
@@ -245,12 +267,6 @@ Perfect for self-study or instructor-led delivery.
 
 ### Initialize Git Repository
 
-**Automated:**
-```bash
-./init-git.sh
-```
-
-**Manual:**
 ```bash
 git init
 git add .
@@ -266,8 +282,6 @@ The `.gitignore` file excludes:
 - **IDE files:** .idea/, *.iml, .vscode/
 - **macOS files:** .DS_Store, ._*
 - **Credentials:** *.jks, *.key, *.pem
-
-See `GITIGNORE_GUIDE.md` for detailed explanations.
 
 ### Connect to Remote Repository
 

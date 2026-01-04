@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 1: Introduction to In-Memory Computing - Apache Ignite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+    <style>
+        :root {
+            --heading-color: #2c3e50;
+            --accent-color: #e67e22;
+            --text-color: #333;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--heading-color);
+            font-weight: 600;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal h3 {
+            font-size: 1.3em;
+            color: var(--accent-color);
+        }
+
+        .reveal a {
+            color: var(--accent-color);
+        }
+
+        .reveal a:hover {
+            color: #d35400;
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal ul, .reveal ol {
+            display: block;
+            margin-left: 1em;
+        }
+
+        .reveal li {
+            margin-bottom: 0.5em;
+            font-size: 0.85em;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.55em;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .reveal pre code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1em;
+        }
+
+        .reveal table {
+            font-size: 0.6em;
+            margin: 0 auto;
+            border-collapse: collapse;
+        }
+
+        .reveal table th {
+            background: var(--heading-color);
+            color: white;
+            padding: 0.5em 0.8em;
+        }
+
+        .reveal table td {
+            padding: 0.4em 0.8em;
+            border: 1px solid #ddd;
+        }
+
+        .reveal table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        .reveal .title-slide h1 {
+            font-size: 2.5em;
+            color: var(--accent-color);
+        }
+
+        .reveal .title-slide h2 {
+            color: var(--heading-color);
+            font-size: 1.4em;
+        }
+
+        .reveal .highlight-box {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            padding: 1em;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+            margin: 0.5em 0;
+        }
+
+        .reveal .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .reveal .two-column > div {
+            flex: 1;
+        }
+
+        .reveal .checkmark {
+            color: var(--success-color);
+        }
+
+        .reveal .crossmark {
+            color: var(--danger-color);
+        }
+
+        .reveal .warning {
+            color: var(--warning-color);
+        }
+
+        .reveal .architecture-box {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1em;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.7em;
+            white-space: pre;
+            text-align: left;
+        }
+
+        .reveal .metric {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .reveal .subtitle {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: -0.5em;
+        }
+
+        .reveal strong {
+            color: var(--heading-color);
+        }
+
+        .reveal .fragment.highlight-current-orange.current-fragment {
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Title Slide -->
+            <section class="title-slide" data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+                <h1 style="color: white;">Introduction to In-Memory Computing</h1>
+                <h2 style="color: #f0f0f0;">with Apache Ignite</h2>
+                <p style="color: #ddd; margin-top: 2em;">
+                    Module 1 | 3-Day Intensive Course<br>
+                    <em>Hands-on Labs Throughout</em>
+                </p>
+            </section>
+
+            <!-- Module Objectives -->
+            <section>
+                <h2>Module Objectives</h2>
+                <p>By the end of this module, you will understand:</p>
+                <ul>
+                    <li class="fragment">What in-memory computing is and why it matters</li>
+                    <li class="fragment">Traditional database limitations</li>
+                    <li class="fragment">In-memory computing use cases</li>
+                    <li class="fragment">Apache Ignite's position in the ecosystem</li>
+                    <li class="fragment">How Ignite compares to alternatives</li>
+                </ul>
+            </section>
+
+            <!-- Traditional Database Limitations -->
+            <section>
+                <section>
+                    <h2>Traditional Database Limitations</h2>
+                    <h3>The Problem with Disk-Based Databases</h3>
+                </section>
+
+                <section>
+                    <h3>Performance Bottleneck</h3>
+                    <pre><code class="language-plaintext">Disk I/O:        ~100-200 IOPS (HDD)
+                 ~10,000-100,000 IOPS (SSD)
+RAM Access:      ~1,000,000+ IOPS</code></pre>
+                    <h3>Speed Comparison</h3>
+                    <ul>
+                        <li><strong>RAM:</strong> 100 nanoseconds</li>
+                        <li><strong>SSD:</strong> 50-150 microseconds <span class="warning">(500-1500x slower)</span></li>
+                        <li><strong>HDD:</strong> 1-10 milliseconds <span class="crossmark">(10,000-100,000x slower)</span></li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Challenges</h3>
+                    <ul>
+                        <li>Slow query response times</li>
+                        <li>Limited scalability</li>
+                        <li>High latency for real-time applications</li>
+                        <li>Expensive hardware upgrades</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- What is In-Memory Computing -->
+            <section>
+                <section>
+                    <h2>What is In-Memory Computing?</h2>
+                    <div class="highlight-box">
+                        <p><strong>In-Memory Computing (IMC)</strong> uses RAM as the primary storage medium for data and computation.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Key Characteristics</h3>
+                    <ul>
+                        <li>Data stored in RAM, not disk</li>
+                        <li>Distributed across cluster nodes</li>
+                        <li>Massively parallel processing</li>
+                        <li>Sub-millisecond response times</li>
+                        <li>Horizontal scalability</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Architecture Comparison</h3>
+                    <div class="architecture-box">Traditional Architecture:
+[Application] --> [Database on Disk] --> Slow
+
+In-Memory Computing:
+[Application] --> [Distributed RAM Grid] --> Fast</div>
+                </section>
+            </section>
+
+            <!-- In-Memory Computing vs Caching -->
+            <section>
+                <h2>In-Memory Computing vs Caching</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>Traditional Caching</h3>
+                        <ul>
+                            <li>Sits in front of database</li>
+                            <li>Cache-aside pattern</li>
+                            <li>Limited functionality</li>
+                            <li>Cache invalidation challenges</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>In-Memory Platform</h3>
+                        <ul>
+                            <li>Full-featured data platform</li>
+                            <li>ACID transactions</li>
+                            <li>SQL queries</li>
+                            <li>Distributed computing</li>
+                            <li>Persistence options</li>
+                            <li><strong>Primary data store</strong></li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Why In-Memory Computing Matters -->
+            <section>
+                <section>
+                    <h2>Why In-Memory Computing Matters</h2>
+                    <h3>Business Drivers</h3>
+                </section>
+
+                <section>
+                    <h3>1. Real-Time Requirements</h3>
+                    <ul>
+                        <li>Financial trading (microsecond decisions)</li>
+                        <li>Fraud detection (instant analysis)</li>
+                        <li>Recommendation engines (immediate personalization)</li>
+                    </ul>
+
+                    <h3>2. Data Volume Growth</h3>
+                    <ul>
+                        <li>IoT sensors generating massive data streams</li>
+                        <li>Social media analytics</li>
+                        <li>Log aggregation and analysis</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>3. User Expectations</h3>
+                    <ul>
+                        <li>Sub-second response times</li>
+                        <li>Always-on availability</li>
+                        <li>Instant insights</li>
+                    </ul>
+
+                    <h3>4. Competitive Advantage</h3>
+                    <ul>
+                        <li>Faster decisions = better outcomes</li>
+                        <li>Real-time analytics = actionable insights</li>
+                        <li>Better user experience = customer retention</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Use Cases -->
+            <section>
+                <section>
+                    <h2>In-Memory Computing Use Cases</h2>
+                    <h3>Industry Applications</h3>
+                </section>
+
+                <section>
+                    <div class="two-column">
+                        <div>
+                            <h3>Financial Services</h3>
+                            <ul>
+                                <li>High-frequency trading</li>
+                                <li>Risk calculations</li>
+                                <li>Fraud detection</li>
+                                <li>Real-time settlement</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>Retail & E-Commerce</h3>
+                            <ul>
+                                <li>Product recommendations</li>
+                                <li>Inventory management</li>
+                                <li>Dynamic pricing</li>
+                                <li>Shopping cart management</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <div class="two-column">
+                        <div>
+                            <h3>Telecommunications</h3>
+                            <ul>
+                                <li>CDR processing</li>
+                                <li>Network monitoring</li>
+                                <li>Customer 360 view</li>
+                                <li>Real-time billing</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>IoT & Edge Computing</h3>
+                            <ul>
+                                <li>Sensor data processing</li>
+                                <li>Predictive maintenance</li>
+                                <li>Real-time monitoring</li>
+                                <li>Edge analytics</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Gaming</h3>
+                    <ul>
+                        <li>Player state management</li>
+                        <li>Leaderboards</li>
+                        <li>Session management</li>
+                        <li>Real-time matchmaking</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Apache Ignite Overview -->
+            <section>
+                <section>
+                    <h2>Apache Ignite Overview</h2>
+                    <div class="highlight-box">
+                        <p><strong>Apache Ignite</strong> is a distributed database for high-performance computing with in-memory speed.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Key Features</h3>
+                    <ul>
+                        <li>Distributed in-memory cache</li>
+                        <li>SQL queries (ANSI-99)</li>
+                        <li>ACID transactions</li>
+                        <li>Distributed computing</li>
+                        <li>Machine learning</li>
+                        <li>Streaming & CEP</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Origins</h3>
+                    <ul>
+                        <li>Open source (Apache 2.0 license)</li>
+                        <li>Apache Top-Level Project</li>
+                        <li>Active community</li>
+                        <li>Production-proven (GridGain roots since 2007)</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Ignite Architecture -->
+            <section>
+                <h2>Ignite Architecture Overview</h2>
+                <div class="architecture-box">+---------------------------------------------+
+|        Apache Ignite Cluster                |
++---------------------------------------------+
+|  Data Grid (Distributed Cache)              |
+|  - Key-Value API                            |
+|  - SQL (ANSI-99)                            |
+|  - Transactions                             |
++---------------------------------------------+
+|  Compute Grid                               |
+|  - Distributed Computing                    |
+|  - MapReduce                                |
+|  - Colocation                               |
++---------------------------------------------+
+|  Service Grid                               |
+|  - Microservices                            |
+|  - Cluster Singletons                       |
++---------------------------------------------+
+|  Streaming & CEP                            |
+|  - Data Streaming                           |
+|  - Complex Event Processing                 |
++---------------------------------------------+</div>
+            </section>
+
+            <!-- Ignite's Position in the Ecosystem -->
+            <section>
+                <h2>Ignite's Position in the Ecosystem</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>Ignite Is</h3>
+                        <ul>
+                            <li>Distributed Database</li>
+                            <li>In-Memory Data Grid (IMDG)</li>
+                            <li>Distributed Cache</li>
+                            <li>Compute Grid</li>
+                            <li>Streaming Platform</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Complements (not replaces)</h3>
+                        <ul>
+                            <li>Traditional databases</li>
+                            <li>Big data platforms (Hadoop, Spark)</li>
+                            <li>Message queues (Kafka)</li>
+                            <li>Application frameworks (Spring)</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Comparison Matrix -->
+            <section>
+                <section>
+                    <h2>Ignite vs Other Solutions</h2>
+                    <h3>Comparison Matrix</h3>
+                </section>
+
+                <section>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>Apache Ignite</th>
+                                <th>Redis</th>
+                                <th>Hazelcast</th>
+                                <th>Memcached</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>SQL Support</strong></td>
+                                <td><span class="checkmark">Full ANSI-99</span></td>
+                                <td><span class="crossmark">No</span></td>
+                                <td><span class="warning">Limited</span></td>
+                                <td><span class="crossmark">No</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>ACID Transactions</strong></td>
+                                <td><span class="checkmark">Yes</span></td>
+                                <td><span class="warning">Limited</span></td>
+                                <td><span class="checkmark">Yes</span></td>
+                                <td><span class="crossmark">No</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Distributed Computing</strong></td>
+                                <td><span class="checkmark">Yes</span></td>
+                                <td><span class="crossmark">No</span></td>
+                                <td><span class="checkmark">Yes</span></td>
+                                <td><span class="crossmark">No</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Native Persistence</strong></td>
+                                <td><span class="checkmark">Yes</span></td>
+                                <td><span class="warning">RDB/AOF</span></td>
+                                <td><span class="crossmark">No</span></td>
+                                <td><span class="crossmark">No</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cluster Size</strong></td>
+                                <td>100s of nodes</td>
+                                <td>Single master</td>
+                                <td>100s of nodes</td>
+                                <td>100s of nodes</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- Ignite vs Redis -->
+            <section>
+                <h2>Ignite vs Redis</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>Apache Ignite</h3>
+                        <ul>
+                            <li><span class="checkmark">Distributed SQL with joins</span></li>
+                            <li><span class="checkmark">ACID transactions</span></li>
+                            <li><span class="checkmark">Distributed computing</span></li>
+                            <li><span class="checkmark">Multi-language clients</span></li>
+                            <li><span class="checkmark">Horizontal scalability</span></li>
+                        </ul>
+                        <p><em>Use case: Distributed database + compute</em></p>
+                    </div>
+                    <div>
+                        <h3>Redis</h3>
+                        <ul>
+                            <li><span class="checkmark">Extremely fast for simple ops</span></li>
+                            <li><span class="checkmark">Rich data structures</span></li>
+                            <li><span class="checkmark">Pub/sub messaging</span></li>
+                            <li><span class="crossmark">Limited query capabilities</span></li>
+                            <li><span class="crossmark">Single-threaded</span></li>
+                        </ul>
+                        <p><em>Use case: Simple caching, session store</em></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ignite vs Hazelcast -->
+            <section>
+                <h2>Ignite vs Hazelcast</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>Apache Ignite</h3>
+                        <ul>
+                            <li><span class="checkmark">Full SQL support (ANSI-99)</span></li>
+                            <li><span class="checkmark">Native persistence</span></li>
+                            <li><span class="checkmark">Better for analytics</span></li>
+                            <li><span class="checkmark">Apache open source</span></li>
+                            <li><span class="checkmark">ML built-in</span></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Hazelcast</h3>
+                        <ul>
+                            <li><span class="checkmark">Easier to get started</span></li>
+                            <li><span class="checkmark">Strong JCache compliance</span></li>
+                            <li><span class="warning">Limited SQL</span></li>
+                            <li><span class="warning">No native persistence (enterprise)</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <p style="text-align: center; margin-top: 1em;"><em>Both are distributed IMDGs with ACID transactions and horizontal scaling</em></p>
+            </section>
+
+            <!-- Ignite Benefits -->
+            <section>
+                <section>
+                    <h2>Why Choose Apache Ignite?</h2>
+                </section>
+
+                <section>
+                    <div class="two-column">
+                        <div>
+                            <h3>1. Performance</h3>
+                            <ul>
+                                <li>Sub-millisecond latency</li>
+                                <li>Millions of ops/sec</li>
+                                <li>Linear scalability</li>
+                            </ul>
+
+                            <h3>2. Versatility</h3>
+                            <ul>
+                                <li>Cache, database, or both</li>
+                                <li>Multiple APIs</li>
+                                <li>Flexible deployment</li>
+                            </ul>
+
+                            <h3>3. ACID Compliance</h3>
+                            <ul>
+                                <li>Full transactional support</li>
+                                <li>Multiple isolation levels</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>4. SQL Support</h3>
+                            <ul>
+                                <li>ANSI-99 SQL</li>
+                                <li>Distributed joins</li>
+                                <li>JDBC/ODBC drivers</li>
+                            </ul>
+
+                            <h3>5. Persistence</h3>
+                            <ul>
+                                <li>Native persistence</li>
+                                <li>Survive restarts</li>
+                                <li>Write-through/behind</li>
+                            </ul>
+
+                            <h3>6. Open Source</h3>
+                            <ul>
+                                <li>Apache 2.0 license</li>
+                                <li>No vendor lock-in</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Success Stories -->
+            <section>
+                <h2>Real-World Success Stories</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>ING Bank</h3>
+                        <ul>
+                            <li>300+ node cluster</li>
+                            <li>Millions of transactions</li>
+                            <li>Sub-millisecond performance</li>
+                            <li>99.99% uptime</li>
+                        </ul>
+
+                        <h3>Sberbank</h3>
+                        <ul>
+                            <li>600+ nodes (largest)</li>
+                            <li>Core banking platform</li>
+                            <li>Real-time fraud detection</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>American Airlines</h3>
+                        <ul>
+                            <li>Flight booking system</li>
+                            <li>Real-time inventory</li>
+                            <li>High availability</li>
+                        </ul>
+
+                        <h3>Barclays</h3>
+                        <ul>
+                            <li>Trading platform</li>
+                            <li>Risk calculations</li>
+                            <li>Real-time analytics</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Deployment Models -->
+            <section>
+                <section>
+                    <h2>Ignite Deployment Models</h2>
+                    <h3>Flexible Deployment Options</h3>
+                </section>
+
+                <section>
+                    <h3>1. Embedded Mode</h3>
+                    <div class="architecture-box">[Application + Ignite Node]</div>
+                    <ul>
+                        <li>Ignite runs in same JVM as application</li>
+                        <li>Zero-latency data access</li>
+                        <li>Simpler deployment</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>2. Client-Server Mode</h3>
+                    <div class="architecture-box">[Application] --> [Ignite Cluster]</div>
+                    <ul>
+                        <li>Application is lightweight client</li>
+                        <li>Cluster is separate tier</li>
+                        <li>Better resource isolation</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>3. Kubernetes/Cloud</h3>
+                    <ul>
+                        <li>Container-based deployment</li>
+                        <li>Auto-scaling</li>
+                        <li>Cloud-native architecture</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Learning Path -->
+            <section>
+                <h2>Getting Started Journey</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>Week 1: Fundamentals</h3>
+                        <ul>
+                            <li>Setup and basic operations</li>
+                            <li>Cache modes and configuration</li>
+                            <li>Simple queries</li>
+                        </ul>
+
+                        <h3>Week 2: Advanced</h3>
+                        <ul>
+                            <li>Data modeling</li>
+                            <li>Transactions</li>
+                            <li>Distributed computing</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Week 3: Production</h3>
+                        <ul>
+                            <li>Performance tuning</li>
+                            <li>Monitoring</li>
+                            <li>Deployment strategies</li>
+                        </ul>
+
+                        <h3>Ongoing</h3>
+                        <ul>
+                            <li>Community engagement</li>
+                            <li>Stay updated with releases</li>
+                            <li>Share experiences</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Common Misconceptions -->
+            <section>
+                <h2>Common Misconceptions</h2>
+                <h3>Myths vs Reality</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Myth</th>
+                            <th>Reality</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>"In-memory = data loss on restart"</td>
+                            <td><span class="checkmark">Ignite has native persistence</span></td>
+                        </tr>
+                        <tr>
+                            <td>"Too expensive (RAM costs)"</td>
+                            <td><span class="checkmark">TCO often lower - fewer servers needed</span></td>
+                        </tr>
+                        <tr>
+                            <td>"Only for caching"</td>
+                            <td><span class="checkmark">Full-featured distributed database</span></td>
+                        </tr>
+                        <tr>
+                            <td>"Can't handle large datasets"</td>
+                            <td><span class="checkmark">Scales to petabytes with persistence</span></td>
+                        </tr>
+                        <tr>
+                            <td>"Difficult to learn"</td>
+                            <td><span class="checkmark">Standard APIs (SQL, JDBC, JCache)</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- When NOT to Use -->
+            <section>
+                <h2>When NOT to Use Ignite</h2>
+                <h3>Be Realistic</h3>
+                <div class="highlight-box">
+                    <p><strong>Not Ideal For:</strong></p>
+                    <ul>
+                        <li><strong>Simple caching needs</strong> - Redis/Memcached might be simpler</li>
+                        <li><strong>Very small datasets</strong> - Traditional database may suffice</li>
+                        <li><strong>Write-heavy, no read requirements</strong> - Traditional DB might be better</li>
+                        <li><strong>No distributed requirements</strong> - Single-node database easier</li>
+                    </ul>
+                </div>
+                <p style="text-align: center; margin-top: 1em;"><em>Key Question: Does the benefit justify the complexity?</em></p>
+            </section>
+
+            <!-- Architecture Patterns -->
+            <section>
+                <section>
+                    <h2>Architecture Patterns</h2>
+                    <h3>Common Usage Patterns</h3>
+                </section>
+
+                <section>
+                    <h3>1. System of Record</h3>
+                    <div class="architecture-box">[Application] --> [Ignite (Primary Store)]</div>
+                    <ul>
+                        <li>Ignite as main database</li>
+                        <li>Native persistence enabled</li>
+                        <li>Full ACID compliance</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>2. Caching Layer</h3>
+                    <div class="architecture-box">[Application] --> [Ignite Cache] --> [Database]</div>
+                    <ul>
+                        <li>Cache-aside or write-through</li>
+                        <li>Faster read access</li>
+                        <li>Reduced DB load</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>3. Hybrid</h3>
+                    <div class="architecture-box">[Application] --> [Ignite (Hot Data)]
+              --> [Database (Cold Data)]</div>
+                    <ul>
+                        <li>Frequently accessed data in Ignite</li>
+                        <li>Historical data in database</li>
+                        <li>Best of both worlds</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Performance Expectations -->
+            <section>
+                <section>
+                    <h2>Performance Expectations</h2>
+                </section>
+
+                <section>
+                    <h3>Read Operations</h3>
+                    <ul>
+                        <li>Single key lookup: <span class="metric">&lt; 1ms</span></li>
+                        <li>Batch operations: <span class="metric">100K+ ops/sec</span> per node</li>
+                        <li>SQL queries: Sub-millisecond to seconds</li>
+                    </ul>
+
+                    <h3>Write Operations</h3>
+                    <ul>
+                        <li>Single put: <span class="metric">1-2ms</span></li>
+                        <li>Batch puts: <span class="metric">50K+ ops/sec</span> per node</li>
+                        <li>Transactional: <span class="metric">10K+ tx/sec</span> per node</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Scalability</h3>
+                    <ul>
+                        <li>Linear scale-out (add nodes = add capacity)</li>
+                        <li>100+ node clusters in production</li>
+                        <li>Petabyte-scale deployments</li>
+                    </ul>
+
+                    <div class="highlight-box">
+                        <p><strong>Note:</strong> Actual performance depends on hardware, data model, access patterns, and configuration.</p>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Licensing and Support -->
+            <section>
+                <h2>Licensing and Support</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>Apache 2.0 License</h3>
+                        <ul>
+                            <li>Free to use</li>
+                            <li>Commercial-friendly</li>
+                            <li>No restrictions</li>
+                            <li>No royalties</li>
+                        </ul>
+
+                        <h3>Community Support</h3>
+                        <ul>
+                            <li>Mailing lists</li>
+                            <li>Stack Overflow</li>
+                            <li>GitHub issues</li>
+                            <li>Documentation</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Commercial Support</h3>
+                        <ul>
+                            <li>GridGain (commercial version)</li>
+                            <li>Enterprise features</li>
+                            <li>Professional services</li>
+                            <li>Training</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ecosystem and Integrations -->
+            <section>
+                <h2>Ecosystem and Integrations</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>Data Integration</h3>
+                        <ul>
+                            <li>Apache Kafka</li>
+                            <li>Apache Flink</li>
+                            <li>Apache Spark</li>
+                            <li>Hibernate</li>
+                        </ul>
+
+                        <h3>Frameworks</h3>
+                        <ul>
+                            <li>Spring Boot</li>
+                            <li>Quarkus</li>
+                            <li>Micronaut</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Monitoring</h3>
+                        <ul>
+                            <li>Prometheus</li>
+                            <li>Grafana</li>
+                            <li>ELK Stack</li>
+                            <li>Datadog</li>
+                        </ul>
+
+                        <h3>Cloud Platforms</h3>
+                        <ul>
+                            <li>Kubernetes</li>
+                            <li>Docker</li>
+                            <li>AWS, Azure, GCP</li>
+                            <li>OpenShift</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Course Overview -->
+            <section>
+                <h2>Course Overview</h2>
+                <h3>What's Next - 3 Days Ahead</h3>
+                <div class="two-column">
+                    <div>
+                        <h3>Day 1: Fundamentals</h3>
+                        <ul>
+                            <li>Architecture deep dive</li>
+                            <li>Basic operations</li>
+                            <li>Configuration</li>
+                        </ul>
+
+                        <h3>Day 2: Advanced</h3>
+                        <ul>
+                            <li>Data modeling</li>
+                            <li>SQL and indexing</li>
+                            <li>Transactions</li>
+                            <li>Advanced patterns</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Day 3: Production</h3>
+                        <ul>
+                            <li>Distributed computing</li>
+                            <li>Integration</li>
+                            <li>Performance tuning</li>
+                            <li>Production deployment</li>
+                        </ul>
+
+                        <h3>Hands-On Focus</h3>
+                        <ul>
+                            <li>12 comprehensive labs</li>
+                            <li>Real code examples</li>
+                            <li>Best practices</li>
+                            <li>Production scenarios</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Key Takeaways -->
+            <section>
+                <h2>Key Takeaways</h2>
+                <ol>
+                    <li class="fragment"><strong>In-memory computing is about speed AND scale</strong><br>
+                        <span class="subtitle">Not just faster, but massively scalable</span></li>
+                    <li class="fragment"><strong>Ignite is more than a cache</strong><br>
+                        <span class="subtitle">Full distributed database capabilities</span></li>
+                    <li class="fragment"><strong>Performance comes from RAM + distribution</strong><br>
+                        <span class="subtitle">Both aspects are critical</span></li>
+                    <li class="fragment"><strong>Real-world proven</strong><br>
+                        <span class="subtitle">Production deployments at major enterprises</span></li>
+                    <li class="fragment"><strong>Flexible deployment</strong><br>
+                        <span class="subtitle">Works in various architectures and patterns</span></li>
+                </ol>
+            </section>
+
+            <!-- Questions -->
+            <section data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+                <h2 style="color: white;">Questions?</h2>
+                <h3 style="color: #f0f0f0;">Discussion Topics</h3>
+                <ul style="color: #ddd;">
+                    <li>Your specific use cases</li>
+                    <li>Current performance challenges</li>
+                    <li>Architecture questions</li>
+                    <li>Technology comparisons</li>
+                </ul>
+                <p style="color: #f0f0f0; margin-top: 2em;"><strong>Next:</strong> Lab 1 - Environment Setup</p>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/markdown/markdown.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all',
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            center: false,
+            width: 1200,
+            height: 700,
+            margin: 0.1,
+            plugins: [RevealHighlight, RevealNotes, RevealMarkdown]
+        });
+    </script>
+</body>
+</html>

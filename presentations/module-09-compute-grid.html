@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 09: Compute Grid - Apache Ignite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/intellij-light.min.css">
+    <style>
+        :root {
+            --r-heading-color: #2c3e50;
+            --r-link-color: #e67e22;
+            --r-link-color-hover: #d35400;
+            --r-selection-background-color: #e67e22;
+        }
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4, .reveal h5, .reveal h6 {
+            color: #2c3e50;
+            text-transform: none;
+        }
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+        .reveal h3 {
+            font-size: 1.3em;
+        }
+        .reveal .accent {
+            color: #e67e22;
+        }
+        .reveal .highlight-box {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .reveal .concept-box {
+            background: #f8f9fa;
+            border-left: 5px solid #e67e22;
+            padding: 15px 20px;
+            margin: 15px 0;
+            text-align: left;
+        }
+        .reveal .two-column {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+        }
+        .reveal .two-column > div {
+            flex: 1;
+        }
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .reveal pre code {
+            max-height: 500px;
+            padding: 15px;
+        }
+        .reveal ul, .reveal ol {
+            display: block;
+            text-align: left;
+            margin-left: 1em;
+        }
+        .reveal li {
+            margin: 0.5em 0;
+        }
+        .reveal .small-text {
+            font-size: 0.7em;
+        }
+        .reveal .title-slide h1 {
+            font-size: 2.5em;
+            margin-bottom: 0.3em;
+        }
+        .reveal .title-slide h2 {
+            font-size: 1.4em;
+            color: #e67e22;
+        }
+        .reveal .icon-list {
+            list-style: none;
+            margin-left: 0;
+        }
+        .reveal .icon-list li::before {
+            content: "\2713  ";
+            color: #e67e22;
+            font-weight: bold;
+        }
+        .reveal .warning-box {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 15px 20px;
+            margin: 15px 0;
+            text-align: left;
+        }
+        .reveal .architecture-diagram {
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .reveal table {
+            font-size: 0.7em;
+            margin: 20px auto;
+        }
+        .reveal table th {
+            background: #2c3e50;
+            color: white;
+            padding: 10px 15px;
+        }
+        .reveal table td {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+        }
+        .reveal .fragment.current-visible.visible:not(.current-fragment) {
+            display: none;
+        }
+        .reveal .progress {
+            color: #e67e22;
+        }
+        .reveal .controls button {
+            color: #e67e22;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section class="title-slide">
+                <h1>Module 09</h1>
+                <h2>Compute Grid</h2>
+                <p>Apache Ignite Distributed Computing</p>
+                <p class="small-text">Duration: 45 minutes</p>
+            </section>
+
+            <!-- Agenda -->
+            <section>
+                <h2>Module Agenda</h2>
+                <ul>
+                    <li>Distributed Computing Concepts</li>
+                    <li>IgniteCompute API</li>
+                    <li>Runnable and Callable Tasks</li>
+                    <li>Broadcast Operations</li>
+                    <li>Affinity-Aware Computing</li>
+                    <li>MapReduce Pattern</li>
+                    <li>Load Balancing</li>
+                    <li>Async Execution</li>
+                </ul>
+            </section>
+
+            <!-- Section 1: Distributed Computing Concepts -->
+            <section>
+                <section>
+                    <h2>Distributed Computing Concepts</h2>
+                    <p class="accent">Harnessing the Power of the Cluster</p>
+                </section>
+
+                <section>
+                    <h3>What is Compute Grid?</h3>
+                    <div class="concept-box">
+                        <p><strong>Compute Grid</strong> enables distributed execution of computationally intensive tasks across cluster nodes.</p>
+                    </div>
+                    <ul>
+                        <li>Execute code on any cluster node</li>
+                        <li>Automatic load balancing</li>
+                        <li>Failover support</li>
+                        <li>Parallel processing</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Compute Grid Architecture</h3>
+                    <div class="architecture-diagram">
+                        <pre style="text-align: center; font-family: monospace; font-size: 0.6em;">
+    +------------------+
+    |   Application    |
+    +--------+---------+
+             |
+             v
+    +------------------+
+    |  IgniteCompute   |
+    |   (Coordinator)  |
+    +--------+---------+
+             |
+    +--------+---------+--------+
+    |        |         |        |
+    v        v         v        v
++------+ +------+ +------+ +------+
+|Node 1| |Node 2| |Node 3| |Node N|
+|Task A| |Task B| |Task C| |Task D|
++------+ +------+ +------+ +------+
+             |
+             v
+    +------------------+
+    |  Aggregated      |
+    |    Results       |
+    +------------------+
+                        </pre>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Key Benefits</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 class="accent">Performance</h4>
+                            <ul class="icon-list">
+                                <li>Parallel execution</li>
+                                <li>Data locality</li>
+                                <li>Reduced latency</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="accent">Reliability</h4>
+                            <ul class="icon-list">
+                                <li>Automatic failover</li>
+                                <li>Task redistribution</li>
+                                <li>Fault tolerance</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Compute vs Cache Operations</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Aspect</th>
+                                <th>Cache Operations</th>
+                                <th>Compute Operations</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Purpose</td>
+                                <td>Data storage/retrieval</td>
+                                <td>Task execution</td>
+                            </tr>
+                            <tr>
+                                <td>Data Flow</td>
+                                <td>Data moves to client</td>
+                                <td>Code moves to data</td>
+                            </tr>
+                            <tr>
+                                <td>Use Case</td>
+                                <td>CRUD operations</td>
+                                <td>Complex processing</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- Section 2: IgniteCompute API -->
+            <section>
+                <section>
+                    <h2>IgniteCompute API</h2>
+                    <p class="accent">Your Gateway to Distributed Execution</p>
+                </section>
+
+                <section>
+                    <h3>Getting IgniteCompute</h3>
+                    <pre><code class="java" data-trim>
+// Get compute instance for all cluster nodes
+IgniteCompute compute = ignite.compute();
+
+// Get compute for specific cluster group
+ClusterGroup serverNodes = ignite.cluster().forServers();
+IgniteCompute serverCompute = ignite.compute(serverNodes);
+
+// Get compute for remote nodes only
+ClusterGroup remoteNodes = ignite.cluster().forRemotes();
+IgniteCompute remoteCompute = ignite.compute(remoteNodes);
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Core API Methods</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Method</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>run()</code></td>
+                                <td>Execute Runnable (no return)</td>
+                            </tr>
+                            <tr>
+                                <td><code>call()</code></td>
+                                <td>Execute Callable (with return)</td>
+                            </tr>
+                            <tr>
+                                <td><code>broadcast()</code></td>
+                                <td>Execute on all nodes</td>
+                            </tr>
+                            <tr>
+                                <td><code>execute()</code></td>
+                                <td>Execute ComputeTask</td>
+                            </tr>
+                            <tr>
+                                <td><code>affinityRun()</code></td>
+                                <td>Run colocated with data</td>
+                            </tr>
+                            <tr>
+                                <td><code>affinityCall()</code></td>
+                                <td>Call colocated with data</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Cluster Group Targeting</h3>
+                    <pre><code class="java" data-trim>
+// Execute on server nodes only
+ClusterGroup servers = ignite.cluster().forServers();
+ignite.compute(servers).broadcast(() ->
+    System.out.println("On server"));
+
+// Execute on nodes with specific attribute
+ClusterGroup highMem = ignite.cluster()
+    .forAttribute("memory", "high");
+
+// Execute on oldest node (primary coordinator)
+ClusterGroup oldest = ignite.cluster().forOldest();
+
+// Execute on random node
+ClusterGroup random = ignite.cluster().forRandom();
+                    </code></pre>
+                </section>
+            </section>
+
+            <!-- Section 3: Runnable and Callable Tasks -->
+            <section>
+                <section>
+                    <h2>Runnable and Callable Tasks</h2>
+                    <p class="accent">Simple Task Execution</p>
+                </section>
+
+                <section>
+                    <h3>IgniteRunnable - Fire and Forget</h3>
+                    <pre><code class="java" data-trim>
+IgniteCompute compute = ignite.compute();
+
+// Simple runnable - executes on one random node
+compute.run(() -> {
+    System.out.println("Hello from node: " +
+        Ignition.ignite().cluster().localNode().id());
+});
+
+// Using IgniteRunnable interface
+compute.run(new IgniteRunnable() {
+    @Override
+    public void run() {
+        // Task logic here
+        System.out.println("Task executed!");
+    }
+});
+                    </code></pre>
+                    <p class="small-text">No return value - use for side effects</p>
+                </section>
+
+                <section>
+                    <h3>IgniteCallable - With Return Value</h3>
+                    <pre><code class="java" data-trim>
+IgniteCompute compute = ignite.compute();
+
+// Single callable with return value
+String result = compute.call(() -> {
+    return "Computed on node: " +
+        Ignition.ignite().cluster().localNode().consistentId();
+});
+System.out.println("Result: " + result);
+
+// Callable with explicit type
+Integer square = compute.call(() -> {
+    int value = 10;
+    return value * value;  // Returns 100
+});
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Multiple Callables - Parallel Execution</h3>
+                    <pre><code class="java" data-trim>
+// Create collection of callables
+Collection&lt;IgniteCallable&lt;Integer&gt;&gt; calls = new ArrayList&lt;&gt;();
+
+for (int i = 1; i &lt;= 5; i++) {
+    final int num = i;
+    calls.add(() -> {
+        System.out.println("Computing square of " + num +
+            " on node " +
+            Ignition.ignite().cluster().localNode().consistentId());
+        return num * num;
+    });
+}
+
+// Execute all callables in parallel
+Collection&lt;Integer&gt; results = compute.call(calls);
+System.out.println("Results: " + results);
+// Output: Results: [1, 4, 9, 16, 25]
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Injecting Resources</h3>
+                    <pre><code class="java" data-trim>
+compute.run(new IgniteRunnable() {
+    // Inject Ignite instance
+    @IgniteInstanceResource
+    private Ignite ignite;
+
+    // Inject logger
+    @LoggerResource
+    private IgniteLogger log;
+
+    @Override
+    public void run() {
+        // Access cache locally
+        IgniteCache&lt;String, String&gt; cache =
+            ignite.cache("myCache");
+
+        log.info("Processing on node: " +
+            ignite.cluster().localNode().id());
+    }
+});
+                    </code></pre>
+                </section>
+            </section>
+
+            <!-- Section 4: Broadcast Operations -->
+            <section>
+                <section>
+                    <h2>Broadcast Operations</h2>
+                    <p class="accent">Execute on All Nodes</p>
+                </section>
+
+                <section>
+                    <h3>Broadcast Runnable</h3>
+                    <pre><code class="java" data-trim>
+IgniteCompute compute = ignite.compute();
+
+// Broadcast to ALL nodes in the cluster
+compute.broadcast(() -> {
+    System.out.println("[" +
+        Ignition.ignite().cluster().localNode().consistentId() +
+        "] Received broadcast message");
+});
+
+// Broadcast to specific cluster group
+ClusterGroup servers = ignite.cluster().forServers();
+ignite.compute(servers).broadcast(() -> {
+    System.out.println("Running on server node");
+});
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Broadcast Callable - Collect Results</h3>
+                    <pre><code class="java" data-trim>
+// Broadcast callable and collect results from all nodes
+Collection&lt;NodeInfo&gt; nodeInfos = compute.broadcast(() -> {
+    ClusterNode node = Ignition.ignite().cluster().localNode();
+
+    return new NodeInfo(
+        node.id().toString(),
+        node.hostNames(),
+        Runtime.getRuntime().availableProcessors(),
+        Runtime.getRuntime().freeMemory()
+    );
+});
+
+// Process results from all nodes
+for (NodeInfo info : nodeInfos) {
+    System.out.println("Node: " + info.getId() +
+        ", CPUs: " + info.getCpus());
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Broadcast Use Cases</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 class="accent">Common Uses</h4>
+                            <ul>
+                                <li>Cache warm-up</li>
+                                <li>Configuration refresh</li>
+                                <li>Health checks</li>
+                                <li>Log level changes</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="accent">Example</h4>
+                            <pre><code class="java" data-trim style="font-size: 0.9em;">
+// Warm up cache on all nodes
+compute.broadcast(() -> {
+    IgniteCache<K, V> cache =
+        ignite.cache("myCache");
+    cache.loadCache(null);
+});
+                            </code></pre>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 5: Affinity-Aware Computing -->
+            <section>
+                <section>
+                    <h2>Affinity-Aware Computing</h2>
+                    <p class="accent">Colocate Compute with Data</p>
+                </section>
+
+                <section>
+                    <h3>The Data Locality Problem</h3>
+                    <div class="architecture-diagram">
+                        <pre style="text-align: center; font-family: monospace; font-size: 0.55em;">
+Without Affinity:                    With Affinity:
+
++--------+     +--------+            +--------+     +--------+
+| Client |     | Node 1 |            | Client |     | Node 1 |
+|  App   |     | Data A |            |  App   |     | Data A |
++---+----+     +---+----+            +---+----+     | Task A |
+    |              |                     |          +--------+
+    | 1. Send Task |                     |              ^
+    +------------->|                     | 1. Send Task |
+    |              |                     +------------->|
+    | 2. Fetch Data from Node 2          |              |
+    |<-------------|                     | 2. Local Access
+    |              |                     |              |
+    | 3. Return Result                   | 3. Return Result
+    |<-------------|                     |<-------------|
+
+    NETWORK OVERHEAD!                    NO DATA TRANSFER!
+                        </pre>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>affinityRun - No Return Value</h3>
+                    <pre><code class="java" data-trim>
+// Run computation on the node where key 42 resides
+ignite.compute().affinityRun("dataCache", 42, () -> {
+    Ignite localIgnite = Ignition.ignite();
+    IgniteCache&lt;Integer, String&gt; cache =
+        localIgnite.cache("dataCache");
+
+    // LOCAL access - no network transfer!
+    String value = cache.localPeek(42);
+
+    if (value != null) {
+        System.out.println("Processing key 42 locally");
+        System.out.println("Value: " + value);
+
+        // Update locally
+        cache.put(42, value.toUpperCase());
+    }
+});
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>affinityCall - With Return Value</h3>
+                    <pre><code class="java" data-trim>
+// Call computation on node where data resides
+Integer result = ignite.compute().affinityCall(
+    "dataCache",
+    key,
+    new IgniteCallable&lt;Integer&gt;() {
+        @IgniteInstanceResource
+        private Ignite ignite;
+
+        @Override
+        public Integer call() throws Exception {
+            IgniteCache&lt;Integer, String&gt; cache =
+                ignite.cache("dataCache");
+
+            // Local peek - no network!
+            String value = cache.localPeek(key);
+            return value != null ? value.length() : 0;
+        }
+    }
+);
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Performance Comparison</h3>
+                    <pre><code class="java" data-trim>
+// Non-affinity computation (may require network transfer)
+long start = System.currentTimeMillis();
+for (int i = 0; i < 1000; i++) {
+    final int key = i;
+    compute.call(() -> {
+        return cache.get(key).length();  // Network call!
+    });
+}
+long nonAffinityTime = System.currentTimeMillis() - start;
+
+// Affinity-aware computation (colocated with data)
+start = System.currentTimeMillis();
+for (int i = 0; i < 1000; i++) {
+    final int key = i;
+    compute.affinityCall("cache", key, () -> {
+        return cache.localPeek(key).length();  // Local!
+    });
+}
+long affinityTime = System.currentTimeMillis() - start;
+
+// Affinity is typically 2-10x faster!
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Affinity Best Practices</h3>
+                    <div class="highlight-box">
+                        <ul class="icon-list" style="color: white;">
+                            <li>Use for data-intensive operations</li>
+                            <li>Leverage localPeek() for reads</li>
+                            <li>Group related data with affinity keys</li>
+                            <li>Consider data distribution</li>
+                        </ul>
+                    </div>
+                    <div class="warning-box">
+                        <strong>Note:</strong> Affinity compute only helps when processing data. For pure computation, use regular compute.
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 6: MapReduce Pattern -->
+            <section>
+                <section>
+                    <h2>MapReduce Pattern</h2>
+                    <p class="accent">Distributed Data Processing</p>
+                </section>
+
+                <section>
+                    <h3>MapReduce Concept</h3>
+                    <div class="architecture-diagram">
+                        <pre style="text-align: center; font-family: monospace; font-size: 0.6em;">
+         +-------------+
+         |    Input    |
+         |    Data     |
+         +------+------+
+                |
+        +-------+-------+
+        |               |
+        v               v
+   +---------+     +---------+
+   |   MAP   |     |   MAP   |
+   | (Node 1)|     | (Node 2)|
+   +---------+     +---------+
+        |               |
+        v               v
+   +---------+     +---------+
+   |Partial  |     |Partial  |
+   |Results  |     |Results  |
+   +---------+     +---------+
+        |               |
+        +-------+-------+
+                |
+                v
+         +------+------+
+         |   REDUCE    |
+         | (Aggregate) |
+         +------+------+
+                |
+                v
+         +------+------+
+         |   Final     |
+         |   Result    |
+         +-------------+
+                        </pre>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>ComputeTaskAdapter</h3>
+                    <pre><code class="java" data-trim>
+public class WordCountTask
+    extends ComputeTaskAdapter&lt;String, Map&lt;String, Integer&gt;&gt; {
+
+    @IgniteInstanceResource
+    private Ignite ignite;
+
+    @Override
+    public Map&lt;ClusterNode, ComputeJob&gt; map(
+            List&lt;ClusterNode&gt; nodes, String cacheName) {
+        // MAP: Split work and assign to nodes
+        // ...
+    }
+
+    @Override
+    public Map&lt;String, Integer&gt; reduce(
+            List&lt;ComputeJobResult&gt; results) {
+        // REDUCE: Aggregate partial results
+        // ...
+    }
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Map Phase - Distribute Work</h3>
+                    <pre><code class="java" data-trim>
+@Override
+public Map&lt;ClusterNode, ComputeJob&gt; map(
+        List&lt;ClusterNode&gt; subgrid, String cacheName) {
+
+    Map&lt;ClusterNode, ComputeJob&gt; map = new HashMap&lt;&gt;();
+    IgniteCache&lt;Integer, String&gt; cache = ignite.cache(cacheName);
+
+    // Create a job for each cache entry
+    for (Cache.Entry&lt;Integer, String&gt; entry :
+            cache.query(new ScanQuery&lt;&gt;())) {
+
+        // Get the node where data resides (affinity)
+        ClusterNode node = ignite.affinity(cacheName)
+            .mapKeyToNode(entry.getKey());
+
+        // Create job for this entry
+        map.put(node, new WordCountJob(entry.getValue()));
+    }
+
+    return map;
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>ComputeJob - Process Data</h3>
+                    <pre><code class="java" data-trim>
+public class WordCountJob implements ComputeJob {
+    private final String text;
+
+    public WordCountJob(String text) {
+        this.text = text;
+    }
+
+    @Override
+    public Map&lt;String, Integer&gt; execute() {
+        Map&lt;String, Integer&gt; counts = new HashMap&lt;&gt;();
+
+        if (text != null) {
+            String[] words = text.toLowerCase().split("\\s+");
+            for (String word : words) {
+                counts.merge(word, 1, Integer::sum);
+            }
+        }
+
+        return counts;  // Partial results
+    }
+
+    @Override
+    public void cancel() { /* Handle cancellation */ }
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Reduce Phase - Aggregate Results</h3>
+                    <pre><code class="java" data-trim>
+@Override
+public Map&lt;String, Integer&gt; reduce(
+        List&lt;ComputeJobResult&gt; results) {
+
+    Map&lt;String, Integer&gt; totalCounts = new HashMap&lt;&gt;();
+
+    // Aggregate all partial results
+    for (ComputeJobResult result : results) {
+        Map&lt;String, Integer&gt; jobCounts = result.getData();
+
+        for (Map.Entry&lt;String, Integer&gt; entry :
+                jobCounts.entrySet()) {
+            totalCounts.merge(
+                entry.getKey(),
+                entry.getValue(),
+                Integer::sum
+            );
+        }
+    }
+
+    return totalCounts;  // Final aggregated result
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Executing MapReduce Task</h3>
+                    <pre><code class="java" data-trim>
+// Populate cache with sample text data
+cache.put(1, "hello world");
+cache.put(2, "hello ignite");
+cache.put(3, "world of computing");
+cache.put(4, "ignite computing platform");
+cache.put(5, "hello computing world");
+
+// Execute MapReduce
+Map&lt;String, Integer&gt; wordCounts =
+    ignite.compute().execute(WordCountTask.class, "textCache");
+
+// Print sorted results
+wordCounts.entrySet().stream()
+    .sorted(Map.Entry.&lt;String, Integer&gt;comparingByValue()
+        .reversed())
+    .forEach(e ->
+        System.out.println(e.getKey() + ": " + e.getValue()));
+// Output: hello: 3, world: 3, computing: 3, ignite: 2, ...
+                    </code></pre>
+                </section>
+            </section>
+
+            <!-- Section 7: Load Balancing -->
+            <section>
+                <section>
+                    <h2>Load Balancing</h2>
+                    <p class="accent">Distribute Work Efficiently</p>
+                </section>
+
+                <section>
+                    <h3>Default Load Balancing</h3>
+                    <div class="concept-box">
+                        <p>Ignite uses <strong>round-robin</strong> load balancing by default, distributing tasks evenly across available nodes.</p>
+                    </div>
+                    <pre><code class="java" data-trim>
+// Tasks automatically distributed across nodes
+for (int i = 0; i < 10; i++) {
+    final int taskNum = i;
+    compute.run(() -> {
+        System.out.println("Task " + taskNum + " on node " +
+            Ignition.ignite().cluster().localNode().consistentId());
+    });
+}
+// Output: Tasks distributed to Node1, Node2, Node3, Node1, ...
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Load Balancing Strategies</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Strategy</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Round Robin</strong></td>
+                                <td>Default, sequential distribution</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Random</strong></td>
+                                <td>Random node selection</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Weighted</strong></td>
+                                <td>Based on node weights</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Adaptive</strong></td>
+                                <td>Based on current load</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Custom</strong></td>
+                                <td>User-defined SPI</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Configuring Load Balancing</h3>
+                    <pre><code class="java" data-trim>
+IgniteConfiguration cfg = new IgniteConfiguration();
+
+// Use weighted round-robin load balancing
+WeightedRandomLoadBalancingSpi spi =
+    new WeightedRandomLoadBalancingSpi();
+spi.setNodeWeight(node -> {
+    // More weight to nodes with more memory
+    return (int)(Runtime.getRuntime().maxMemory() / 1024 / 1024);
+});
+
+cfg.setLoadBalancingSpi(spi);
+
+// Or use adaptive load balancing
+AdaptiveLoadBalancingSpi adaptiveSpi =
+    new AdaptiveLoadBalancingSpi();
+adaptiveSpi.setLoadProbe(new AdaptiveCpuLoadProbe());
+
+cfg.setLoadBalancingSpi(adaptiveSpi);
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Failover Handling</h3>
+                    <pre><code class="java" data-trim>
+// Ignite automatically handles node failures
+IgniteConfiguration cfg = new IgniteConfiguration();
+
+// Configure failover policy
+AlwaysFailoverSpi failoverSpi = new AlwaysFailoverSpi();
+failoverSpi.setMaximumFailoverAttempts(3);
+
+cfg.setFailoverSpi(failoverSpi);
+
+// Now if a task fails, it will be retried on another node
+compute.run(() -> {
+    // If this node fails mid-execution,
+    // task is automatically resubmitted to another node
+    processData();
+});
+                    </code></pre>
+                    <div class="concept-box">
+                        <p>Failover ensures high availability - tasks are never lost!</p>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 8: Async Execution -->
+            <section>
+                <section>
+                    <h2>Async Execution</h2>
+                    <p class="accent">Non-Blocking Distributed Computing</p>
+                </section>
+
+                <section>
+                    <h3>Async API Methods</h3>
+                    <pre><code class="java" data-trim>
+IgniteCompute compute = ignite.compute();
+
+// Async run
+IgniteFuture&lt;Void&gt; runFuture = compute.runAsync(() -> {
+    // Long-running task
+    Thread.sleep(5000);
+    System.out.println("Task completed");
+});
+
+// Async call
+IgniteFuture&lt;String&gt; callFuture = compute.callAsync(() -> {
+    Thread.sleep(3000);
+    return "Async result";
+});
+
+// Continue with other work...
+doOtherWork();
+
+// Get results when needed
+runFuture.get();  // Wait for completion
+String result = callFuture.get();  // Get result
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Future with Timeout</h3>
+                    <pre><code class="java" data-trim>
+IgniteFuture&lt;String&gt; future = compute.callAsync(() -> {
+    Thread.sleep(10000);  // 10 second task
+    return "Result";
+});
+
+System.out.println("Task submitted, doing other work...");
+Thread.sleep(500);
+System.out.println("Still working...");
+
+try {
+    // Wait up to 3 seconds for result
+    String result = future.get(3, TimeUnit.SECONDS);
+    System.out.println("Result: " + result);
+} catch (IgniteFutureTimeoutException e) {
+    System.out.println("Task taking too long!");
+    future.cancel();  // Cancel the task
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Async Callback (Listen)</h3>
+                    <pre><code class="java" data-trim>
+IgniteFuture&lt;String&gt; future = compute.callAsync(() -> {
+    return processData();
+});
+
+// Add callback for when task completes
+future.listen(f -> {
+    try {
+        String result = f.get();
+        System.out.println("Task completed: " + result);
+
+        // Trigger next action
+        processResult(result);
+    } catch (IgniteException e) {
+        System.err.println("Task failed: " + e.getMessage());
+        handleError(e);
+    }
+});
+
+// Continue immediately - callback will be invoked later
+System.out.println("Callback registered, continuing...");
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Timeout Configuration</h3>
+                    <pre><code class="java" data-trim>
+// Set timeout for synchronous operations
+try {
+    compute.withTimeout(2000).call(() -> {
+        System.out.println("Starting long task...");
+        Thread.sleep(5000);  // This will timeout
+        return "Completed";
+    });
+} catch (IgniteException e) {
+    System.out.println("Task timed out as expected");
+}
+
+// Alternative: Use async with explicit timeout
+IgniteFuture&lt;String&gt; future = compute.callAsync(() -> {
+    Thread.sleep(5000);
+    return "Result";
+});
+
+// Get with timeout
+String result = future.get(2, TimeUnit.SECONDS);
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Parallel Async Execution</h3>
+                    <pre><code class="java" data-trim>
+// Submit multiple async tasks
+List&lt;IgniteFuture&lt;Long&gt;&gt; futures = new ArrayList&lt;&gt;();
+
+for (int i = 0; i < 10; i++) {
+    final int taskId = i;
+    IgniteFuture&lt;Long&gt; future = compute.callAsync(() -> {
+        // Simulate heavy computation
+        long sum = 0;
+        for (long j = 0; j < 10_000_000; j++) {
+            sum += j;
+        }
+        return sum;
+    });
+    futures.add(future);
+}
+
+// Collect all results
+List&lt;Long&gt; results = new ArrayList&lt;&gt;();
+for (IgniteFuture&lt;Long&gt; future : futures) {
+    results.add(future.get());
+}
+System.out.println("All tasks completed: " + results.size());
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Async Best Practices</h3>
+                    <div class="highlight-box">
+                        <ul class="icon-list" style="color: white;">
+                            <li>Use async for long-running tasks</li>
+                            <li>Always handle timeouts appropriately</li>
+                            <li>Use callbacks for event-driven flows</li>
+                            <li>Monitor resource usage</li>
+                            <li>Consider cancellation scenarios</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Advanced Patterns Section -->
+            <section>
+                <section>
+                    <h2>Advanced Compute Patterns</h2>
+                    <p class="accent">Production-Ready Techniques</p>
+                </section>
+
+                <section>
+                    <h3>Targeted Execution</h3>
+                    <pre><code class="java" data-trim>
+// Execute on server nodes only
+ClusterGroup serverNodes = ignite.cluster().forServers();
+ignite.compute(serverNodes).broadcast(() ->
+    System.out.println("Running on server: " +
+        Ignition.ignite().cluster().localNode().consistentId()));
+
+// Execute on nodes with specific attribute
+ClusterGroup highMem = ignite.cluster()
+    .forAttribute("memory", "high");
+
+// Execute on oldest node (coordinator)
+ClusterGroup oldest = ignite.cluster().forOldest();
+
+// Execute on random node
+ClusterGroup random = ignite.cluster().forRandom();
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Cluster Group Chaining</h3>
+                    <pre><code class="java" data-trim>
+// Complex cluster group selection
+ClusterGroup targetNodes = ignite.cluster()
+    .forServers()                           // Only servers
+    .forAttribute("region", "us-west")      // In US West
+    .forPredicate(node ->                   // With enough memory
+        node.metrics().getHeapMemoryUsed() <
+        node.metrics().getHeapMemoryMaximum() * 0.8
+    );
+
+// Execute on these specific nodes
+ignite.compute(targetNodes).broadcast(() -> {
+    System.out.println("Executing on target node");
+});
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Compute Best Practices Summary</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 class="accent">Do</h4>
+                            <ul class="icon-list">
+                                <li>Use affinity for data tasks</li>
+                                <li>Keep tasks small/focused</li>
+                                <li>Handle failures gracefully</li>
+                                <li>Use async for long ops</li>
+                                <li>Set appropriate timeouts</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: #e74c3c;">Avoid</h4>
+                            <ul>
+                                <li>Very large task payloads</li>
+                                <li>Blocking I/O in tasks</li>
+                                <li>Ignoring exceptions</li>
+                                <li>Infinite loops in tasks</li>
+                                <li>Storing state in tasks</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Lab Preview -->
+            <section>
+                <section>
+                    <h2>Lab 09: Compute Grid</h2>
+                    <p class="accent">Hands-on Exercises</p>
+                </section>
+
+                <section>
+                    <h3>Lab Exercises Overview</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4>Part 1 (15 min)</h4>
+                            <ul>
+                                <li>Basic compute tasks</li>
+                                <li>Broadcast operations</li>
+                                <li>Multiple callables</li>
+                                <li>Load balancing demo</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4>Part 2 (15 min)</h4>
+                            <ul>
+                                <li>Affinity-aware computing</li>
+                                <li>Performance comparison</li>
+                                <li>Local data access</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <h4>Part 3 (15 min)</h4>
+                        <ul>
+                            <li>MapReduce word count</li>
+                            <li>Advanced patterns</li>
+                            <li>Async execution</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Lab Verification Checklist</h3>
+                    <ul class="icon-list">
+                        <li>Basic compute tasks execute successfully</li>
+                        <li>Broadcast reaches all nodes</li>
+                        <li>Callables return correct results</li>
+                        <li>Affinity compute shows performance gain</li>
+                        <li>MapReduce produces correct word counts</li>
+                        <li>Async execution works properly</li>
+                        <li>Timeout handling functions correctly</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Summary -->
+            <section>
+                <section>
+                    <h2>Module Summary</h2>
+                </section>
+
+                <section>
+                    <h3>Key Takeaways</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Concept</th>
+                                <th>Key Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>IgniteCompute</td>
+                                <td>Gateway to distributed execution</td>
+                            </tr>
+                            <tr>
+                                <td>Runnable/Callable</td>
+                                <td>Simple task execution patterns</td>
+                            </tr>
+                            <tr>
+                                <td>Broadcast</td>
+                                <td>Execute on all cluster nodes</td>
+                            </tr>
+                            <tr>
+                                <td>Affinity</td>
+                                <td>Colocate compute with data</td>
+                            </tr>
+                            <tr>
+                                <td>MapReduce</td>
+                                <td>Distributed data processing</td>
+                            </tr>
+                            <tr>
+                                <td>Load Balancing</td>
+                                <td>Automatic task distribution</td>
+                            </tr>
+                            <tr>
+                                <td>Async</td>
+                                <td>Non-blocking execution</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>When to Use Each Pattern</h3>
+                    <div class="concept-box">
+                        <ul>
+                            <li><strong>run()/call()</strong> - Single task execution</li>
+                            <li><strong>broadcast()</strong> - Execute on all nodes</li>
+                            <li><strong>affinityRun()/affinityCall()</strong> - Data-intensive tasks</li>
+                            <li><strong>MapReduce</strong> - Complex aggregations</li>
+                            <li><strong>Async</strong> - Long-running operations</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Next Module Preview</h3>
+                    <div class="highlight-box">
+                        <h4 style="color: white; margin-top: 0;">Module 10: Integration Patterns</h4>
+                        <ul style="color: white;">
+                            <li>REST API integration</li>
+                            <li>Spring Framework support</li>
+                            <li>Kafka connector</li>
+                            <li>Hibernate L2 cache</li>
+                            <li>Client vs server nodes</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Questions?</h2>
+                    <p class="accent">Module 09: Compute Grid</p>
+                    <p>Let's discuss distributed computing concepts!</p>
+                </section>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/zoom/zoom.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all',
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            center: true,
+            progress: true,
+            controls: true,
+            controlsTutorial: true,
+            controlsLayout: 'bottom-right',
+            controlsBackArrows: 'faded',
+            keyboard: true,
+            overview: true,
+            touch: true,
+            loop: false,
+            rtl: false,
+            shuffle: false,
+            fragments: true,
+            fragmentInURL: true,
+            embedded: false,
+            help: true,
+            showNotes: false,
+            autoPlayMedia: null,
+            preloadIframes: null,
+            autoSlide: 0,
+            autoSlideStoppable: true,
+            autoSlideMethod: null,
+            defaultTiming: null,
+            mouseWheel: false,
+            display: 'block',
+            hideInactiveCursor: true,
+            hideCursorTime: 3000,
+            plugins: [ RevealHighlight, RevealNotes, RevealZoom ]
+        });
+    </script>
+</body>
+</html>
