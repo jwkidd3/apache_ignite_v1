@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/intellij-light.min.css">
     <style>
+        .reveal .slides section { overflow: hidden; }
+        .reveal section { max-height: 100%; }
         :root {
             --r-heading-color: #2c3e50;
             --r-main-color: #333;
@@ -24,8 +26,8 @@
             text-transform: none;
         }
         .reveal h1 { font-size: 2.2em; }
-        .reveal h2 { font-size: 1.6em; }
-        .reveal h3 { font-size: 1.3em; }
+        .reveal h2 { font-size: 1.4em; margin-bottom: 0.3em; }
+        .reveal h3 { font-size: 1.1em; margin-bottom: 0.2em; }
         .reveal pre {
             width: 100%;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -98,7 +100,7 @@
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
-            font-size: 0.85em;
+            font-size: 0.75em; line-height: 1.3;
         }
         .comparison-table th, .comparison-table td {
             border: 1px solid #ddd;
@@ -162,7 +164,7 @@
             position: absolute;
             bottom: 20px;
             left: 30px;
-            font-size: 0.7em;
+            font-size: 0.55em;
             color: #7f8c8d;
         }
         .reveal .progress {
@@ -184,7 +186,7 @@
                 <h2 class="accent">Transactions and ACID</h2>
                 <p style="font-size: 1.2em; color: #666; margin-top: 40px;">Apache Ignite Training</p>
                 <div class="highlight-box" style="display: inline-block; margin-top: 30px;">
-                    <span style="font-size: 0.9em;">Duration: 45 minutes</span>
+                    <span style="font-size: 0.75em; line-height: 1.3;">Duration: 45 minutes</span>
                 </div>
             </section>
 
@@ -794,15 +796,15 @@ Runnable safeTransaction = () -> {
                     <div class="three-column">
                         <div class="diagram-box">
                             <h4 style="color: #e67e22;">Lock Ordering</h4>
-                            <p style="font-size: 0.85em;">Always acquire locks in consistent order</p>
+                            <p style="font-size: 0.75em; line-height: 1.3;">Always acquire locks in consistent order</p>
                         </div>
                         <div class="diagram-box">
                             <h4 style="color: #e67e22;">Timeouts</h4>
-                            <p style="font-size: 0.85em;">Set reasonable transaction timeouts</p>
+                            <p style="font-size: 0.75em; line-height: 1.3;">Set reasonable transaction timeouts</p>
                         </div>
                         <div class="diagram-box">
                             <h4 style="color: #e67e22;">Use OPTIMISTIC</h4>
-                            <p style="font-size: 0.85em;">Eliminates lock-based deadlocks</p>
+                            <p style="font-size: 0.75em; line-height: 1.3;">Eliminates lock-based deadlocks</p>
                         </div>
                     </div>
                     <div class="info-box" style="margin-top: 25px;">
@@ -991,7 +993,7 @@ IgniteCache&lt;Integer, String&gt; auditLog = ignite.getOrCreateCache(auditCfg);
                     <h2>Two-Phase Commit Protocol</h2>
                     <div class="diagram-box">
                         <h4 style="color: #e67e22;">How Cross-Cache Transactions Work</h4>
-                        <div style="font-size: 0.9em; text-align: left; padding-left: 50px;">
+                        <div style="font-size: 0.75em; line-height: 1.3; text-align: left; padding-left: 50px;">
                             <p><strong>Phase 1: Prepare</strong></p>
                             <ul>
                                 <li>Coordinator sends prepare request to all nodes</li>
@@ -1300,9 +1302,9 @@ System.out.println("Rolled back transactions: " + metrics.txRollbacks());
             transitionSpeed: 'default',
             backgroundTransition: 'fade',
             center: false,
-            width: 1200,
-            height: 700,
-            margin: 0.1,
+            width: 1100,
+            height: 750,
+            margin: 0.05, minScale: 0.5, maxScale: 1.5,
             plugins: [RevealHighlight, RevealNotes]
         });
     </script>

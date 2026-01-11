@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/idea.min.css">
     <style>
+        .reveal .slides section { overflow: hidden; }
+        .reveal section { max-height: 100%; }
         :root {
             --r-heading-color: #2c3e50;
             --r-main-color: #333;
@@ -25,10 +27,10 @@
             font-size: 2.2em;
         }
         .reveal h2 {
-            font-size: 1.6em;
+            font-size: 1.4em; margin-bottom: 0.3em;
         }
         .reveal h3 {
-            font-size: 1.3em;
+            font-size: 1.1em; margin-bottom: 0.2em;
         }
         .reveal pre {
             width: 100%;
@@ -74,7 +76,7 @@
         .comparison-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.7em;
+            font-size: 0.55em;
             margin: 20px 0;
         }
         .comparison-table th {
@@ -94,12 +96,14 @@
             background: #f8f9fa;
             border: 2px solid #e67e22;
             border-radius: 8px;
-            padding: 20px;
+            padding: 10px;
             font-family: monospace;
-            font-size: 0.55em;
+            font-size: 0.45em;
             text-align: left;
             white-space: pre;
-            line-height: 1.4;
+            max-width: 100%;
+            overflow: hidden;
+            line-height: 1.2;
         }
         .benefit-list {
             list-style: none;
@@ -164,7 +168,7 @@
                 <h1>Module 10</h1>
                 <h2 style="color: #e67e22;">Integration and Connectivity</h2>
                 <p style="color: #666; margin-top: 40px;">Apache Ignite Training Course</p>
-                <p style="font-size: 0.7em; color: #999;">Duration: 60 minutes</p>
+                <p style="font-size: 0.55em; color: #999;">Duration: 60 minutes</p>
             </section>
 
             <!-- Objectives -->
@@ -1396,7 +1400,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
     <script>
         Reveal.initialize({
-            hash: true,
+            hash: true, width: 1100, height: 750, margin: 0.05, minScale: 0.5, maxScale: 1.5,
             slideNumber: 'c/t',
             showSlideNumber: 'all',
             transition: 'slide',
