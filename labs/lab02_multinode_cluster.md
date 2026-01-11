@@ -1,11 +1,11 @@
 # Lab 2: Multi-Node Cluster Setup with Different Discovery Mechanisms
 
-## Duration: 30 minutes
+## Duration: 50 minutes
 
 ## Objectives
 - Configure static IP discovery
-- Set up a multi-node cluster with different discovery mechanisms
-- Understand baseline topology
+- Set up a multi-node cluster
+- Understand and configure baseline topology
 - Activate cluster and manage cluster state
 
 ## Prerequisites
@@ -107,70 +107,9 @@ public class Lab02StaticIPDiscovery {
 
 5. **Observe:** All three nodes should discover each other and form a cluster
 
-## Part 2: Cloud Discovery with Kubernetes/Docker (10 minutes)
+## Part 2: Baseline Topology and Cluster Activation (15 minutes)
 
-### Exercise 3: Configure for Containerized Deployment
-
-Create `Lab02CloudDiscovery.java`:
-
-```java
-package com.example.ignite;
-
-import org.apache.ignite.Ignite;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
-
-import java.util.Arrays;
-
-public class Lab02CloudDiscovery {
-
-    public static void main(String[] args) {
-        IgniteConfiguration cfg = new IgniteConfiguration();
-
-        // Configure for containerized environment
-        cfg.setIgniteInstanceName("cloud-node");
-        cfg.setClientMode(false);
-
-        // Configure discovery for cloud/container deployment
-        TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
-        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
-
-        // In production, these would come from environment variables
-        String discoveryAddresses = System.getenv("IGNITE_DISCOVERY_ADDRESSES");
-        if (discoveryAddresses == null) {
-            discoveryAddresses = "127.0.0.1:47500..47509";
-        }
-
-        ipFinder.setAddresses(Arrays.asList(discoveryAddresses.split(",")));
-        discoverySpi.setIpFinder(ipFinder);
-
-        // Set local port for containerized environments
-        discoverySpi.setLocalPort(47500);
-        discoverySpi.setLocalPortRange(10);
-
-        cfg.setDiscoverySpi(discoverySpi);
-
-        System.out.println("Starting cloud-ready Ignite node...");
-        System.out.println("Discovery addresses: " + discoveryAddresses);
-
-        try (Ignite ignite = Ignition.start(cfg)) {
-            System.out.println("Node started: " + ignite.name());
-            System.out.println("Cluster size: " + ignite.cluster().nodes().size());
-
-            System.out.println("\nPress Enter to stop...");
-            System.in.read();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-}
-```
-
-## Part 3: Baseline Topology and Cluster Activation (15 minutes)
-
-### Exercise 4: Configure Baseline Topology
+### Exercise 3: Configure Baseline Topology
 
 Create `Lab02BaselineTopology.java`:
 
@@ -266,7 +205,7 @@ public class Lab02BaselineTopology {
 }
 ```
 
-### Exercise 5: Activate Cluster and Set Baseline
+### Exercise 4: Activate Cluster and Set Baseline
 
 1. **Start Node 1:**
    ```bash
@@ -286,7 +225,7 @@ public class Lab02BaselineTopology {
    ```
    - All three nodes should be in the baseline topology
 
-### Exercise 6: Manage Baseline Topology Programmatically
+### Exercise 5: Manage Baseline Topology Programmatically
 
 Add this code to check and update baseline:
 
@@ -311,6 +250,113 @@ if (nodeNumber == 1) {
 }
 ```
 
+## Part 3: Cluster State Management (10 minutes)
+
+### Exercise 6: Understanding Cluster States
+
+Create `Lab02ClusterStates.java`:
+
+```java
+package com.example.ignite;
+
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cluster.ClusterState;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.DataRegionConfiguration;
+import org.apache.ignite.configuration.DataStorageConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+
+import java.util.Arrays;
+
+public class Lab02ClusterStates {
+
+    public static void main(String[] args) {
+        IgniteConfiguration cfg = createConfiguration("cluster-state-node");
+
+        try (Ignite ignite = Ignition.start(cfg)) {
+            System.out.println("\n=== Cluster State Management Demo ===");
+            System.out.println("Initial cluster state: " + ignite.cluster().state());
+
+            // Activate the cluster
+            System.out.println("\n--- Setting to ACTIVE state ---");
+            ignite.cluster().state(ClusterState.ACTIVE);
+            System.out.println("State: " + ignite.cluster().state());
+
+            // Create a test cache while active
+            CacheConfiguration<Integer, String> cacheCfg = new CacheConfiguration<>("stateTestCache");
+            cacheCfg.setCacheMode(CacheMode.REPLICATED);
+            IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cacheCfg);
+            cache.put(1, "test-value");
+            System.out.println("Created cache and inserted data in ACTIVE state");
+
+            // Switch to ACTIVE_READ_ONLY
+            System.out.println("\n--- Setting to ACTIVE_READ_ONLY state ---");
+            ignite.cluster().state(ClusterState.ACTIVE_READ_ONLY);
+            System.out.println("State: " + ignite.cluster().state());
+
+            // Try to write (will fail)
+            System.out.println("\nAttempting write in ACTIVE_READ_ONLY state...");
+            try {
+                cache.put(2, "another-value");
+                System.out.println("ERROR: Write succeeded (unexpected)");
+            } catch (Exception e) {
+                System.out.println("Write blocked (expected): " + e.getClass().getSimpleName());
+            }
+
+            // Read still works
+            String value = cache.get(1);
+            System.out.println("Read succeeded: key=1, value=" + value);
+
+            // Return to ACTIVE
+            System.out.println("\n--- Returning to ACTIVE state ---");
+            ignite.cluster().state(ClusterState.ACTIVE);
+            System.out.println("State: " + ignite.cluster().state());
+
+            System.out.println("\n=== State Summary ===");
+            System.out.println("ACTIVE: Full read/write access");
+            System.out.println("ACTIVE_READ_ONLY: Reads allowed, writes blocked");
+            System.out.println("INACTIVE: No cache access (for maintenance)");
+
+            System.out.println("\nPress Enter to stop...");
+            System.in.read();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static IgniteConfiguration createConfiguration(String nodeName) {
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setIgniteInstanceName(nodeName);
+
+        DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+        DataRegionConfiguration defaultRegion = new DataRegionConfiguration();
+        defaultRegion.setPersistenceEnabled(true);
+        defaultRegion.setMaxSize(100L * 1024 * 1024);
+        storageCfg.setDefaultDataRegionConfiguration(defaultRegion);
+        storageCfg.setStoragePath("./ignite-data/cluster-state");
+        storageCfg.setWalPath("./ignite-wal/cluster-state");
+        storageCfg.setWalArchivePath("./ignite-wal-archive/cluster-state");
+        cfg.setDataStorageConfiguration(storageCfg);
+
+        TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
+        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+        ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
+        discoverySpi.setIpFinder(ipFinder);
+        cfg.setDiscoverySpi(discoverySpi);
+
+        return cfg;
+    }
+}
+```
+
+---
+
 ## Verification Steps
 
 ### Checklist
@@ -320,58 +366,9 @@ if (nodeNumber == 1) {
 - [ ] Baseline topology configured with persistence
 - [ ] Cluster activated successfully
 - [ ] Baseline topology set and displayed
-- [ ] All nodes appear in baseline topology
+- [ ] Cluster state transitions tested (ACTIVE, ACTIVE_READ_ONLY)
 
-### Testing Discovery
-
-Create a simple test to verify cluster formation:
-
-```java
-public class Lab02DiscoveryTest {
-    public static void main(String[] args) throws Exception {
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName("test-node");
-
-        TcpDiscoverySpi spi = new TcpDiscoverySpi();
-        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
-        ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
-        spi.setIpFinder(ipFinder);
-        cfg.setDiscoverySpi(spi);
-
-        try (Ignite ignite = Ignition.start(cfg)) {
-            // Wait for topology to stabilize
-            Thread.sleep(2000);
-
-            int expectedNodes = 3;
-            int actualNodes = ignite.cluster().nodes().size();
-
-            System.out.println("Expected nodes: " + expectedNodes);
-            System.out.println("Actual nodes: " + actualNodes);
-            System.out.println("Test " +
-                (actualNodes >= expectedNodes ? "PASSED" : "FAILED"));
-        }
-    }
-}
-```
-
-## Lab Questions
-
-1. What is the difference between multicast and static IP discovery?
-2. Why is baseline topology important for persistent clusters?
-3. What happens when a new node joins a cluster with baseline topology?
-4. Can you activate a cluster without setting baseline topology?
-
-## Answers
-
-1. **Multicast discovery** uses IP multicast for automatic node discovery (may not work on all networks). **Static IP discovery** requires explicit IP addresses, more suitable for production and cloud environments.
-
-2. **Baseline topology** defines which nodes are data-owning nodes in a persistent cluster. It ensures data consistency and proper rebalancing.
-
-3. The new node joins the cluster but is **not automatically added to baseline**. You must explicitly update the baseline topology to include it as a data node.
-
-4. **Yes**, you can activate without baseline for in-memory-only clusters. For persistent clusters, baseline topology is automatically set on activation.
-
-## Common Issues
+### Common Issues
 
 **Issue: Nodes not discovering each other**
 - Check firewall settings
@@ -381,11 +378,20 @@ public class Lab02DiscoveryTest {
 **Issue: Cluster won't activate**
 - Check if persistence is properly configured
 - Verify storage paths are writable
-- Ensure at least one node is available
 
-**Issue: Node not in baseline**
-- Must explicitly add nodes to baseline
-- Use `setBaselineTopology()` from any server node
+## Lab Questions
+
+1. What is the difference between multicast and static IP discovery?
+2. Why is baseline topology important for persistent clusters?
+3. What is the purpose of the ACTIVE_READ_ONLY cluster state?
+
+## Answers
+
+1. **Multicast discovery** uses IP multicast for automatic node discovery (may not work on all networks). **Static IP discovery** requires explicit IP addresses, more suitable for production.
+
+2. **Baseline topology** defines which nodes are data-owning nodes in a persistent cluster. It ensures data consistency and proper rebalancing.
+
+3. **ACTIVE_READ_ONLY** allows read operations while blocking all writes. It is used during maintenance windows.
 
 ## Next Steps
 
@@ -393,13 +399,6 @@ In Lab 3, you will:
 - Implement basic cache operations
 - Learn about different cache modes
 - Perform CRUD operations
-- Compare synchronous vs asynchronous operations
-
-## Additional Resources
-
-- Discovery SPI: https://ignite.apache.org/docs/latest/clustering/discovery
-- Baseline Topology: https://ignite.apache.org/docs/latest/clustering/baseline-topology
-- Cluster Configuration: https://ignite.apache.org/docs/latest/clustering/clustering
 
 ## Completion
 
@@ -407,4 +406,205 @@ You have completed Lab 2 when you can:
 - Configure and use static IP discovery
 - Start a multi-node cluster
 - Activate cluster and set baseline topology
-- Understand the role of baseline in persistent clusters
+- Switch between cluster states
+
+---
+
+## Optional Exercises (If Time Permits)
+
+### Optional: Cloud Discovery Configuration
+
+Create `Lab02CloudDiscovery.java`:
+
+```java
+package com.example.ignite;
+
+import org.apache.ignite.Ignite;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+
+import java.util.Arrays;
+
+public class Lab02CloudDiscovery {
+
+    public static void main(String[] args) {
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setIgniteInstanceName("cloud-node");
+        cfg.setClientMode(false);
+
+        TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
+        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+
+        // In production, these would come from environment variables
+        String discoveryAddresses = System.getenv("IGNITE_DISCOVERY_ADDRESSES");
+        if (discoveryAddresses == null) {
+            discoveryAddresses = "127.0.0.1:47500..47509";
+        }
+
+        ipFinder.setAddresses(Arrays.asList(discoveryAddresses.split(",")));
+        discoverySpi.setIpFinder(ipFinder);
+        discoverySpi.setLocalPort(47500);
+        discoverySpi.setLocalPortRange(10);
+        cfg.setDiscoverySpi(discoverySpi);
+
+        try (Ignite ignite = Ignition.start(cfg)) {
+            System.out.println("Node started: " + ignite.name());
+            System.out.println("Cluster size: " + ignite.cluster().nodes().size());
+            System.out.println("\nPress Enter to stop...");
+            System.in.read();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+### Optional: Baseline Management Operations
+
+Create `Lab02BaselineOperations.java` for advanced baseline management:
+
+```java
+package com.example.ignite;
+
+import org.apache.ignite.Ignite;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.cluster.BaselineNode;
+import org.apache.ignite.cluster.ClusterState;
+import org.apache.ignite.configuration.DataRegionConfiguration;
+import org.apache.ignite.configuration.DataStorageConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+
+import java.util.*;
+
+public class Lab02BaselineOperations {
+
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("Usage: java Lab02BaselineOperations <operation>");
+            System.out.println("Operations: add-all | remove-offline | reset");
+            System.exit(1);
+        }
+
+        String operation = args[0];
+        IgniteConfiguration cfg = createConfiguration("baseline-ops-node");
+
+        try (Ignite ignite = Ignition.start(cfg)) {
+            if (ignite.cluster().state() != ClusterState.ACTIVE) {
+                ignite.cluster().state(ClusterState.ACTIVE);
+            }
+
+            switch (operation) {
+                case "add-all":
+                    addAllNodesToBaseline(ignite);
+                    break;
+                case "remove-offline":
+                    removeOfflineFromBaseline(ignite);
+                    break;
+                case "reset":
+                    resetBaseline(ignite);
+                    break;
+                default:
+                    System.out.println("Unknown operation: " + operation);
+            }
+
+            // Display updated baseline
+            displayBaseline(ignite);
+
+            System.out.println("\nPress Enter to stop...");
+            System.in.read();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void addAllNodesToBaseline(Ignite ignite) {
+        System.out.println("\n=== Adding All Online Nodes to Baseline ===");
+
+        // Get current topology version
+        long topologyVersion = ignite.cluster().topologyVersion();
+        System.out.println("Current topology version: " + topologyVersion);
+
+        // Set baseline to include all current server nodes
+        ignite.cluster().setBaselineTopology(topologyVersion);
+        System.out.println("Baseline updated to topology version " + topologyVersion);
+    }
+
+    private static void removeOfflineFromBaseline(Ignite ignite) {
+        System.out.println("\n=== Removing Offline Nodes from Baseline ===");
+
+        Collection<BaselineNode> currentBaseline = ignite.cluster().currentBaselineTopology();
+        if (currentBaseline == null || currentBaseline.isEmpty()) {
+            System.out.println("No baseline topology set.");
+            return;
+        }
+
+        // Get online node IDs
+        Set<Object> onlineIds = new HashSet<>();
+        ignite.cluster().forServers().nodes()
+            .forEach(n -> onlineIds.add(n.consistentId()));
+
+        // Filter baseline to only include online nodes
+        List<BaselineNode> newBaseline = new ArrayList<>();
+        for (BaselineNode node : currentBaseline) {
+            if (onlineIds.contains(node.consistentId())) {
+                newBaseline.add(node);
+            } else {
+                System.out.println("Removing offline node: " + node.consistentId());
+            }
+        }
+
+        // Update baseline with only online nodes
+        ignite.cluster().setBaselineTopology(newBaseline);
+        System.out.println("Baseline updated. Removed offline nodes.");
+    }
+
+    private static void resetBaseline(Ignite ignite) {
+        System.out.println("\n=== Resetting Baseline to Current Topology ===");
+
+        // This effectively recreates baseline from scratch with current nodes
+        long currentVersion = ignite.cluster().topologyVersion();
+        ignite.cluster().setBaselineTopology(currentVersion);
+
+        System.out.println("Baseline reset to topology version: " + currentVersion);
+        System.out.println("Baseline now contains all current server nodes.");
+    }
+
+    private static void displayBaseline(Ignite ignite) {
+        System.out.println("\n=== Updated Baseline Topology ===");
+
+        Collection<BaselineNode> baseline = ignite.cluster().currentBaselineTopology();
+        if (baseline != null) {
+            System.out.println("Total nodes: " + baseline.size());
+            baseline.forEach(n -> System.out.println("  - " + n.consistentId()));
+        }
+    }
+
+    private static IgniteConfiguration createConfiguration(String nodeName) {
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setIgniteInstanceName(nodeName);
+
+        DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+        DataRegionConfiguration defaultRegion = new DataRegionConfiguration();
+        defaultRegion.setPersistenceEnabled(true);
+        defaultRegion.setMaxSize(100L * 1024 * 1024);
+        storageCfg.setDefaultDataRegionConfiguration(defaultRegion);
+        storageCfg.setStoragePath("./ignite-data/baseline-ops");
+        storageCfg.setWalPath("./ignite-wal/baseline-ops");
+        storageCfg.setWalArchivePath("./ignite-wal-archive/baseline-ops");
+        cfg.setDataStorageConfiguration(storageCfg);
+
+        TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
+        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+        ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
+        discoverySpi.setIpFinder(ipFinder);
+        cfg.setDiscoverySpi(discoverySpi);
+
+        return cfg;
+    }
+}
+```

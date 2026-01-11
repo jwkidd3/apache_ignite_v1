@@ -30,92 +30,91 @@ Professional training course for Apache Ignite, covering fundamentals through pr
 
 ## Course Structure
 
-### Day 1: Fundamentals and Basic Operations
+### Day 1: Fundamentals and Basic Operations (3.5 hrs lab / 2.5 hrs lecture)
 
-**Module 1: Introduction to In-Memory Computing (90 min)**
+**Module 1: Introduction to In-Memory Computing (45 min lecture + 45 min lab)**
 - What is in-memory computing and why it matters
 - Traditional database limitations
 - Apache Ignite overview and comparisons
-- **Lab 1:** Environment setup and first cluster
+- **Lab 1:** Environment setup and first cluster (45 min)
 
-**Module 2: Ignite Architecture Deep Dive (90 min)**
+**Module 2: Ignite Architecture Deep Dive (45 min lecture + 50 min lab)**
 - Cluster topology and node types
 - Data distribution and partitioning
 - Memory architecture (on-heap, off-heap, persistence)
 - Discovery mechanisms and baseline topology
-- **Lab 2:** Multi-node cluster setup
+- **Lab 2:** Multi-node cluster setup (50 min)
 
-**Module 3: Basic Cache Operations (90 min)**
+**Module 3: Basic Cache Operations (45 min lecture + 55 min lab)**
 - Cache API and CRUD operations
 - Cache modes: PARTITIONED, REPLICATED, LOCAL
 - Synchronous vs asynchronous operations
 - Batch operations
-- **Lab 3:** Implementing cache operations
+- **Lab 3:** Implementing cache operations (55 min)
 
-**Module 4: Configuration and Deployment (120 min)**
+**Module 4: Configuration and Deployment (45 min lecture + 60 min lab)**
 - XML vs programmatic configuration
 - Spring Boot integration
 - Monitoring and logging setup
-- **Lab 4:** Configuration and Spring Boot integration
+- **Lab 4:** Configuration and Spring Boot integration (60 min)
 
-### Day 2: Data Management and Advanced Features
+### Day 2: Data Management and Advanced Features (3.75 hrs lab / 2.5 hrs lecture)
 
-**Module 5: Data Modeling and Persistence (105 min)**
+**Module 5: Data Modeling and Persistence (40 min lecture + 45 min lab)**
 - Data modeling best practices
 - Affinity keys and colocation strategies
 - Native persistence layer
 - Write-through, write-behind patterns
-- **Lab 5:** Data models with persistence
+- **Lab 5:** Data models with persistence (45 min)
 
-**Module 6: SQL and Indexing (120 min)**
+**Module 6: SQL and Indexing (40 min lecture + 60 min lab)**
 - SQL support (DDL, DML, DQL)
 - Creating and managing indexes
 - Query optimization
 - JDBC driver and distributed joins
-- **Lab 6:** SQL queries and indexing
+- **Lab 6:** SQL queries and indexing (60 min)
 
-**Module 7: Transactions and ACID Properties (90 min)**
+**Module 7: Transactions and ACID Properties (35 min lecture + 60 min lab)**
 - Transaction models (PESSIMISTIC, OPTIMISTIC)
 - Isolation levels
 - Deadlock detection and resolution
-- **Lab 7:** Transactional operations
+- **Lab 7:** Transactional operations (60 min)
 
-**Module 8: Advanced Caching Patterns (120 min)**
+**Module 8: Advanced Caching Patterns (40 min lecture + 60 min lab)**
 - Near caches and client-side caching
 - Expiry policies and eviction strategies
 - Cache entry processors
 - Continuous queries
-- **Lab 8:** Advanced caching patterns
+- **Lab 8:** Advanced caching patterns (60 min)
 
-### Day 3: Distributed Computing and Production
+### Day 3: Distributed Computing and Production (3.5 hrs lab / 2.25 hrs lecture)
 
-**Module 9: Compute Grid Fundamentals (105 min)**
+**Module 9: Compute Grid Fundamentals (35 min lecture + 50 min lab)**
 - Distributed computing concepts
 - Compute closures and jobs
 - Affinity-aware computing
 - MapReduce operations
-- **Lab 9:** Distributed computing tasks
+- **Lab 9:** Distributed computing tasks (50 min)
 
-**Module 10: Integration and Connectivity (120 min)**
+**Module 10: Integration and Connectivity (35 min lecture + 55 min lab)**
 - REST API usage
 - Spring Framework integration
 - Kafka connector
 - Hibernate L2 cache
-- **Lab 10:** Integration with external systems
+- **Lab 10:** Integration with external systems (55 min)
 
-**Module 11: Performance Tuning and Monitoring (105 min)**
+**Module 11: Performance Tuning and Monitoring (35 min lecture + 55 min lab)**
 - JVM tuning for Ignite workloads
 - Memory management and GC
 - Performance metrics and monitoring
 - Benchmarking strategies
-- **Lab 11:** Performance analysis and tuning
+- **Lab 11:** Performance analysis and tuning (55 min)
 
-**Module 12: Production Deployment (120 min)**
+**Module 12: Production Deployment (30 min lecture + 55 min lab)**
 - Security configuration (SSL/TLS, authentication)
-- Backup and disaster recovery
-- Rolling updates
-- Docker and Kubernetes deployment
-- **Lab 12:** Production-ready cluster deployment
+- Production configuration best practices
+- Optional: Docker and Kubernetes deployment
+- **Lab 12:** Production-ready cluster deployment (55 min)
 
 ## Repository Structure
 
@@ -236,7 +235,7 @@ Each lab includes:
 - **Common issues** - Troubleshooting guide
 - **Next steps** - Preview of upcoming content
 
-**Estimated Time:** 30-60 minutes per lab
+**Estimated Time:** 60-105 minutes per lab
 
 ## Presentation Materials
 
@@ -251,18 +250,27 @@ Simply open any `.html` file in a browser to view the presentation.
 
 ## Daily Schedule
 
-**Typical Day Structure:**
+**Typical Day Structure (70% Lab / 30% Lecture):**
 ```
-9:00 AM  - Morning Module 1 (Presentation + Lab)
-10:30 AM - Break
-10:45 AM - Morning Module 2 (Presentation + Lab)
-12:00 PM - Lunch
-1:00 PM  - Afternoon Module 1 (Presentation + Lab)
-2:30 PM  - Break
-2:45 PM  - Afternoon Module 2 (Presentation + Lab)
-4:30 PM  - Wrap-up and Q&A
-5:00 PM  - End
+9:00 AM  - Module 1 Lecture (35-45 min)
+9:45 AM  - Lab Exercise (60-90 min)
+11:15 AM - Break (15 min)
+11:30 AM - Module 2 Lecture (35-45 min)
+12:15 PM - Lab Exercise (75-90 min)
+1:30 PM  - Lunch (45 min)
+2:15 PM  - Module 3 Lecture (35-45 min)
+3:00 PM  - Lab Exercise (60-90 min)
+4:30 PM  - Break (15 min)
+4:45 PM  - Module 4 Lecture (30-45 min)
+5:15 PM  - Lab Exercise (remaining time)
+6:00 PM  - Wrap-up and Q&A
 ```
+
+**Time Allocation:**
+- **Lab Time:** ~5.5 hours/day (70%)
+- **Lecture Time:** ~2.5 hours/day (30%)
+- **Total Course Lab Time:** 16.75 hours
+- **Total Course Lecture Time:** 7.25 hours
 
 ## Version Control Setup
 

@@ -4,23 +4,23 @@ This directory contains all 12 hands-on labs for the Apache Ignite 3-day trainin
 
 ## Course Structure
 
-### Day 1: Fundamentals and Basic Operations
-- **Lab 1**: Environment Setup and First Cluster (30 min)
-- **Lab 2**: Multi-Node Cluster Setup (30 min)
-- **Lab 3**: Basic Cache Operations (30 min)
+### Day 1: Fundamentals and Basic Operations (3.5 hours lab time)
+- **Lab 1**: Environment Setup and First Cluster (45 min)
+- **Lab 2**: Multi-Node Cluster Setup (50 min)
+- **Lab 3**: Basic Cache Operations (55 min)
 - **Lab 4**: Configuration and Deployment (60 min)
 
-### Day 2: Data Management and Advanced Features
+### Day 2: Data Management and Advanced Features (3.75 hours lab time)
 - **Lab 5**: Data Modeling and Persistence (45 min)
 - **Lab 6**: SQL and Indexing (60 min)
-- **Lab 7**: Transactions and ACID Properties (30 min)
+- **Lab 7**: Transactions and ACID Properties (60 min)
 - **Lab 8**: Advanced Caching Patterns (60 min)
 
-### Day 3: Distributed Computing and Production
-- **Lab 9**: Compute Grid Fundamentals (45 min)
-- **Lab 10**: Integration and Connectivity (60 min)
-- **Lab 11**: Performance Tuning and Monitoring (45 min)
-- **Lab 12**: Production Deployment (60 min)
+### Day 3: Distributed Computing and Production (3.5 hours lab time)
+- **Lab 9**: Compute Grid Fundamentals (50 min)
+- **Lab 10**: Integration and Connectivity (55 min)
+- **Lab 11**: Performance Tuning and Monitoring (55 min)
+- **Lab 12**: Production Deployment (55 min)
 
 ## Lab Descriptions
 
@@ -172,11 +172,11 @@ Learn to:
 
 Learn to:
 - Deploy production clusters
-- Configure security (SSL/TLS)
-- Implement backup/recovery
-- Deploy on Docker/Kubernetes
+- Configure security (SSL/TLS, authentication)
+- Set up production configuration
+- Optional: Deploy on Docker/Kubernetes
 
-**Key Concepts**: Security, Docker, Kubernetes, backup strategies, rolling updates
+**Key Concepts**: Security, production configuration, SSL/TLS, authentication
 
 ---
 
@@ -186,8 +186,8 @@ Learn to:
 - Java 8 or higher
 - Maven or Gradle
 - IDE (IntelliJ IDEA, Eclipse, or VS Code)
-- Docker Desktop (for Lab 12)
 - 8GB+ RAM recommended
+- Docker Desktop (optional, for Lab 12 optional exercises only)
 
 ### Knowledge Requirements
 - Java programming experience
