@@ -1,8 +1,8 @@
 # Apache Ignite Training - Lab Solutions
 
-This directory contains complete solution code for all 12 labs in the Apache Ignite training course.
+This directory contains complete solution code for all 12 labs plus a bonus lab in the Apache Ignite training course.
 
-**Total: 75 Java solution files**
+**Total: 81 Java solution files (75 core + 6 bonus)**
 
 ## Directory Structure
 
@@ -20,6 +20,7 @@ solutions/
 ├── lab10_integration_connectivity/ # 4 files - Integration and Connectivity
 ├── lab11_performance_tuning/       # 6 files - Performance Tuning
 ├── lab12_production_deployment/    # 8 files - Production Deployment
+├── lab13_bonus_cdc_integration/    # 6 files - BONUS: CDC with Kafka/Debezium
 └── README.md                       # This file
 ```
 
@@ -28,6 +29,7 @@ solutions/
 - Java 11 or higher
 - Maven 3.6+
 - Apache Ignite 2.16.0 (handled by Maven)
+- Docker & Docker Compose (for Lab 13 bonus only)
 
 ---
 
@@ -165,6 +167,12 @@ mvn test -Dsurefire.useFile=false
 | 10 | Integration & Connectivity | 55 min | REST API, JDBC/ODBC, thin clients |
 | 11 | Performance Tuning | 55 min | Memory tuning, query optimization, profiling |
 | 12 | Production Deployment | 55 min | Security, SSL/TLS, backup/recovery |
+
+### Bonus Lab
+
+| Lab | Title | Duration | Key Topics |
+|-----|-------|----------|------------|
+| 13 | CDC Integration | 60-90 min | Kafka, Debezium, PostgreSQL, real-time sync, Docker |
 
 ---
 
@@ -437,6 +445,37 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12BackupRe
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12RollingUpdate"
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12HealthChecker"
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12DeploymentValidator"
+```
+
+### Lab 13: Bonus - CDC Integration (6 files)
+```
+com.example.ignite.solutions.lab13
+├── Lab13CDCIntegration.java    # Client mode (Docker Ignite)
+├── Lab13CDCStandalone.java     # Standalone mode (embedded)
+├── cdc/
+│   ├── CDCEvent.java           # Debezium event model
+│   └── IgniteCDCConsumer.java  # Kafka consumer
+└── model/
+    ├── Customer.java           # Customer entity
+    ├── Product.java            # Product entity
+    ├── Order.java              # Order entity
+    └── OrderItem.java          # Order item entity
+```
+
+**Prerequisites:** Docker & Docker Compose
+
+**Run commands:**
+```bash
+cd lab13_bonus_cdc_integration
+
+# Start Docker environment
+cd docker && ./start.sh && ./register-connector.sh && cd ..
+
+# Run standalone mode
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab13.Lab13CDCStandalone"
+
+# Or run client mode (with Docker Ignite)
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab13.Lab13CDCIntegration"
 ```
 
 ---
