@@ -6,7 +6,7 @@ This lab covers integration options for Apache Ignite, including:
 - REST API for HTTP-based access
 - Thin client connections
 - Spring Framework integration patterns
-- Hibernate L2 cache integration
+- JDBC connectivity
 
 ## Prerequisites
 
@@ -24,14 +24,47 @@ lab10_integration_connectivity/
 └── src/main/java/com/example/ignite/solutions/lab10/
     ├── Lab10RestAPI.java           - Exercise 1: REST API usage
     ├── Lab10ThinClient.java        - Exercise 2: Thin client
-    └── Lab10SpringIntegration.java - Exercise 3: Spring patterns
+    ├── Lab10SpringIntegration.java - Exercise 3: Spring patterns
+    └── Lab10JDBC.java              - Exercise 4: JDBC connectivity
 ```
 
-## Building the Project
+## Quick Start
 
 ```bash
-cd lab10_integration_connectivity
+# Build
 mvn clean compile
+
+# Package (create JAR with dependencies)
+mvn clean package
+
+# Run a specific solution
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab10.Lab10ThinClient"
+```
+
+## All Maven Commands
+
+```bash
+# Clean the project
+mvn clean
+
+# Compile only
+mvn compile
+
+# Package into JAR
+mvn package
+
+# Skip tests during package
+mvn package -DskipTests
+
+# Download dependencies
+mvn dependency:resolve
+
+# Copy dependencies to target/dependency
+mvn dependency:copy-dependencies
+
+# Run with custom JVM options
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab10.Lab10ThinClient" -Dexec.args="" \
+  -Djava.net.preferIPv4Stack=true
 ```
 
 ## Running the Solutions
@@ -64,6 +97,38 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab10.Lab10ThinClie
 ### Exercise 3: Spring Integration
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab10.Lab10SpringIntegration"
+```
+
+### Exercise 4: JDBC Connectivity
+```bash
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab10.Lab10JDBC"
+```
+
+## Running Without Maven
+
+```bash
+# After running 'mvn package dependency:copy-dependencies'
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab10.Lab10ThinClient
+
+# With JVM options
+java -Xms512m -Xmx2g -Djava.net.preferIPv4Stack=true \
+  -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab10.Lab10ThinClient
+```
+
+### All Solutions Without Maven
+
+```bash
+# Exercise 1: REST API
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab10.Lab10RestAPI
+
+# Exercise 2: Thin Client
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab10.Lab10ThinClient
+
+# Exercise 3: Spring Integration
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab10.Lab10SpringIntegration
+
+# Exercise 4: JDBC Connectivity
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab10.Lab10JDBC
 ```
 
 ## Key Concepts
@@ -106,6 +171,12 @@ ClientConfiguration cfg = new ClientConfiguration()
 3. **@CachePut**: Always update cache
 4. **CacheManager**: Manage multiple caches
 
+### JDBC Connectivity
+- Standard JDBC interface for SQL queries
+- Connection URL: `jdbc:ignite:thin://localhost:10800`
+- Supports prepared statements and batch operations
+- Compatible with database tools and ORMs
+
 ## Thick vs Thin Client Comparison
 
 | Feature | Thick Client | Thin Client |
@@ -125,6 +196,7 @@ ClientConfiguration cfg = new ClientConfiguration()
 4. Configure connection timeouts and retries
 5. Enable affinity awareness for thin clients
 6. Use batch operations (putAll/getAll) for efficiency
+7. Use JDBC for SQL-centric applications
 
 ## Common Issues
 
@@ -137,3 +209,8 @@ ClientConfiguration cfg = new ClientConfiguration()
 - Check server port 10800 is open
 - Verify ClientConnectorConfiguration on server
 - Check firewall settings
+
+### JDBC Connection Issues
+- Verify JDBC thin driver is in classpath
+- Check connection URL format
+- Ensure SQL schema is properly configured

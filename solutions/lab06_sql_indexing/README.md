@@ -28,11 +28,43 @@ Lab 6 focuses on:
 - Maven 3.6+
 - Apache Ignite 2.16.0
 
-## Building the Project
+## Quick Start
 
 ```bash
-cd lab06_sql_indexing
+# Build
 mvn clean compile
+
+# Package (create JAR with dependencies)
+mvn clean package
+
+# Run a specific solution
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab06.BasicSQL"
+```
+
+## All Maven Commands
+
+```bash
+# Clean the project
+mvn clean
+
+# Compile only
+mvn compile
+
+# Package into JAR
+mvn package
+
+# Skip tests during package
+mvn package -DskipTests
+
+# Download dependencies
+mvn dependency:resolve
+
+# Copy dependencies to target/dependency
+mvn dependency:copy-dependencies
+
+# Run with custom JVM options
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab06.BasicSQL" -Dexec.args="" \
+  -Djava.net.preferIPv4Stack=true
 ```
 
 ## Running the Solutions
@@ -67,6 +99,54 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab06.DistributedJo
 ### Optional: Query Optimization
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab06.QueryOptimization"
+```
+
+## All Solution Run Commands
+
+```bash
+# Basic SQL operations
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab06.BasicSQL"
+
+# Indexing demonstration
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab06.Indexing"
+
+# Start Ignite Node (for JDBC)
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab06.StartIgniteNode"
+
+# JDBC Connection
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab06.JDBCConnection"
+
+# Distributed Joins
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab06.DistributedJoins"
+
+# Query Optimization
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab06.QueryOptimization"
+```
+
+## Running Without Maven
+
+```bash
+# After running 'mvn package dependency:copy-dependencies'
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab06.BasicSQL
+
+# With JVM options
+java -Xms512m -Xmx2g -Djava.net.preferIPv4Stack=true \
+  -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab06.BasicSQL
+
+# Run Indexing
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab06.Indexing
+
+# Start Ignite Node
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab06.StartIgniteNode
+
+# Run JDBC Connection
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab06.JDBCConnection
+
+# Run Distributed Joins
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab06.DistributedJoins
+
+# Run Query Optimization
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab06.QueryOptimization
 ```
 
 ## Key Concepts Demonstrated

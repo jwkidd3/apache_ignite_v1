@@ -26,11 +26,43 @@ Lab 2 focuses on:
 - Maven 3.6+
 - Apache Ignite 2.16.0
 
-## Building the Project
+## Quick Start
 
 ```bash
-cd lab02_multinode_cluster
+# Build
 mvn clean compile
+
+# Package (create JAR with dependencies)
+mvn clean package
+
+# Run a specific solution
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab02.StaticIPDiscovery" -Dexec.args="1"
+```
+
+## All Maven Commands
+
+```bash
+# Clean the project
+mvn clean
+
+# Compile only
+mvn compile
+
+# Package into JAR
+mvn package
+
+# Skip tests during package
+mvn package -DskipTests
+
+# Download dependencies
+mvn dependency:resolve
+
+# Copy dependencies to target/dependency
+mvn dependency:copy-dependencies
+
+# Run with custom JVM options
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab02.StaticIPDiscovery" -Dexec.args="1" \
+  -Djava.net.preferIPv4Stack=true
 ```
 
 ## Running the Solutions
@@ -89,6 +121,41 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab02.BaselineOpera
 
 # Reset baseline to current topology
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab02.BaselineOperations" -Dexec.args="reset"
+```
+
+## Running Without Maven
+
+```bash
+# After running 'mvn package dependency:copy-dependencies'
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.StaticIPDiscovery 1
+
+# With JVM options
+java -Xms512m -Xmx2g -Djava.net.preferIPv4Stack=true \
+  -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.StaticIPDiscovery 1
+```
+
+### All Solutions Without Maven
+
+```bash
+# Static IP Discovery (run in separate terminals with node IDs 1, 2, 3)
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.StaticIPDiscovery 1
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.StaticIPDiscovery 2
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.StaticIPDiscovery 3
+
+# Baseline Topology
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.BaselineTopology 1
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.BaselineTopology 2
+
+# Cluster States
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.ClusterStates
+
+# Cloud Discovery
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.CloudDiscovery
+
+# Baseline Operations
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.BaselineOperations add-all
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.BaselineOperations remove-offline
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab02.BaselineOperations reset
 ```
 
 ## Key Concepts Demonstrated

@@ -32,11 +32,43 @@ lab07_transactions_acid/
     └── Lab07TransactionMonitor.java     - Challenge 2: Transaction monitoring
 ```
 
-## Building the Project
+## Quick Start
 
 ```bash
-cd lab07_transactions_acid
+# Build
 mvn clean compile
+
+# Package (create JAR with dependencies)
+mvn clean package
+
+# Run a specific solution
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07BasicTransactions"
+```
+
+## All Maven Commands
+
+```bash
+# Clean the project
+mvn clean
+
+# Compile only
+mvn compile
+
+# Package into JAR
+mvn package
+
+# Skip tests during package
+mvn package -DskipTests
+
+# Download dependencies
+mvn dependency:resolve
+
+# Copy dependencies to target/dependency
+mvn dependency:copy-dependencies
+
+# Run with custom JVM options
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07BasicTransactions" -Dexec.args="" \
+  -Djava.net.preferIPv4Stack=true
 ```
 
 ## Running the Solutions
@@ -79,6 +111,66 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07BankTran
 ### Challenge 2: Transaction Monitor
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07TransactionMonitor"
+```
+
+## All Solution Run Commands
+
+```bash
+# Basic Transactions
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07BasicTransactions"
+
+# Transaction Models (PESSIMISTIC vs OPTIMISTIC)
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07TransactionModels"
+
+# Best Practices
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07BestPractices"
+
+# Isolation Comparison
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07IsolationComparison"
+
+# Deadlock Handling
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07DeadlockHandling"
+
+# Cross-Cache Transactions
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07CrossCacheTransactions"
+
+# Bank Transfer (Challenge)
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07BankTransfer"
+
+# Transaction Monitor (Challenge)
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab07.Lab07TransactionMonitor"
+```
+
+## Running Without Maven
+
+```bash
+# After running 'mvn package dependency:copy-dependencies'
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab07.Lab07BasicTransactions
+
+# With JVM options
+java -Xms512m -Xmx2g -Djava.net.preferIPv4Stack=true \
+  -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab07.Lab07BasicTransactions
+
+# Run Transaction Models
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab07.Lab07TransactionModels
+
+# Run Best Practices
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab07.Lab07BestPractices
+
+# Run Isolation Comparison
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab07.Lab07IsolationComparison
+
+# Run Deadlock Handling
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab07.Lab07DeadlockHandling
+
+# Run Cross-Cache Transactions
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab07.Lab07CrossCacheTransactions
+
+# Run Bank Transfer
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab07.Lab07BankTransfer
+
+# Run Transaction Monitor
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab07.Lab07TransactionMonitor
 ```
 
 ## Key Concepts

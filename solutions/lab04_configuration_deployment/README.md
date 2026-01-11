@@ -28,11 +28,43 @@ Lab 4 focuses on:
 - Maven 3.6+
 - Apache Ignite 2.16.0
 
-## Building the Project
+## Quick Start
 
 ```bash
-cd lab04_configuration_deployment
+# Build
 mvn clean compile
+
+# Package (create JAR with dependencies)
+mvn clean package
+
+# Run a specific solution
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab04.XmlConfig"
+```
+
+## All Maven Commands
+
+```bash
+# Clean the project
+mvn clean
+
+# Compile only
+mvn compile
+
+# Package into JAR
+mvn package
+
+# Skip tests during package
+mvn package -DskipTests
+
+# Download dependencies
+mvn dependency:resolve
+
+# Copy dependencies to target/dependency
+mvn dependency:copy-dependencies
+
+# Run with custom JVM options
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab04.XmlConfig" -Dexec.args="" \
+  -Djava.net.preferIPv4Stack=true
 ```
 
 ## Running the Solutions
@@ -60,6 +92,36 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab04.controller.Ca
 ### Exercise 5-6: Monitoring
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab04.Monitoring"
+```
+
+## Running Without Maven
+
+```bash
+# After running 'mvn package dependency:copy-dependencies'
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab04.XmlConfig
+
+# With JVM options
+java -Xms512m -Xmx2g -Djava.net.preferIPv4Stack=true \
+  -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab04.XmlConfig
+```
+
+### All Solutions Without Maven
+
+```bash
+# XML Configuration
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab04.XmlConfig
+
+# Programmatic Configuration
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab04.ProgrammaticConfig
+
+# Spring-Style Configuration
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab04.config.IgniteConfig
+
+# REST Controller Simulation
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab04.controller.CacheController
+
+# Monitoring
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab04.Monitoring
 ```
 
 ## Key Concepts Demonstrated

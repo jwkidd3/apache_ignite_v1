@@ -30,11 +30,43 @@ lab08_advanced_caching/
     └── Lab08ContinuousQueries.java  - Exercise 6: Continuous queries
 ```
 
-## Building the Project
+## Quick Start
 
 ```bash
-cd lab08_advanced_caching
+# Build
 mvn clean compile
+
+# Package (create JAR with dependencies)
+mvn clean package
+
+# Run a specific solution
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab08.Lab08NearCache"
+```
+
+## All Maven Commands
+
+```bash
+# Clean the project
+mvn clean
+
+# Compile only
+mvn compile
+
+# Package into JAR
+mvn package
+
+# Skip tests during package
+mvn package -DskipTests
+
+# Download dependencies
+mvn dependency:resolve
+
+# Copy dependencies to target/dependency
+mvn dependency:copy-dependencies
+
+# Run with custom JVM options
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab08.Lab08NearCache" -Dexec.args="" \
+  -Djava.net.preferIPv4Stack=true
 ```
 
 ## Running the Solutions
@@ -71,6 +103,63 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab08.Lab08CacheEve
 ### Exercise 6: Continuous Queries
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab08.Lab08ContinuousQueries"
+```
+
+## All Solution Run Commands
+
+```bash
+# Near Cache (server mode)
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab08.Lab08NearCache" -Dexec.args="server"
+
+# Near Cache (client mode)
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab08.Lab08NearCache" -Dexec.args="client"
+
+# Expiry Policies
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab08.Lab08ExpiryPolicies"
+
+# Eviction Policies
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab08.Lab08Eviction"
+
+# Entry Processors
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab08.Lab08EntryProcessors"
+
+# Cache Events
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab08.Lab08CacheEvents"
+
+# Continuous Queries
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab08.Lab08ContinuousQueries"
+```
+
+## Running Without Maven
+
+```bash
+# After running 'mvn package dependency:copy-dependencies'
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab08.Lab08NearCache
+
+# With JVM options
+java -Xms512m -Xmx2g -Djava.net.preferIPv4Stack=true \
+  -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab08.Lab08NearCache
+
+# Run Near Cache (with server argument)
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab08.Lab08NearCache server
+
+# Run Near Cache (with client argument)
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab08.Lab08NearCache client
+
+# Run Expiry Policies
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab08.Lab08ExpiryPolicies
+
+# Run Eviction Policies
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab08.Lab08Eviction
+
+# Run Entry Processors
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab08.Lab08EntryProcessors
+
+# Run Cache Events
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab08.Lab08CacheEvents
+
+# Run Continuous Queries
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab08.Lab08ContinuousQueries
 ```
 
 ## Key Concepts

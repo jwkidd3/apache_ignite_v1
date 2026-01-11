@@ -7,6 +7,8 @@ This lab covers performance optimization for Apache Ignite, including:
 - Performance metrics collection and monitoring
 - Benchmarking strategies
 - Common anti-patterns to avoid
+- Query optimization techniques
+- Data region configuration
 
 ## Prerequisites
 
@@ -21,17 +23,51 @@ lab11_performance_tuning/
 ├── pom.xml
 ├── README.md
 └── src/main/java/com/example/ignite/solutions/lab11/
-    ├── Lab11JVMTuning.java     - Exercise 1: JVM configuration
-    ├── Lab11Monitoring.java    - Exercise 2: Performance monitoring
-    ├── Lab11Benchmark.java     - Exercise 3: Benchmarking
-    └── Lab11AntiPatterns.java  - Exercise 4: Anti-patterns
+    ├── Lab11JVMTuning.java         - Exercise 1: JVM configuration
+    ├── Lab11Monitoring.java        - Exercise 2: Performance monitoring
+    ├── Lab11Benchmark.java         - Exercise 3: Benchmarking
+    ├── Lab11AntiPatterns.java      - Exercise 4: Anti-patterns
+    ├── Lab11QueryOptimization.java - Exercise 5: Query optimization
+    └── Lab11DataRegions.java       - Exercise 6: Data region configuration
 ```
 
-## Building the Project
+## Quick Start
 
 ```bash
-cd lab11_performance_tuning
+# Build
 mvn clean compile
+
+# Package (create JAR with dependencies)
+mvn clean package
+
+# Run a specific solution
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab11.Lab11Benchmark"
+```
+
+## All Maven Commands
+
+```bash
+# Clean the project
+mvn clean
+
+# Compile only
+mvn compile
+
+# Package into JAR
+mvn package
+
+# Skip tests during package
+mvn package -DskipTests
+
+# Download dependencies
+mvn dependency:resolve
+
+# Copy dependencies to target/dependency
+mvn dependency:copy-dependencies
+
+# Run with custom JVM options
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab11.Lab11Benchmark" -Dexec.args="" \
+  -Djava.net.preferIPv4Stack=true
 ```
 
 ## Running the Solutions
@@ -54,6 +90,49 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab11.Lab11Benchmar
 ### Exercise 4: Anti-Patterns
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab11.Lab11AntiPatterns"
+```
+
+### Exercise 5: Query Optimization
+```bash
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab11.Lab11QueryOptimization"
+```
+
+### Exercise 6: Data Regions
+```bash
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab11.Lab11DataRegions"
+```
+
+## Running Without Maven
+
+```bash
+# After running 'mvn package dependency:copy-dependencies'
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab11.Lab11Benchmark
+
+# With JVM options
+java -Xms512m -Xmx2g -Djava.net.preferIPv4Stack=true \
+  -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab11.Lab11Benchmark
+```
+
+### All Solutions Without Maven
+
+```bash
+# Exercise 1: JVM Tuning
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab11.Lab11JVMTuning
+
+# Exercise 2: Monitoring
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab11.Lab11Monitoring
+
+# Exercise 3: Benchmarking
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab11.Lab11Benchmark
+
+# Exercise 4: Anti-Patterns
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab11.Lab11AntiPatterns
+
+# Exercise 5: Query Optimization
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab11.Lab11QueryOptimization
+
+# Exercise 6: Data Regions
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab11.Lab11DataRegions
 ```
 
 ## Recommended JVM Options

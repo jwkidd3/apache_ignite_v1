@@ -27,11 +27,43 @@ Lab 5 focuses on:
 - Maven 3.6+
 - Apache Ignite 2.16.0
 
-## Building the Project
+## Quick Start
 
 ```bash
-cd lab05_data_modeling_persistence
+# Build
 mvn clean compile
+
+# Package (create JAR with dependencies)
+mvn clean package
+
+# Run a specific solution
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab05.AffinityKeys"
+```
+
+## All Maven Commands
+
+```bash
+# Clean the project
+mvn clean
+
+# Compile only
+mvn compile
+
+# Package into JAR
+mvn package
+
+# Skip tests during package
+mvn package -DskipTests
+
+# Download dependencies
+mvn dependency:resolve
+
+# Copy dependencies to target/dependency
+mvn dependency:copy-dependencies
+
+# Run with custom JVM options
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab05.AffinityKeys" -Dexec.args="" \
+  -Djava.net.preferIPv4Stack=true
 ```
 
 ## Running the Solutions
@@ -58,6 +90,42 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab05.CacheStore"
 ### Exercise 5: Write-Behind
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab05.WriteBehind"
+```
+
+## All Solution Run Commands
+
+```bash
+# Affinity Keys demonstration
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab05.AffinityKeys"
+
+# Native Persistence
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab05.Persistence"
+
+# Cache Store (Read-Through/Write-Through)
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab05.CacheStore"
+
+# Write-Behind
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab05.WriteBehind"
+```
+
+## Running Without Maven
+
+```bash
+# After running 'mvn package dependency:copy-dependencies'
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab05.AffinityKeys
+
+# With JVM options
+java -Xms512m -Xmx2g -Djava.net.preferIPv4Stack=true \
+  -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab05.AffinityKeys
+
+# Run Persistence
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab05.Persistence
+
+# Run CacheStore
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab05.CacheStore
+
+# Run WriteBehind
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab05.WriteBehind
 ```
 
 ## Key Concepts Demonstrated

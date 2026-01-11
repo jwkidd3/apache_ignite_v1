@@ -7,6 +7,7 @@ This lab covers production deployment essentials for Apache Ignite, including:
 - Production-ready cluster setup
 - Backup and recovery procedures
 - Rolling update strategies
+- Health checking and deployment validation
 
 ## Prerequisites
 
@@ -25,15 +26,49 @@ lab12_production_deployment/
     ├── Lab12ClusterSetup.java        - Exercise 2: Production cluster setup
     ├── Lab12SSLConfiguration.java    - Exercise 3: SSL/TLS configuration
     ├── Lab12Authentication.java      - Exercise 4: Authentication setup
-    ├── Lab12BackupRecovery.java      - Optional: Backup and recovery
-    └── Lab12RollingUpdate.java       - Optional: Rolling updates
+    ├── Lab12BackupRecovery.java      - Exercise 5: Backup and recovery
+    ├── Lab12RollingUpdate.java       - Exercise 6: Rolling updates
+    ├── Lab12HealthChecker.java       - Exercise 7: Health checking
+    └── Lab12DeploymentValidator.java - Exercise 8: Deployment validation
 ```
 
-## Building the Project
+## Quick Start
 
 ```bash
-cd lab12_production_deployment
+# Build
 mvn clean compile
+
+# Package (create JAR with dependencies)
+mvn clean package
+
+# Run a specific solution
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12ClusterSetup"
+```
+
+## All Maven Commands
+
+```bash
+# Clean the project
+mvn clean
+
+# Compile only
+mvn compile
+
+# Package into JAR
+mvn package
+
+# Skip tests during package
+mvn package -DskipTests
+
+# Download dependencies
+mvn dependency:resolve
+
+# Copy dependencies to target/dependency
+mvn dependency:copy-dependencies
+
+# Run with custom JVM options
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12ClusterSetup" -Dexec.args="" \
+  -Djava.net.preferIPv4Stack=true
 ```
 
 ## Running the Solutions
@@ -58,14 +93,63 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12SSLConfi
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12Authentication"
 ```
 
-### Optional: Backup and Recovery
+### Exercise 5: Backup and Recovery
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12BackupRecovery"
 ```
 
-### Optional: Rolling Updates
+### Exercise 6: Rolling Updates
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12RollingUpdate"
+```
+
+### Exercise 7: Health Checker
+```bash
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12HealthChecker"
+```
+
+### Exercise 8: Deployment Validator
+```bash
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12DeploymentValidator"
+```
+
+## Running Without Maven
+
+```bash
+# After running 'mvn package dependency:copy-dependencies'
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab12.Lab12ClusterSetup
+
+# With JVM options
+java -Xms512m -Xmx2g -Djava.net.preferIPv4Stack=true \
+  -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab12.Lab12ClusterSetup
+```
+
+### All Solutions Without Maven
+
+```bash
+# Exercise 1: Security Overview
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab12.Lab12SecurityOverview
+
+# Exercise 2: Cluster Setup
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab12.Lab12ClusterSetup
+
+# Exercise 3: SSL Configuration
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab12.Lab12SSLConfiguration
+
+# Exercise 4: Authentication
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab12.Lab12Authentication
+
+# Exercise 5: Backup and Recovery
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab12.Lab12BackupRecovery
+
+# Exercise 6: Rolling Updates
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab12.Lab12RollingUpdate
+
+# Exercise 7: Health Checker
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab12.Lab12HealthChecker
+
+# Exercise 8: Deployment Validator
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab12.Lab12DeploymentValidator
 ```
 
 ## Production Deployment Checklist

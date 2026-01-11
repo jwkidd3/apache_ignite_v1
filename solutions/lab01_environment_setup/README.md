@@ -27,11 +27,43 @@ Lab 1 focuses on:
 - Maven 3.6+
 - Apache Ignite 2.16.0
 
-## Building the Project
+## Quick Start
 
 ```bash
-cd lab01_environment_setup
+# Build
 mvn clean compile
+
+# Package (create JAR with dependencies)
+mvn clean package
+
+# Run a specific solution
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab01.FirstCluster"
+```
+
+## All Maven Commands
+
+```bash
+# Clean the project
+mvn clean
+
+# Compile only
+mvn compile
+
+# Package into JAR
+mvn package
+
+# Skip tests during package
+mvn package -DskipTests
+
+# Download dependencies
+mvn dependency:resolve
+
+# Copy dependencies to target/dependency
+mvn dependency:copy-dependencies
+
+# Run with custom JVM options
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab01.FirstCluster" -Dexec.args="" \
+  -Djava.net.preferIPv4Stack=true
 ```
 
 ## Running the Solutions
@@ -59,6 +91,36 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab01.GracefulShutd
 ### Challenge 3: Health Check
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab01.HealthCheck"
+```
+
+## Running Without Maven
+
+```bash
+# After running 'mvn package dependency:copy-dependencies'
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab01.FirstCluster
+
+# With JVM options
+java -Xms512m -Xmx2g -Djava.net.preferIPv4Stack=true \
+  -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab01.FirstCluster
+```
+
+### All Solutions Without Maven
+
+```bash
+# First Cluster
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab01.FirstCluster
+
+# Cluster Metrics
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab01.ClusterMetrics
+
+# Multi-Node Cluster
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab01.MultiNodeCluster
+
+# Graceful Shutdown
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab01.GracefulShutdown
+
+# Health Check
+java -cp "target/classes:target/dependency/*" com.example.ignite.solutions.lab01.HealthCheck
 ```
 
 ## Key Concepts Demonstrated
