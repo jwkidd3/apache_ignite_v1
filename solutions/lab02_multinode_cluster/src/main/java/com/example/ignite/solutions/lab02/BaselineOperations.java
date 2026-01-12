@@ -16,6 +16,10 @@ import java.util.*;
  * Lab 2 Optional: Baseline Management Operations
  *
  * This exercise demonstrates advanced baseline topology management.
+ *
+ * NOTE: This utility is for managing baselines AFTER initial cluster setup.
+ * For initial cluster activation, use BaselineTopology.java which properly
+ * waits for all nodes before activation.
  */
 public class BaselineOperations {
 
@@ -35,8 +39,21 @@ public class BaselineOperations {
         IgniteConfiguration cfg = createConfiguration("baseline-ops-node");
 
         try (Ignite ignite = Ignition.start(cfg)) {
+            // Check if cluster needs activation
             if (ignite.cluster().state() != ClusterState.ACTIVE) {
+                int serverCount = ignite.cluster().forServers().nodes().size();
+                System.out.println("\nCluster is INACTIVE with " + serverCount + " server node(s).");
+                System.out.println("WARNING: Activating now will set baseline with only these nodes.");
+                System.out.println("Make sure all desired nodes have joined before proceeding.\n");
+
+                System.out.println("Server nodes currently in cluster:");
+                ignite.cluster().forServers().nodes().forEach(n ->
+                    System.out.println("  - " + n.consistentId()));
+
+                System.out.println("\nActivating cluster...");
                 ignite.cluster().state(ClusterState.ACTIVE);
+                ignite.cluster().setBaselineTopology(ignite.cluster().topologyVersion());
+                System.out.println("Cluster activated with " + serverCount + " node(s) in baseline.");
             }
 
             switch (operation) {

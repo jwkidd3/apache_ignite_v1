@@ -111,6 +111,8 @@ public class Lab02StaticIPDiscovery {
 
 ### Exercise 3: Configure Baseline Topology
 
+**IMPORTANT:** All nodes must join the cluster BEFORE activation. Once activated, the baseline is set and new nodes won't automatically be included. This is critical for production deployments.
+
 Create `Lab02BaselineTopology.java`:
 
 ```java
@@ -125,17 +127,22 @@ import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 
 public class Lab02BaselineTopology {
 
-    public static void main(String[] args) {
-        if (args.length < 1) {
-            System.out.println("Usage: java Lab02BaselineTopology <nodeNumber>");
-            System.exit(1);
-        }
+    public static void main(String[] args) throws Exception {
+        int nodeNumber = 1;
+        int expectedNodes = 1;
 
-        int nodeNumber = Integer.parseInt(args[0]);
+        if (args.length >= 1) {
+            nodeNumber = Integer.parseInt(args[0]);
+        }
+        if (args.length >= 2) {
+            expectedNodes = Integer.parseInt(args[1]);
+        }
 
         // Create configuration
         IgniteConfiguration cfg = new IgniteConfiguration();
@@ -166,21 +173,45 @@ public class Lab02BaselineTopology {
         System.out.println("Starting node " + nodeNumber + " with persistence...");
 
         try (Ignite ignite = Ignition.start(cfg)) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
             System.out.println("\n=== Node Information ===");
             System.out.println("Node: " + ignite.name());
-            System.out.println("Cluster size: " + ignite.cluster().nodes().size());
             System.out.println("Cluster state: " + ignite.cluster().state());
 
-            // If this is node 1 and cluster is inactive, activate it
-            if (nodeNumber == 1 && ignite.cluster().state() != ClusterState.ACTIVE) {
-                System.out.println("\nActivating cluster...");
-                ignite.cluster().state(ClusterState.ACTIVE);
-                System.out.println("Cluster activated!");
+            // If cluster is inactive, handle activation
+            if (ignite.cluster().state() != ClusterState.ACTIVE) {
+                if (nodeNumber == 1) {
+                    // Coordinator node - wait for all nodes then activate
+                    System.out.println("\n=== Waiting for Nodes ===");
+                    System.out.println("Expected nodes: " + expectedNodes);
 
-                // Set baseline topology
-                System.out.println("Setting baseline topology...");
-                ignite.cluster().setBaselineTopology(ignite.cluster().topologyVersion());
-                System.out.println("Baseline topology set!");
+                    // Wait for expected nodes to join
+                    while (ignite.cluster().forServers().nodes().size() < expectedNodes) {
+                        int currentSize = ignite.cluster().forServers().nodes().size();
+                        System.out.println("Current nodes: " + currentSize + "/" + expectedNodes);
+                        Thread.sleep(2000);
+                    }
+
+                    System.out.println("\nAll " + expectedNodes + " node(s) have joined!");
+                    System.out.println("Press Enter to ACTIVATE cluster and set baseline...");
+                    reader.readLine();
+
+                    System.out.println("Activating cluster...");
+                    ignite.cluster().state(ClusterState.ACTIVE);
+
+                    // Set baseline topology with ALL current nodes
+                    ignite.cluster().setBaselineTopology(ignite.cluster().topologyVersion());
+                    System.out.println("Baseline set with all " +
+                        ignite.cluster().forServers().nodes().size() + " nodes!");
+                } else {
+                    // Non-coordinator node - wait for activation
+                    System.out.println("\nWaiting for coordinator (node 1) to activate...");
+                    while (ignite.cluster().state() != ClusterState.ACTIVE) {
+                        Thread.sleep(1000);
+                    }
+                    System.out.println("Cluster is now ACTIVE!");
+                }
             }
 
             // Display baseline topology
@@ -196,7 +227,7 @@ public class Lab02BaselineTopology {
             }
 
             System.out.println("\nNode running. Press Enter to stop...");
-            System.in.read();
+            reader.readLine();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -207,23 +238,31 @@ public class Lab02BaselineTopology {
 
 ### Exercise 4: Activate Cluster and Set Baseline
 
-1. **Start Node 1:**
-   ```bash
-   java Lab02BaselineTopology 1
-   ```
-   - This will activate the cluster and set baseline topology
+**Correct procedure - start all nodes BEFORE activation:**
 
-2. **Start Node 2:**
+1. **Start Node 1 (coordinator) - expects 3 nodes:**
+   ```bash
+   java Lab02BaselineTopology 1 3
+   ```
+   - Node 1 will wait for 3 nodes to join before prompting for activation
+
+2. **Start Node 2 (in separate terminal):**
    ```bash
    java Lab02BaselineTopology 2
    ```
-   - Observe that it joins the baseline topology
+   - Node 2 joins and waits for activation
 
-3. **Start Node 3:**
+3. **Start Node 3 (in separate terminal):**
    ```bash
    java Lab02BaselineTopology 3
    ```
-   - All three nodes should be in the baseline topology
+   - Node 3 joins and waits for activation
+
+4. **Activate on Node 1:**
+   - When Node 1 shows "All 3 node(s) have joined!", press Enter
+   - This activates the cluster and sets baseline with ALL 3 nodes
+
+5. **Verify:** All three nodes should show they are in the baseline topology
 
 ### Exercise 5: Manage Baseline Topology Programmatically
 
