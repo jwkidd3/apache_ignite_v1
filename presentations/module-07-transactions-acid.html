@@ -722,49 +722,27 @@ for (int retry = 0; retry < maxRetries; retry++) {
                 <section>
                     <h2>Deadlock Scenario</h2>
                     <pre><code class="language-java">// Thread 1: Lock A then B
-try (Transaction tx = ignite.transactions().txStart(
-        TransactionConcurrency.PESSIMISTIC,
-        TransactionIsolation.REPEATABLE_READ, 5000, 0)) {
-
-    cache.get("resource1");  // Lock A
-    Thread.sleep(100);
-    cache.get("resource2");  // Wait for Lock B - BLOCKED!
-
-    tx.commit();
-}
+cache.get("resource1");  // Lock A
+cache.get("resource2");  // Wait for B - BLOCKED!
 
 // Thread 2: Lock B then A
-try (Transaction tx = ignite.transactions().txStart(
-        TransactionConcurrency.PESSIMISTIC,
-        TransactionIsolation.REPEATABLE_READ, 5000, 0)) {
-
-    cache.get("resource2");  // Lock B
-    Thread.sleep(100);
-    cache.get("resource1");  // Wait for Lock A - BLOCKED!
-
-    tx.commit();
-}</code></pre>
+cache.get("resource2");  // Lock B
+cache.get("resource1");  // Wait for A - BLOCKED!</code></pre>
+                    <div class="info-box">
+                        <strong>Solution:</strong> Always lock resources in consistent order
+                    </div>
                 </section>
 
                 <section>
                     <h2>Ignite's Deadlock Detection</h2>
-                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart(
-        TransactionConcurrency.PESSIMISTIC,
-        TransactionIsolation.REPEATABLE_READ,
-        5000,  // Timeout in milliseconds
-        0)) {
-
-    // Transaction operations...
+                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart()) {
+    // operations...
     tx.commit();
-
 } catch (TransactionDeadlockException e) {
-    System.out.println("DEADLOCK DETECTED!");
-    System.out.println("This transaction was chosen as victim");
-    // Transaction is automatically rolled back
-    // Implement retry logic here
+    // Auto rolled back, implement retry
 }</code></pre>
                     <div class="info-box">
-                        <p><strong>Resolution:</strong> Ignite automatically detects deadlocks and rolls back one transaction to allow others to proceed</p>
+                        <strong>Resolution:</strong> Ignite detects deadlocks and rolls back victim transaction
                     </div>
                 </section>
 
@@ -891,31 +869,12 @@ try (Transaction tx = ignite.transactions().txStart()) {
 
                 <section>
                     <h2>Handling Timeout Exceptions</h2>
-                    <pre><code class="language-java">public void executeWithRetry(Runnable txOperation, int maxRetries) {
-    int attempt = 0;
-
-    while (attempt < maxRetries) {
-        try (Transaction tx = ignite.transactions().txStart(
-                TransactionConcurrency.PESSIMISTIC,
-                TransactionIsolation.REPEATABLE_READ,
-                10000, 0)) {
-
-            txOperation.run();
-            tx.commit();
-            return;  // Success
-
-        } catch (TransactionTimeoutException e) {
-            attempt++;
-            log.warn("Transaction timeout, attempt " + attempt);
-
-            if (attempt >= maxRetries) {
-                throw new RuntimeException("Max retries exceeded", e);
-            }
-
-            // Exponential backoff
-            Thread.sleep(100 * (long)Math.pow(2, attempt));
-        }
-    }
+                    <pre><code class="language-java">try (Transaction tx = ignite.transactions().txStart()) {
+    operation.run();
+    tx.commit();
+} catch (TransactionTimeoutException e) {
+    // Retry with exponential backoff
+    Thread.sleep(100 * (long)Math.pow(2, attempt));
 }</code></pre>
                 </section>
             </section>

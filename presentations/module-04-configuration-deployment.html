@@ -479,29 +479,17 @@ public class Lab04SpringBootApp implements CommandLineRunner {
                     <h3>REST Controller with Ignite</h3>
                     <pre><code class="java" data-trim>
 @RestController
-@RequestMapping("/api/cache")
 public class CacheController {
+    @Autowired private Ignite ignite;
 
-    @Autowired
-    private Ignite ignite;
-
-    @PostMapping("/{key}")
-    public Map&lt;String, String&gt; put(@PathVariable String key,
-                                     @RequestBody String value) {
-        IgniteCache&lt;String, String&gt; cache = ignite.cache("springCache");
-        cache.put(key, value);
-        return Map.of("status", "success", "key", key);
+    @PostMapping("/cache/{key}")
+    public void put(@PathVariable String key, @RequestBody String val) {
+        ignite.cache("myCache").put(key, val);
     }
 
-    @GetMapping("/{key}")
-    public Map&lt;String, String&gt; get(@PathVariable String key) {
-        IgniteCache&lt;String, String&gt; cache = ignite.cache("springCache");
-        return Map.of("key", key, "value", cache.get(key));
-    }
-
-    @GetMapping("/size")
-    public Map&lt;String, Integer&gt; size() {
-        return Map.of("size", ignite.cache("springCache").size());
+    @GetMapping("/cache/{key}")
+    public String get(@PathVariable String key) {
+        return ignite.cache("myCache").get(key);
     }
 }
                     </code></pre>

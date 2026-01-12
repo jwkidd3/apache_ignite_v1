@@ -277,64 +277,30 @@
 
                 <section>
                     <h3>Authentication Configuration</h3>
-                    <pre><code class="language-java">package com.example.ignite;
+                    <pre><code class="language-java">IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setIgniteInstanceName("secure-node");
 
-import org.apache.ignite.Ignite;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
-
-public class SecureNodeConfiguration {
-    public static void main(String[] args) {
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName("secure-node");
-
-        // Configure discovery
-        TcpDiscoverySpi spi = new TcpDiscoverySpi();
-        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
-        ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
-        spi.setIpFinder(ipFinder);
-        cfg.setDiscoverySpi(spi);
-
-        // Authentication is configured via security plugin
-        // See Ignite Security documentation for plugin setup
-
-        try (Ignite ignite = Ignition.start(cfg)) {
-            System.out.println("Secure node started!");
-        }
-    }
-}</code></pre>
+// Configure discovery
+TcpDiscoverySpi spi = new TcpDiscoverySpi();
+TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
+spi.setIpFinder(ipFinder);
+cfg.setDiscoverySpi(spi);</code></pre>
+                    <div class="info-box">
+                        Authentication configured via security plugin
+                    </div>
                 </section>
 
                 <section>
                     <h3>SSL/TLS Configuration</h3>
-                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
-&lt;beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans
-           http://www.springframework.org/schema/beans/spring-beans.xsd"&gt;
-
-    &lt;bean class="org.apache.ignite.configuration.IgniteConfiguration"&gt;
-        &lt;!-- SSL Context Factory --&gt;
-        &lt;property name="sslContextFactory"&gt;
-            &lt;bean class="org.apache.ignite.ssl.SslContextFactory"&gt;
-                &lt;property name="keyStoreFilePath" value="keystore.jks"/&gt;
-                &lt;property name="keyStorePassword" value="${KEYSTORE_PASS}"/&gt;
-                &lt;property name="trustStoreFilePath" value="truststore.jks"/&gt;
-                &lt;property name="trustStorePassword" value="${TRUSTSTORE_PASS}"/&gt;
-                &lt;property name="protocol" value="TLSv1.2"/&gt;
-            &lt;/bean&gt;
-        &lt;/property&gt;
-
-        &lt;!-- Enable SSL for connectors --&gt;
-        &lt;property name="connectorConfiguration"&gt;
-            &lt;bean class="org.apache.ignite.configuration.ConnectorConfiguration"&gt;
-                &lt;property name="sslEnabled" value="true"/&gt;
-            &lt;/bean&gt;
-        &lt;/property&gt;
-    &lt;/bean&gt;
-&lt;/beans&gt;</code></pre>
+                    <pre><code class="language-xml">&lt;property name="sslContextFactory"&gt;
+  &lt;bean class="org.apache.ignite.ssl.SslContextFactory"&gt;
+    &lt;property name="keyStoreFilePath" value="keystore.jks"/&gt;
+    &lt;property name="keyStorePassword" value="${KEYSTORE_PASS}"/&gt;
+    &lt;property name="trustStoreFilePath" value="truststore.jks"/&gt;
+    &lt;property name="protocol" value="TLSv1.2"/&gt;
+  &lt;/bean&gt;
+&lt;/property&gt;</code></pre>
                 </section>
 
                 <section>

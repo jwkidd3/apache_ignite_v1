@@ -230,7 +230,7 @@ public class Lab13CDCStandalone {
         System.out.println("\n=== " + cacheName.toUpperCase() + " (" + cache.size() + " entries) ===");
 
         int count = 0;
-        for (Cache.Entry<Integer, ?> entry : cache.query(new ScanQuery<>())) {
+        for (Cache.Entry<?, ?> entry : cache.query(new ScanQuery<>())) {
             System.out.println("  " + entry.getValue());
             count++;
             if (count >= 20) {

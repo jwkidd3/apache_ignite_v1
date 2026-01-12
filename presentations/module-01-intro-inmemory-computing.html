@@ -282,18 +282,14 @@ In-Memory Computing:
                             <li>Sits in front of database</li>
                             <li>Cache-aside pattern</li>
                             <li>Limited functionality</li>
-                            <li>Cache invalidation challenges</li>
                         </ul>
                     </div>
                     <div>
                         <h3>In-Memory Platform</h3>
                         <ul>
                             <li>Full-featured data platform</li>
-                            <li>ACID transactions</li>
-                            <li>SQL queries</li>
-                            <li>Distributed computing</li>
-                            <li>Persistence options</li>
-                            <li><strong>Primary data store</strong></li>
+                            <li>ACID + SQL + Compute</li>
+                            <li>Can be primary data store</li>
                         </ul>
                     </div>
                 </div>
@@ -435,6 +431,124 @@ In-Memory Computing:
                 </section>
             </section>
 
+            <!-- The Mental Model: Redis with SQL -->
+            <section>
+                <section>
+                    <h2>The Mental Model</h2>
+                    <h3>"Redis with SQL"</h3>
+                    <div class="highlight-box">
+                        <p style="font-size: 1.1em; text-align: center;"><strong>Think of Ignite as Redis that speaks SQL and scales horizontally</strong></p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>What This Means</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Redis</th>
+                                <th>Ignite</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Key-value only</td>
+                                <td>Key-value <strong>+ SQL</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Single-threaded</td>
+                                <td>Multi-threaded, distributed</td>
+                            </tr>
+                            <tr>
+                                <td>Primary-replica</td>
+                                <td>True horizontal scaling</td>
+                            </tr>
+                            <tr>
+                                <td>Limited transactions</td>
+                                <td>Full ACID transactions</td>
+                            </tr>
+                            <tr>
+                                <td>No joins</td>
+                                <td>Distributed joins</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>The Core Value Proposition</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 style="color: var(--accent-color);">Speed of Redis</h4>
+                            <ul>
+                                <li>In-memory performance</li>
+                                <li>Sub-millisecond latency</li>
+                                <li>Millions of ops/sec</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--accent-color);">Power of SQL</h4>
+                            <ul>
+                                <li>Complex queries</li>
+                                <li>JOINs across data</li>
+                                <li>Familiar to developers</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <p style="text-align: center; margin-top: 1em;"><em>+ Distributed computing + ACID transactions</em></p>
+                </section>
+            </section>
+
+            <!-- When to Choose Ignite -->
+            <section>
+                <section>
+                    <h2>When to Choose Ignite</h2>
+                    <h3>Decision Framework</h3>
+                </section>
+
+                <section>
+                    <h3><span class="checkmark">✓</span> Choose Ignite When</h3>
+                    <ul>
+                        <li><strong>You need SQL on cached data</strong><br>
+                            <span class="subtitle">JOINs, aggregations, complex queries</span></li>
+                        <li><strong>You need ACID transactions across records</strong><br>
+                            <span class="subtitle">Financial systems, inventory management</span></li>
+                        <li><strong>You need to scale reads horizontally</strong><br>
+                            <span class="subtitle">Add nodes to increase throughput</span></li>
+                        <li><strong>You have a read-heavy workload</strong><br>
+                            <span class="subtitle">80%+ reads is ideal</span></li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3><span class="crossmark">✗</span> Consider Alternatives When</h3>
+                    <ul>
+                        <li><strong>Simple key-value, no SQL needed</strong><br>
+                            <span class="subtitle">→ Redis may be simpler</span></li>
+                        <li><strong>Write-heavy with no read requirements</strong><br>
+                            <span class="subtitle">→ Traditional database or Kafka</span></li>
+                        <li><strong>Small dataset, single server sufficient</strong><br>
+                            <span class="subtitle">→ PostgreSQL, MySQL may suffice</span></li>
+                        <li><strong>Need complex stored procedures</strong><br>
+                            <span class="subtitle">→ Traditional RDBMS</span></li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>The Sweet Spot</h3>
+                    <div class="highlight-box">
+                        <p><strong>Ignite excels when you need:</strong></p>
+                        <ol>
+                            <li>Fast reads (in-memory speed)</li>
+                            <li>SQL query capability</li>
+                            <li>Horizontal scalability</li>
+                            <li>Data consistency (ACID)</li>
+                        </ol>
+                    </div>
+                    <p style="text-align: center;"><em>Common: Read-optimized layer in front of OLTP database</em></p>
+                </section>
+            </section>
+
             <!-- Ignite Architecture -->
             <section>
                 <h2>Ignite Architecture Overview</h2>
@@ -495,47 +609,35 @@ In-Memory Computing:
                         <thead>
                             <tr>
                                 <th>Feature</th>
-                                <th>Apache Ignite</th>
+                                <th>Ignite</th>
                                 <th>Redis</th>
                                 <th>Hazelcast</th>
-                                <th>Memcached</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td><strong>SQL Support</strong></td>
-                                <td><span class="checkmark">Full ANSI-99</span></td>
+                                <td><strong>SQL</strong></td>
+                                <td><span class="checkmark">Full</span></td>
                                 <td><span class="crossmark">No</span></td>
                                 <td><span class="warning">Limited</span></td>
-                                <td><span class="crossmark">No</span></td>
                             </tr>
                             <tr>
-                                <td><strong>ACID Transactions</strong></td>
+                                <td><strong>ACID</strong></td>
                                 <td><span class="checkmark">Yes</span></td>
                                 <td><span class="warning">Limited</span></td>
                                 <td><span class="checkmark">Yes</span></td>
-                                <td><span class="crossmark">No</span></td>
                             </tr>
                             <tr>
-                                <td><strong>Distributed Computing</strong></td>
+                                <td><strong>Compute</strong></td>
                                 <td><span class="checkmark">Yes</span></td>
                                 <td><span class="crossmark">No</span></td>
                                 <td><span class="checkmark">Yes</span></td>
-                                <td><span class="crossmark">No</span></td>
                             </tr>
                             <tr>
-                                <td><strong>Native Persistence</strong></td>
-                                <td><span class="checkmark">Yes</span></td>
+                                <td><strong>Persistence</strong></td>
+                                <td><span class="checkmark">Native</span></td>
                                 <td><span class="warning">RDB/AOF</span></td>
                                 <td><span class="crossmark">No</span></td>
-                                <td><span class="crossmark">No</span></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Cluster Size</strong></td>
-                                <td>100s of nodes</td>
-                                <td>Single master</td>
-                                <td>100s of nodes</td>
-                                <td>100s of nodes</td>
                             </tr>
                         </tbody>
                     </table>
@@ -607,42 +709,26 @@ In-Memory Computing:
                 <section>
                     <div class="two-column">
                         <div>
-                            <h3>1. Performance</h3>
+                            <h3>Performance</h3>
                             <ul>
                                 <li>Sub-millisecond latency</li>
-                                <li>Millions of ops/sec</li>
                                 <li>Linear scalability</li>
                             </ul>
 
-                            <h3>2. Versatility</h3>
+                            <h3>SQL + ACID</h3>
                             <ul>
-                                <li>Cache, database, or both</li>
-                                <li>Multiple APIs</li>
-                                <li>Flexible deployment</li>
-                            </ul>
-
-                            <h3>3. ACID Compliance</h3>
-                            <ul>
-                                <li>Full transactional support</li>
-                                <li>Multiple isolation levels</li>
+                                <li>Full ANSI-99 SQL</li>
+                                <li>Distributed transactions</li>
                             </ul>
                         </div>
                         <div>
-                            <h3>4. SQL Support</h3>
+                            <h3>Persistence</h3>
                             <ul>
-                                <li>ANSI-99 SQL</li>
-                                <li>Distributed joins</li>
-                                <li>JDBC/ODBC drivers</li>
-                            </ul>
-
-                            <h3>5. Persistence</h3>
-                            <ul>
-                                <li>Native persistence</li>
-                                <li>Survive restarts</li>
+                                <li>Native disk storage</li>
                                 <li>Write-through/behind</li>
                             </ul>
 
-                            <h3>6. Open Source</h3>
+                            <h3>Open Source</h3>
                             <ul>
                                 <li>Apache 2.0 license</li>
                                 <li>No vendor lock-in</li>
@@ -658,34 +744,17 @@ In-Memory Computing:
                 <div class="two-column">
                     <div>
                         <h3>ING Bank</h3>
-                        <ul>
-                            <li>300+ node cluster</li>
-                            <li>Millions of transactions</li>
-                            <li>Sub-millisecond performance</li>
-                            <li>99.99% uptime</li>
-                        </ul>
+                        <p>300+ nodes, millions of txns</p>
 
                         <h3>Sberbank</h3>
-                        <ul>
-                            <li>600+ nodes (largest)</li>
-                            <li>Core banking platform</li>
-                            <li>Real-time fraud detection</li>
-                        </ul>
+                        <p>600+ nodes, core banking</p>
                     </div>
                     <div>
                         <h3>American Airlines</h3>
-                        <ul>
-                            <li>Flight booking system</li>
-                            <li>Real-time inventory</li>
-                            <li>High availability</li>
-                        </ul>
+                        <p>Real-time flight booking</p>
 
                         <h3>Barclays</h3>
-                        <ul>
-                            <li>Trading platform</li>
-                            <li>Risk calculations</li>
-                            <li>Real-time analytics</li>
-                        </ul>
+                        <p>Trading and risk platform</p>
                     </div>
                 </div>
             </section>

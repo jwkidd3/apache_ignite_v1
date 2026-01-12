@@ -718,27 +718,14 @@ entity.setIndexes(Arrays.asList(nameIdx, categoryIdx, compositeIdx, textIdx));</
 
                 <section>
                     <h3>Creating Indexes - SQL DDL</h3>
-                    <pre><code class="language-sql">-- Create single-column index
+                    <pre><code class="language-sql">-- Single-column index
 CREATE INDEX idx_name ON Product (name);
 
--- Create unique index
+-- Composite index
+CREATE INDEX idx_cat_price ON Product (category, price);
+
+-- Unique index
 CREATE UNIQUE INDEX idx_email ON Customer (email);
-
--- Create composite index
-CREATE INDEX idx_category_price ON Product (category, price);
-
--- Create descending index
-CREATE INDEX idx_salary_desc ON Employee (salary DESC);
-
--- Create index inline with table
-CREATE TABLE Employee (
-    id INT PRIMARY KEY,
-    name VARCHAR,
-    department VARCHAR,
-    salary DECIMAL,
-    INDEX idx_dept (department),
-    INDEX idx_salary (salary)
-);
 
 -- Drop index
 DROP INDEX idx_name;</code></pre>

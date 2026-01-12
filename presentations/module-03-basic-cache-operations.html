@@ -838,94 +838,46 @@ for (K key : keys) {
             <!-- Cache Configuration Summary -->
             <section>
                 <h2>Cache Configuration Summary</h2>
-                <h3>Key Settings</h3>
                 <pre><code class="java">CacheConfiguration&lt;K, V&gt; cfg = new CacheConfiguration&lt;&gt;();
-
-// Basic settings
 cfg.setName("myCache");
 cfg.setCacheMode(CacheMode.PARTITIONED);
 cfg.setBackups(1);
-
-// Atomicity
 cfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-
-// Write synchronization
-cfg.setWriteSynchronizationMode(
-    CacheWriteSynchronizationMode.FULL_SYNC);
-
-// Statistics
-cfg.setStatisticsEnabled(true);
-
-// Rebalancing
-cfg.setRebalanceMode(CacheRebalanceMode.ASYNC);</code></pre>
+cfg.setStatisticsEnabled(true);</code></pre>
             </section>
 
             <!-- Common Patterns -->
             <section>
                 <h2>Common Patterns</h2>
-                <h3>Real-World Usage</h3>
-                <p><strong>Pattern 1: Caching Database Results</strong></p>
-                <pre><code class="java">V value = cache.get(key);
-if (value == null) {
-    value = database.query(key);
-    cache.put(key, value);
-}
-return value;</code></pre>
-                <p><strong>Pattern 2: Distributed Counter</strong></p>
+                <p><strong>Cache-Aside</strong></p>
+                <pre><code class="java">V val = cache.get(key);
+if (val == null) { val = db.query(key); cache.put(key, val); }</code></pre>
+                <p><strong>Distributed Counter</strong></p>
                 <pre><code class="java">cache.putIfAbsent("counter", 0);
-while (true) {
-    Integer current = cache.get("counter");
-    if (cache.replace("counter", current, current + 1)) {
-        break;
-    }
-}</code></pre>
-                <p><strong>Pattern 3: Session Storage</strong></p>
-                <pre><code class="java">// Store session with expiry
-IgniteCache withExpiry = cache.withExpiryPolicy(
-    new CreatedExpiryPolicy(Duration.THIRTY_MINUTES));
-withExpiry.put(sessionId, sessionData);</code></pre>
+cache.replace("counter", current, current + 1);</code></pre>
             </section>
 
             <!-- Troubleshooting -->
             <section>
                 <h2>Troubleshooting</h2>
-                <h3>Common Issues</h3>
-                <div class="two-column small-text">
-                    <div>
-                        <p><strong>Issue 1: Slow Operations</strong></p>
-                        <ul>
-                            <li>Check network latency</li>
-                            <li>Review cache mode choice</li>
-                            <li>Use batch operations</li>
-                            <li>Enable async operations</li>
-                        </ul>
-
-                        <p><strong>Issue 2: High Memory Usage</strong></p>
-                        <ul>
-                            <li>Review backup count</li>
-                            <li>Check cache mode (REPLICATED?)</li>
-                            <li>Implement eviction policies</li>
-                            <li>Monitor data growth</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <p><strong>Issue 3: Data Not Found</strong></p>
-                        <ul>
-                            <li>Check cache name</li>
-                            <li>Verify key type matches</li>
-                            <li>Check if data was actually written</li>
-                            <li>Review eviction settings</li>
-                        </ul>
-
-                        <p><strong>Issue 4: CacheException</strong></p>
-                        <ul>
-                            <li>Check cluster topology</li>
-                            <li>Verify node is connected</li>
-                            <li>Review logs for details</li>
-                            <li>Check network connectivity</li>
-                        </ul>
-                    </div>
-                </div>
+                <table>
+                    <tr>
+                        <th>Issue</th>
+                        <th>Solution</th>
+                    </tr>
+                    <tr>
+                        <td>Slow ops</td>
+                        <td>Check network, use batch/async</td>
+                    </tr>
+                    <tr>
+                        <td>High memory</td>
+                        <td>Review backups, add eviction</td>
+                    </tr>
+                    <tr>
+                        <td>Data not found</td>
+                        <td>Verify cache name and key type</td>
+                    </tr>
+                </table>
             </section>
 
             <!-- Key Takeaways -->

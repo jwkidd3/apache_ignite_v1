@@ -329,7 +329,7 @@
 
                 <!-- Key-Value Data Model -->
                 <section>
-                    <h1>Key-Value Data Model</h1>
+                    <h2>Key-Value Data Model</h2>
                     <div class="two-columns">
                         <div>
                             <h3>Characteristics</h3>
@@ -339,107 +339,77 @@
                                 <li>Automatic serialization</li>
                                 <li>JCache (JSR-107) compliant</li>
                             </ul>
-                            <div class="info-box">
-                                <strong>Use When:</strong> High-performance lookups by key, simple data structures
-                            </div>
                         </div>
                         <div>
                             <pre><code class="language-java">// Key-Value operations
 IgniteCache&lt;Integer, Customer&gt; cache =
     ignite.getOrCreateCache("customers");
 
-// Put operation
-Customer c = new Customer(1, "John",
-    "john@example.com", "NYC");
-cache.put(1, c);
-
-// Get operation
-Customer retrieved = cache.get(1);
+// Put and Get
+cache.put(1, new Customer(1, "John"));
+Customer c = cache.get(1);
 
 // Atomic operations
-cache.putIfAbsent(2, newCustomer);
-cache.replace(1, updatedCustomer);</code></pre>
+cache.putIfAbsent(2, newCustomer);</code></pre>
                         </div>
                     </div>
                 </section>
 
                 <!-- Domain Class Example -->
                 <section>
-                    <h1>Creating Domain Classes</h1>
-                    <pre><code class="language-java">package com.example.ignite.model;
-
-import java.io.Serializable;
-
-public class Customer implements Serializable {
+                    <h2>Creating Domain Classes</h2>
+                    <pre><code class="language-java">public class Customer implements Serializable {
     private Integer customerId;
     private String name;
     private String email;
-    private String city;
 
     public Customer() {}
 
-    public Customer(Integer customerId, String name,
-                    String email, String city) {
-        this.customerId = customerId;
+    public Customer(Integer id, String name, String email) {
+        this.customerId = id;
         this.name = name;
         this.email = email;
-        this.city = city;
     }
-
-    // Getters and setters
-    public Integer getCustomerId() { return customerId; }
-    public void setCustomerId(Integer id) { this.customerId = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    // ... additional getters/setters
+    // Getters and setters...
 }</code></pre>
                     <div class="warning-box">
-                        <strong>Important:</strong> Domain classes must implement <code>Serializable</code> for cluster distribution
+                        <strong>Important:</strong> Domain classes must implement <code>Serializable</code>
                     </div>
                 </section>
 
                 <!-- Binary Objects -->
                 <section>
-                    <h1>Binary Objects</h1>
+                    <h2>Binary Objects</h2>
                     <div class="two-columns">
                         <div>
                             <h3>Advantages</h3>
                             <ul>
-                                <li><span class="highlight">Schema Evolution</span> - Add/remove fields without redeployment</li>
-                                <li><span class="highlight">No Class Deployment</span> - Access data without class definition</li>
-                                <li><span class="highlight">Field-Level Access</span> - Read specific fields efficiently</li>
-                                <li><span class="highlight">Language Agnostic</span> - Cross-platform compatibility</li>
+                                <li>Schema evolution</li>
+                                <li>No class deployment needed</li>
+                                <li>Field-level access</li>
+                                <li>Language agnostic</li>
                             </ul>
                         </div>
                         <div>
-                            <pre><code class="language-java">// Access cache as binary objects
-IgniteCache&lt;Integer, BinaryObject&gt; binaryCache =
-    cache.withKeepBinary();
+                            <pre><code class="language-java">// Access as binary
+IgniteCache&lt;Integer, BinaryObject&gt; cache =
+    myCache.withKeepBinary();
 
-// Create binary object
+// Create and store
 BinaryObject obj = ignite.binary()
     .builder("Customer")
     .setField("id", 1)
     .setField("name", "John")
-    .setField("email", "john@email.com")
     .build();
-
-binaryCache.put(1, obj);
-
-// Read specific field
-BinaryObject retrieved = binaryCache.get(1);
-String name = retrieved.field("name");</code></pre>
+cache.put(1, obj);</code></pre>
                         </div>
                     </div>
                 </section>
 
                 <!-- SQL Tables -->
                 <section>
-                    <h1>SQL Tables</h1>
-                    <pre><code class="language-java">// Define SQL table with annotations
-@QueryEntity(tableName = "CUSTOMER")
-public class Customer implements Serializable {
-
+                    <h2>SQL Tables</h2>
+                    <pre><code class="language-java">public class Customer implements Serializable {
     @QuerySqlField(index = true)
     private Integer customerId;
 
@@ -448,56 +418,38 @@ public class Customer implements Serializable {
 
     @QuerySqlField(index = true)
     private String email;
-
-    @QuerySqlField
-    private String city;
-
-    // ... constructor and methods
 }</code></pre>
                     <div class="info-box">
-                        Use <code>@QuerySqlField</code> to expose fields to SQL engine and <code>index = true</code> for indexed columns
+                        <code>@QuerySqlField</code> exposes fields to SQL. Add <code>index = true</code> for indexed columns.
                     </div>
                 </section>
 
                 <!-- SQL Table Creation via DDL -->
                 <section>
-                    <h1>SQL Table Creation via DDL</h1>
-                    <pre><code class="language-sql">-- Create table using SQL DDL
-CREATE TABLE Customer (
+                    <h2>SQL Table Creation via DDL</h2>
+                    <pre><code class="language-sql">CREATE TABLE Customer (
     customer_id INT PRIMARY KEY,
     name VARCHAR(100),
-    email VARCHAR(255),
-    city VARCHAR(100)
-) WITH "template=partitioned, backups=1,
-        affinity_key=customer_id,
-        cache_name=CustomerCache";
+    email VARCHAR(255)
+) WITH "template=partitioned, backups=1";
 
--- Insert data
-INSERT INTO Customer (customer_id, name, email, city)
-VALUES (1, 'John Doe', 'john@example.com', 'New York');
-
--- Query data
-SELECT * FROM Customer WHERE city = 'New York';</code></pre>
-                    <div class="two-columns" style="margin-top: 20px;">
-                        <div class="info-box">
-                            <strong>WITH clause options:</strong> template, backups, affinity_key, cache_name, data_region
-                        </div>
-                        <div class="info-box">
-                            <strong>Access via:</strong> JDBC, ODBC, Ignite thin client, REST API
-                        </div>
+INSERT INTO Customer VALUES (1, 'John', 'john@example.com');
+SELECT * FROM Customer WHERE name = 'John';</code></pre>
+                    <div class="info-box">
+                        <strong>Access via:</strong> JDBC, ODBC, thin client, REST API
                     </div>
                 </section>
 
                 <!-- Choosing a Data Model -->
                 <section>
-                    <h1>Choosing a Data Model</h1>
+                    <h2>Choosing a Data Model</h2>
                     <table>
                         <thead>
                             <tr>
                                 <th>Criterion</th>
                                 <th>Key-Value</th>
-                                <th>Binary Objects</th>
-                                <th>SQL Tables</th>
+                                <th>Binary</th>
+                                <th>SQL</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -505,30 +457,18 @@ SELECT * FROM Customer WHERE city = 'New York';</code></pre>
                                 <td>Performance</td>
                                 <td>Fastest</td>
                                 <td>Fast</td>
-                                <td>Good (with indexes)</td>
-                            </tr>
-                            <tr>
-                                <td>Flexibility</td>
-                                <td>Low</td>
-                                <td>High</td>
-                                <td>Medium</td>
+                                <td>Good</td>
                             </tr>
                             <tr>
                                 <td>Schema Evolution</td>
-                                <td>Requires redeployment</td>
+                                <td>Redeploy</td>
                                 <td>Dynamic</td>
-                                <td>ALTER TABLE</td>
-                            </tr>
-                            <tr>
-                                <td>Query Capability</td>
-                                <td>Key lookup only</td>
-                                <td>Field access</td>
-                                <td>Full SQL</td>
+                                <td>ALTER</td>
                             </tr>
                             <tr>
                                 <td>Best For</td>
-                                <td>Simple caching</td>
-                                <td>Heterogeneous data</td>
+                                <td>Simple cache</td>
+                                <td>Heterogeneous</td>
                                 <td>Complex queries</td>
                             </tr>
                         </tbody>
@@ -607,112 +547,102 @@ Without Colocation:                    With Colocation:
                     </div>
                 </section>
 
+                <!-- Colocation: THE Design Decision -->
+                <section>
+                    <h2>Colocation: THE Design Decision</h2>
+                    <p><strong>In ANY distributed system, colocation determines performance:</strong></p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>System</th>
+                                <th>Mechanism</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Apache Ignite</td>
+                                <td>@AffinityKeyMapped</td>
+                            </tr>
+                            <tr>
+                                <td>Redis Cluster</td>
+                                <td>{hash_tag}</td>
+                            </tr>
+                            <tr>
+                                <td>Cassandra / DynamoDB</td>
+                                <td>Partition Key</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="warning-box">
+                        <strong>Get colocation wrong = network latency on every query.</strong>
+                    </div>
+                </section>
+
                 <!-- AffinityKeyMapped Annotation -->
                 <section>
-                    <h1>Implementing Affinity Keys</h1>
-                    <pre><code class="language-java">import org.apache.ignite.cache.affinity.AffinityKeyMapped;
-
-public class Order implements Serializable {
+                    <h2>Implementing Affinity Keys</h2>
+                    <pre><code class="language-java">public class Order implements Serializable {
     private Integer orderId;
 
-    @AffinityKeyMapped   // This field determines node placement
-    private Integer customerId;  // Orders go to same node as Customer
+    @AffinityKeyMapped  // Orders go to same node as Customer
+    private Integer customerId;
 
     private String product;
     private Double amount;
-
-    public Order(Integer orderId, Integer customerId,
-                 String product, Double amount) {
-        this.orderId = orderId;
-        this.customerId = customerId;
-        this.product = product;
-        this.amount = amount;
-    }
-    // ... getters and setters
 }</code></pre>
                     <div class="info-box">
-                        The <code>@AffinityKeyMapped</code> annotation tells Ignite to use <code>customerId</code>
-                        for affinity calculation, ensuring orders are stored with their customer.
+                        <code>@AffinityKeyMapped</code> uses customerId for node placement.
                     </div>
                 </section>
 
                 <!-- Verifying Colocation -->
                 <section>
-                    <h1>Verifying Colocation</h1>
-                    <pre><code class="language-java">// Get affinity instances for both caches
-Affinity&lt;Integer&gt; customerAffinity = ignite.affinity("customers");
-Affinity&lt;Integer&gt; orderAffinity = ignite.affinity("orders");
+                    <h2>Verifying Colocation</h2>
+                    <pre><code class="language-java">Affinity&lt;Integer&gt; custAff = ignite.affinity("customers");
+Affinity&lt;Integer&gt; orderAff = ignite.affinity("orders");
 
-// Check where data is stored
-ClusterNode customer1Node = customerAffinity.mapKeyToNode(1);
-ClusterNode order101Node = orderAffinity.mapKeyToNode(101);
-ClusterNode order102Node = orderAffinity.mapKeyToNode(102);
+ClusterNode custNode = custAff.mapKeyToNode(1);
+ClusterNode orderNode = orderAff.mapKeyToNode(101);
 
-System.out.println("Customer 1 on node: " + customer1Node.id());
-System.out.println("Order 101 on node: " + order101Node.id());
-System.out.println("Order 102 on node: " + order102Node.id());
-
-// Verify colocation
-boolean colocated = customer1Node.equals(order101Node)
-                 && customer1Node.equals(order102Node);
-System.out.println("Data is colocated: " + colocated);</code></pre>
+boolean colocated = custNode.equals(orderNode);
+System.out.println("Colocated: " + colocated);</code></pre>
                 </section>
 
                 <!-- AffinityKey Wrapper Class -->
                 <section>
-                    <h1>AffinityKey Wrapper Class</h1>
-                    <pre><code class="language-java">import org.apache.ignite.cache.affinity.AffinityKey;
-
-// Alternative: Use AffinityKey wrapper for composite keys
-public class OrderKey implements Serializable {
-    private Integer orderId;
-    private Integer customerId;  // Affinity field
-
-    // ... constructors, getters, setters
-}
-
-// Usage with AffinityKey wrapper
-IgniteCache&lt;AffinityKey&lt;Integer&gt;, Order&gt; orderCache =
+                    <h2>AffinityKey Wrapper Class</h2>
+                    <pre><code class="language-java">// Use AffinityKey for composite keys
+IgniteCache&lt;AffinityKey&lt;Integer&gt;, Order&gt; cache =
     ignite.getOrCreateCache("orders");
 
-// Create key with affinity to customer
-AffinityKey&lt;Integer&gt; orderKey =
-    new AffinityKey&lt;&gt;(orderId, customerId);
-
-orderCache.put(orderKey, order);</code></pre>
-                    <div class="warning-box">
-                        <strong>When to use which approach:</strong><br>
-                        <code>@AffinityKeyMapped</code> - When affinity field is part of the value<br>
-                        <code>AffinityKey</code> - When you need composite keys or separation of concerns
+AffinityKey&lt;Integer&gt; key = new AffinityKey&lt;&gt;(orderId, customerId);
+cache.put(key, order);</code></pre>
+                    <div class="info-box">
+                        <strong>@AffinityKeyMapped</strong> - affinity in value class<br>
+                        <strong>AffinityKey</strong> - composite keys
                     </div>
                 </section>
 
                 <!-- Colocation Best Practices -->
                 <section>
-                    <h1>Colocation Best Practices</h1>
+                    <h2>Colocation Best Practices</h2>
                     <div class="two-columns">
                         <div>
                             <h3>Do</h3>
-                            <ul class="icon-bullet">
-                                <li>Colocate parent-child relationships</li>
-                                <li>Use consistent affinity key types</li>
-                                <li>Plan data model before implementation</li>
-                                <li>Verify colocation with tests</li>
-                                <li>Document affinity relationships</li>
+                            <ul>
+                                <li>Colocate parent-child data</li>
+                                <li>Use consistent key types</li>
+                                <li>Verify with tests</li>
                             </ul>
                         </div>
                         <div>
                             <h3>Avoid</h3>
                             <ul>
-                                <li>Changing affinity keys after deployment</li>
-                                <li>Using complex objects as affinity keys</li>
-                                <li>Ignoring data access patterns</li>
-                                <li>Over-colocating unrelated data</li>
+                                <li>Changing keys post-deploy</li>
+                                <li>Complex objects as keys</li>
+                                <li>Over-colocating</li>
                             </ul>
                         </div>
-                    </div>
-                    <div class="info-box" style="margin-top: 20px;">
-                        <strong>Performance Impact:</strong> Properly colocated data can reduce join query time by 10x or more
                     </div>
                 </section>
             </section>
@@ -761,6 +691,40 @@ orderCache.put(orderKey, order);</code></pre>
 +---------------------------+
 </pre>
                         </div>
+                    </div>
+                </section>
+
+                <!-- When NOT to Use Native Persistence -->
+                <section>
+                    <h2>When NOT to Use Native Persistence</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Scenario</th>
+                                <th>Better Approach</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Data exists in OLTP database</td>
+                                <td>Use Ignite as pure cache layer</td>
+                            </tr>
+                            <tr>
+                                <td>Cache can be rebuilt from source</td>
+                                <td>In-memory only + warm-up</td>
+                            </tr>
+                            <tr>
+                                <td>Small dataset (&lt;10GB)</td>
+                                <td>Reload from source on startup</td>
+                            </tr>
+                            <tr>
+                                <td>Kubernetes/ephemeral infra</td>
+                                <td>Stateless Ignite + external source</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="info-box">
+                        <strong>Use Persistence when:</strong> Ignite IS your primary store, or warm-up time is unacceptable.
                     </div>
                 </section>
 
@@ -1550,6 +1514,33 @@ cfg.setWriteBehindBatchSize(100);</code></pre>
                             <li><strong>Write-Through:</strong> Immediate consistency with external DB</li>
                             <li><strong>Write-Behind:</strong> High-throughput writes, eventual consistency</li>
                         </ul>
+                    </div>
+                </section>
+
+                <!-- Read-Through: The Safety Net -->
+                <section>
+                    <h2>Read-Through: The Safety Net</h2>
+                    <p><strong>Read-through is a fallback, NOT primary sync.</strong></p>
+                    <div class="two-columns">
+                        <div>
+                            <h3>Does</h3>
+                            <ul>
+                                <li>Cache miss → load from store</li>
+                                <li>Handle cold cache startup</li>
+                                <li>Recover from eviction</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>Does NOT</h3>
+                            <ul>
+                                <li>Proactively sync changes</li>
+                                <li>Handle external DB updates</li>
+                                <li>Guarantee freshness</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="info-box">
+                        <strong>Best Practice:</strong> Use CDC for proactive sync. Read-through catches what slips through.
                     </div>
                 </section>
             </section>

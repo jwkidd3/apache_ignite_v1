@@ -285,6 +285,170 @@ Ignite ignite = Ignition.start(cfg);</code></pre>
                 </section>
             </section>
 
+            <!-- Client vs Server: Practical Guidance Section -->
+            <section>
+                <section>
+                    <h2>Client vs Server</h2>
+                    <h3>Practical Deployment Guidance</h3>
+                    <p><strong>The Key Question:</strong> Where does your application code run?</p>
+                    <div class="box">
+                        This is a critical architectural decision that affects performance, scaling, and operational complexity.
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Connection Options</h2>
+                    <table>
+                        <tr>
+                            <th>Option</th>
+                            <th>What It Is</th>
+                            <th>When to Use</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Server Node</strong></td>
+                            <td>Full cluster member, stores data</td>
+                            <td>Dedicated Ignite servers only</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Thick Client</strong></td>
+                            <td>Cluster member, no data storage</td>
+                            <td>Long-running apps, compute tasks</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Thin Client</strong></td>
+                            <td>TCP socket, minimal footprint</td>
+                            <td>Microservices, short-lived apps</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h2>Thick Client (Client Mode)</h2>
+                    <h3>When Your App Joins the Cluster</h3>
+                    <pre><code class="java">IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setClientMode(true);
+Ignite ignite = Ignition.start(cfg);</code></pre>
+                    <div class="two-columns">
+                        <div>
+                            <p><strong>Advantages:</strong></p>
+                            <ul>
+                                <li>Full API access</li>
+                                <li>Near cache support</li>
+                                <li>Compute grid participation</li>
+                                <li>Topology awareness</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p><strong>Disadvantages:</strong></p>
+                            <ul>
+                                <li>Startup time (~seconds)</li>
+                                <li>Memory overhead (~100MB+)</li>
+                                <li>Must handle topology events</li>
+                                <li>Affects cluster stability</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Thin Client</h2>
+                    <h3>Lightweight TCP Connection</h3>
+                    <pre><code class="java">ClientConfiguration cfg = new ClientConfiguration()
+    .setAddresses("node1:10800", "node2:10800");
+IgniteClient client = Ignition.startClient(cfg);</code></pre>
+                    <div class="two-columns">
+                        <div>
+                            <p><strong>Advantages:</strong></p>
+                            <ul>
+                                <li>Instant startup</li>
+                                <li>Minimal memory (~10MB)</li>
+                                <li>No cluster impact</li>
+                                <li>Multi-language support</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p><strong>Disadvantages:</strong></p>
+                            <ul>
+                                <li>Limited API</li>
+                                <li>No near cache</li>
+                                <li>No compute grid</li>
+                                <li>Extra network hop</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Decision Framework</h2>
+                    <h3>Choose Your Connection Type</h3>
+                    <div class="ascii-diagram">
+Does your app need compute grid?
+     |
+     +-- YES --> Thick Client
+     |
+     +-- NO --> Is app long-running (> minutes)?
+                    |
+                    +-- YES --> Thick Client (for near cache)
+                    |
+                    +-- NO --> Thin Client (for simplicity)</div>
+                    <div class="box">
+                        <strong>Rule of Thumb:</strong> Start with Thin Client. Move to Thick Client only when you need compute grid or near cache.
+                    </div>
+                </section>
+
+                <section>
+                    <h2>Production Deployment Pattern</h2>
+                    <h3>Recommended Architecture</h3>
+                    <div class="ascii-diagram">
+┌─────────────────────────────────────────────────────────┐
+│                    Application Tier                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│  │ App Pod  │  │ App Pod  │  │ App Pod  │  ...          │
+│  │(Thin Clnt│  │(Thin Clnt│  │(Thin Clnt│              │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘              │
+└───────┼─────────────┼─────────────┼─────────────────────┘
+        │             │             │
+        └─────────────┼─────────────┘
+                      │ TCP 10800
+┌─────────────────────┼───────────────────────────────────┐
+│                     v        Data Tier                   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│  │ Ignite   │  │ Ignite   │  │ Ignite   │              │
+│  │ Server 1 │  │ Server 2 │  │ Server 3 │              │
+│  └──────────┘  └──────────┘  └──────────┘              │
+└─────────────────────────────────────────────────────────┘</div>
+                </section>
+
+                <section>
+                    <h2>Anti-Patterns to Avoid</h2>
+                    <table>
+                        <tr>
+                            <th>Anti-Pattern</th>
+                            <th>Problem</th>
+                            <th>Solution</th>
+                        </tr>
+                        <tr>
+                            <td>Server in app container</td>
+                            <td>Data loss on app restart</td>
+                            <td>Separate data tier</td>
+                        </tr>
+                        <tr>
+                            <td>Thick client in short-lived pods</td>
+                            <td>Cluster churn, rebalancing</td>
+                            <td>Use thin client</td>
+                        </tr>
+                        <tr>
+                            <td>Many thick clients</td>
+                            <td>Discovery overhead</td>
+                            <td>Limit to 10-20 thick clients</td>
+                        </tr>
+                    </table>
+                    <div class="box">
+                        <strong>Key Insight:</strong> Kubernetes pod restarts should never affect your data tier. Keep them separate.
+                    </div>
+                </section>
+            </section>
+
             <!-- Data Distribution Section -->
             <section>
                 <section>
@@ -441,23 +605,13 @@ region.setPersistenceEnabled(false); // In-memory only</code></pre>
 
                 <section>
                     <h2>Data Regions</h2>
-                    <h3>Configuring Memory Regions</h3>
-                    <p><strong>What are Data Regions?</strong> Logical memory areas with specific characteristics.</p>
-                    <pre><code class="java">DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+                    <h3>Logical Memory Areas</h3>
+                    <pre><code class="java">DataRegionConfiguration region = new DataRegionConfiguration();
+region.setName("My_Region");
+region.setMaxSize(4L * 1024 * 1024 * 1024); // 4 GB
+region.setPersistenceEnabled(true);  // Optional
 
-// Default region - in-memory
-DataRegionConfiguration defaultRegion = new DataRegionConfiguration();
-defaultRegion.setName("Default_Region");
-defaultRegion.setMaxSize(4L * 1024 * 1024 * 1024); // 4 GB
-
-// Persistent region
-DataRegionConfiguration persistRegion = new DataRegionConfiguration();
-persistRegion.setName("Persistent_Region");
-persistRegion.setMaxSize(10L * 1024 * 1024 * 1024); // 10 GB
-persistRegion.setPersistenceEnabled(true);
-
-storageCfg.setDefaultDataRegionConfiguration(defaultRegion);
-storageCfg.setDataRegionConfigurations(persistRegion);</code></pre>
+storageCfg.setDefaultDataRegionConfiguration(region);</code></pre>
                 </section>
 
                 <section>
@@ -984,46 +1138,22 @@ cfg.setAffinity(aff);</code></pre>
             <section>
                 <section>
                     <h2>Architecture Best Practices</h2>
-                    <h3>Design Recommendations</h3>
                     <div class="two-columns">
                         <div>
-                            <h4 style="color: var(--heading-color);">1. Cluster Sizing</h4>
+                            <h4>Cluster</h4>
                             <ul>
-                                <li>Start with 3-5 server nodes</li>
-                                <li>Use odd numbers (3, 5, 7) for quorum</li>
-                                <li>Plan for growth</li>
-                            </ul>
-                            <h4 style="color: var(--heading-color);">2. Memory Allocation</h4>
-                            <ul>
-                                <li>60-70% of RAM to Ignite</li>
-                                <li>Leave room for OS</li>
-                                <li>Use off-heap for large datasets</li>
+                                <li>3-5 server nodes (odd #s)</li>
+                                <li>60-70% RAM to Ignite</li>
                             </ul>
                         </div>
                         <div>
-                            <h4 style="color: var(--heading-color);">3. Network</h4>
+                            <h4>Network & Backups</h4>
                             <ul>
-                                <li>Low-latency network critical</li>
-                                <li>10 Gbps for large clusters</li>
-                                <li>Minimize network hops</li>
-                            </ul>
-                            <h4 style="color: var(--heading-color);">4. Backups</h4>
-                            <ul>
-                                <li>1 backup for most cases</li>
-                                <li>2 backups for critical data</li>
-                                <li>Consider trade-offs</li>
+                                <li>Low-latency network</li>
+                                <li>1-2 backups per cache</li>
                             </ul>
                         </div>
                     </div>
-                </section>
-
-                <section>
-                    <h2>Persistence Best Practices</h2>
-                    <ul>
-                        <li>Use native persistence for durability</li>
-                        <li>Configure WAL mode appropriately</li>
-                        <li>Plan for storage capacity</li>
-                    </ul>
                 </section>
             </section>
 

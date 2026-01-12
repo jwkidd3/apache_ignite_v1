@@ -402,23 +402,15 @@ Integer square = compute.call(() -> {
                 <section>
                     <h3>Multiple Callables - Parallel Execution</h3>
                     <pre><code class="java" data-trim>
-// Create collection of callables
 Collection&lt;IgniteCallable&lt;Integer&gt;&gt; calls = new ArrayList&lt;&gt;();
-
 for (int i = 1; i &lt;= 5; i++) {
     final int num = i;
-    calls.add(() -> {
-        System.out.println("Computing square of " + num +
-            " on node " +
-            Ignition.ignite().cluster().localNode().consistentId());
-        return num * num;
-    });
+    calls.add(() -> num * num);
 }
 
-// Execute all callables in parallel
+// Execute in parallel across cluster
 Collection&lt;Integer&gt; results = compute.call(calls);
-System.out.println("Results: " + results);
-// Output: Results: [1, 4, 9, 16, 25]
+// Results: [1, 4, 9, 16, 25]
                     </code></pre>
                 </section>
 
@@ -426,22 +418,13 @@ System.out.println("Results: " + results);
                     <h3>Injecting Resources</h3>
                     <pre><code class="java" data-trim>
 compute.run(new IgniteRunnable() {
-    // Inject Ignite instance
     @IgniteInstanceResource
     private Ignite ignite;
 
-    // Inject logger
-    @LoggerResource
-    private IgniteLogger log;
-
     @Override
     public void run() {
-        // Access cache locally
-        IgniteCache&lt;String, String&gt; cache =
-            ignite.cache("myCache");
-
-        log.info("Processing on node: " +
-            ignite.cluster().localNode().id());
+        IgniteCache cache = ignite.cache("myCache");
+        // Process locally...
     }
 });
                     </code></pre>

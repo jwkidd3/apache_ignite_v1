@@ -768,6 +768,149 @@ kafkaStreamer.setSingleTupleExtractor(
                 </section>
             </section>
 
+            <!-- CDC Architecture Section -->
+            <section>
+                <section>
+                    <h2>CDC Architecture Pattern</h2>
+                    <p class="accent" style="font-size: 1.2em;">Change Data Capture for Cache Synchronization</p>
+                    <div class="info-box">
+                        <strong>The Production Pattern:</strong> Write to OLTP, Read from Ignite
+                    </div>
+                </section>
+
+                <section>
+                    <h3>The Canonical Architecture</h3>
+                    <div class="architecture-diagram">
+┌────────────┐    ┌──────────┐    ┌───────┐    ┌──────────┐    ┌────────┐
+│ PostgreSQL │───>│ Debezium │───>│ Kafka │───>│ Consumer │───>│ Ignite │
+│  (OLTP)    │WAL │  (CDC)   │    │       │    │          │    │(Cache) │
+└────────────┘    └──────────┘    └───────┘    └──────────┘    └────────┘
+       ^                                                            |
+       |                    Application Layer                       |
+       +--- writes to DB ---[  App reads from Ignite (fast!)  ]<----+
+                    </div>
+                    <div class="info-box">
+                        <strong>Pattern:</strong> Write to OLTP, read from Ignite. CDC syncs automatically.
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Write to OLTP, Read from Ignite</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 style="color: #27ae60;">Why This Pattern?</h4>
+                            <ul>
+                                <li>OLTP handles write durability</li>
+                                <li>Ignite handles read performance</li>
+                                <li>Single source of truth (database)</li>
+                                <li>Automatic cache synchronization</li>
+                                <li>No dual-write complexity</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: #e67e22;">Benefits</h4>
+                            <ul>
+                                <li>Sub-millisecond reads</li>
+                                <li>ACID writes to database</li>
+                                <li>Eventually consistent cache</li>
+                                <li>No application code changes</li>
+                                <li>Works with existing systems</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>CDC Event Flow</h3>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>DB Operation</th>
+                            <th>CDC Event</th>
+                            <th>Cache Action</th>
+                        </tr>
+                        <tr>
+                            <td>INSERT</td>
+                            <td>CREATE (c)</td>
+                            <td>cache.put(key, value)</td>
+                        </tr>
+                        <tr>
+                            <td>UPDATE</td>
+                            <td>UPDATE (u)</td>
+                            <td>cache.put(key, newValue)</td>
+                        </tr>
+                        <tr>
+                            <td>DELETE</td>
+                            <td>DELETE (d)</td>
+                            <td>cache.remove(key)</td>
+                        </tr>
+                        <tr>
+                            <td>Snapshot</td>
+                            <td>READ (r)</td>
+                            <td>cache.put(key, value)</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>CDC vs Other Patterns</h3>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Pattern</th>
+                            <th>How It Works</th>
+                            <th>Consistency</th>
+                        </tr>
+                        <tr>
+                            <td><strong>CDC</strong></td>
+                            <td>DB WAL → Kafka → Cache</td>
+                            <td>Eventual</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Dual Write</strong></td>
+                            <td>App writes to both</td>
+                            <td>Inconsistent!</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Read-Through</strong></td>
+                            <td>Load on cache miss</td>
+                            <td>Eventual</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Write-Through</strong></td>
+                            <td>Cache writes to DB</td>
+                            <td>Strong</td>
+                        </tr>
+                    </table>
+                    <div class="info-box">
+                        <strong>Recommendation:</strong> CDC for read-heavy workloads. See Lab 13 (Bonus)!
+                    </div>
+                </section>
+
+                <section>
+                    <h3>When to Use CDC</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4 style="color: #27ae60;">Good Fit</h4>
+                            <ul>
+                                <li>Existing OLTP database</li>
+                                <li>Read-heavy workloads</li>
+                                <li>Multiple consuming systems</li>
+                                <li>Need eventual consistency</li>
+                                <li>Legacy system integration</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: #e74c3c;">Consider Alternatives</h4>
+                            <ul>
+                                <li>Strong consistency required</li>
+                                <li>Simple application (use write-through)</li>
+                                <li>Ignite is primary store</li>
+                                <li>Infrastructure overhead too high</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
             <!-- Hibernate L2 Cache -->
             <section>
                 <section>

@@ -243,30 +243,15 @@ System.out.println("Speedup: " + (float)time1/time2 + "x faster");</code></pre>
 
                 <section>
                     <h3>Complete Near Cache Example</h3>
-                    <pre><code class="language-java">public class NearCacheDemo {
-    public static void main(String[] args) {
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setClientMode(true);  // Must be client mode
+                    <pre><code class="language-java">// Client-side near cache config
+NearCacheConfiguration&lt;Integer, String&gt; nearCfg =
+    new NearCacheConfiguration&lt;&gt;();
+nearCfg.setNearEvictionPolicyFactory(
+    () -> new LruEvictionPolicy&lt;&gt;(100));
 
-        try (Ignite ignite = Ignition.start(cfg)) {
-            // Near cache configuration
-            NearCacheConfiguration&lt;Integer, String&gt; nearCfg =
-                new NearCacheConfiguration&lt;&gt;();
-            nearCfg.setNearEvictionPolicyFactory(
-                () -> new LruEvictionPolicy&lt;&gt;(100));
-
-            // Get cache with near cache
-            IgniteCache&lt;Integer, String&gt; cache =
-                ignite.getOrCreateNearCache("dataCache", nearCfg);
-
-            // Access data - first from server, then from near cache
-            for (int i = 0; i &lt; 50; i++) {
-                cache.get(i);
-            }
-            System.out.println("50 entries now in near cache");
-        }
-    }
-}</code></pre>
+// Get cache with near cache enabled
+IgniteCache&lt;Integer, String&gt; cache =
+    ignite.getOrCreateNearCache("dataCache", nearCfg);</code></pre>
                 </section>
 
                 <section>

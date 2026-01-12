@@ -394,30 +394,18 @@ DIAGNOSTIC="-XX:+HeapDumpOnOutOfMemoryError \
                 </section>
 
                 <section>
-                    <h2>Complete JVM Configuration Script</h2>
+                    <h2>Complete JVM Configuration</h2>
                     <pre><code class="language-bash">#!/bin/bash
-# ignite-jvm.sh - Optimized JVM settings for Apache Ignite
+# Heap (set equal -Xms and -Xmx)
+HEAP="-Xms4g -Xmx4g"
 
-# Heap size (adjust based on available RAM)
-HEAP_SIZE="-Xms4g -Xmx4g"
+# G1GC settings
+GC="-XX:+UseG1GC -XX:MaxGCPauseMillis=200"
 
-# G1GC Configuration
-GC_SETTINGS="-XX:+UseG1GC \
-  -XX:+ParallelRefProcEnabled \
-  -XX:MaxGCPauseMillis=200 \
-  -XX:InitiatingHeapOccupancyPercent=45 \
-  -XX:G1HeapRegionSize=32m"
-
-# GC Logging (Java 11+)
-GC_LOG="-Xlog:gc*:file=gc.log:time,uptime,level,tags:filecount=10,filesize=100M"
-
-# Performance and Off-heap
-PERFORMANCE="-XX:+AlwaysPreTouch -XX:+UseStringDeduplication -XX:+DisableExplicitGC"
+# Off-heap and diagnostics
 OFF_HEAP="-XX:MaxDirectMemorySize=8g"
-DIAGNOSTIC="-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=./heapdump.hprof"
 
-# Export all options
-export JVM_OPTS="$HEAP_SIZE $GC_SETTINGS $GC_LOG $PERFORMANCE $OFF_HEAP $DIAGNOSTIC"</code></pre>
+export JVM_OPTS="$HEAP $GC $OFF_HEAP"</code></pre>
                 </section>
             </section>
 
