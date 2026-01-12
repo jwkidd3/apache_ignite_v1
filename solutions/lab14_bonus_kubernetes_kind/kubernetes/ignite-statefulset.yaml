@@ -1,0 +1,63 @@
+# StatefulSet for Apache Ignite cluster
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ignite
+  namespace: ignite
+spec:
+  serviceName: ignite-service
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ignite
+  template:
+    metadata:
+      labels:
+        app: ignite
+    spec:
+      serviceAccountName: ignite-account
+      containers:
+        - name: ignite
+          image: apacheignite/ignite:2.16.0
+          env:
+            - name: OPTION_LIBS
+              value: ignite-kubernetes,ignite-rest-http
+            - name: CONFIG_URI
+              value: file:///ignite/config/ignite-config.xml
+            - name: JVM_OPTS
+              value: "-Xms512m -Xmx512m -XX:+UseG1GC"
+          ports:
+            - containerPort: 47500
+              name: discovery
+            - containerPort: 47100
+              name: communication
+            - containerPort: 10800
+              name: client
+            - containerPort: 8080
+              name: rest
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: config-volume
+              mountPath: /ignite/config
+          readinessProbe:
+            httpGet:
+              path: /ignite?cmd=version
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ignite?cmd=version
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 20
+      volumes:
+        - name: config-volume
+          configMap:
+            name: ignite-config

@@ -487,7 +487,9 @@ public class Lab01Challenge2GracefulShutdown {
 
 ### Challenge 3: Create a Node Health Check Utility
 
-Build a utility that checks and reports node health status:
+Build a utility that connects as a CLIENT to an existing cluster and checks the health of ALL server nodes:
+
+**Important:** This utility runs as a client node, so you must first start one or more server nodes (e.g., from Exercise 1 or Challenge 1) before running this health check.
 
 ```java
 package com.example.ignite;
@@ -497,8 +499,11 @@ import org.apache.ignite.Ignition;
 import org.apache.ignite.cluster.ClusterMetrics;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Lab01Challenge3HealthCheck {
@@ -512,13 +517,35 @@ public class Lab01Challenge3HealthCheck {
 
     public static void main(String[] args) {
         IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName("health-check-node");
+        cfg.setIgniteInstanceName("health-check-client");
         cfg.setPeerClassLoadingEnabled(true);
 
+        // Run as CLIENT node - connects to existing cluster without storing data
+        cfg.setClientMode(true);
+
+        // Configure discovery to find existing cluster nodes
+        TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
+        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+        ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
+        discoverySpi.setIpFinder(ipFinder);
+        cfg.setDiscoverySpi(discoverySpi);
+
         System.out.println("=== Challenge 3: Node Health Check Utility ===\n");
+        System.out.println("Connecting as CLIENT to check health of ALL cluster nodes...\n");
 
         try (Ignite ignite = Ignition.start(cfg)) {
-            System.out.println("Starting health check...\n");
+            int serverCount = ignite.cluster().forServers().nodes().size();
+            int clientCount = ignite.cluster().forClients().nodes().size();
+
+            System.out.println("Connected to cluster!");
+            System.out.println("  Server nodes: " + serverCount);
+            System.out.println("  Client nodes: " + clientCount + " (including this health checker)\n");
+
+            if (serverCount == 0) {
+                System.out.println("WARNING: No server nodes found!");
+                System.out.println("Start server nodes first, then run this health check.");
+                return;
+            }
 
             // Perform health check
             HealthReport report = performHealthCheck(ignite);
@@ -532,6 +559,7 @@ public class Lab01Challenge3HealthCheck {
                 Thread.sleep(10000);
                 System.out.println("--- Health Check #" + i + " ---");
                 HealthReport r = performHealthCheck(ignite);
+                System.out.println("Server nodes monitored: " + r.clusterSize);
                 System.out.println("Overall Status: " + r.overallStatus);
                 System.out.println("Issues: " + (r.issues.isEmpty() ? "None" : r.issues.size()));
                 r.issues.forEach(issue -> System.out.println("  - " + issue));
@@ -550,10 +578,10 @@ public class Lab01Challenge3HealthCheck {
     private static HealthReport performHealthCheck(Ignite ignite) {
         HealthReport report = new HealthReport();
         report.timestamp = java.time.LocalDateTime.now().toString();
-        report.clusterSize = ignite.cluster().nodes().size();
+        report.clusterSize = ignite.cluster().forServers().nodes().size();
 
-        // Check each node
-        for (ClusterNode node : ignite.cluster().nodes()) {
+        // Check each SERVER node (not clients)
+        for (ClusterNode node : ignite.cluster().forServers().nodes()) {
             ClusterMetrics metrics = node.metrics();
             String nodeId = node.id().toString().substring(0, 8) + "...";
 
@@ -626,10 +654,10 @@ public class Lab01Challenge3HealthCheck {
             sb.append("║                    CLUSTER HEALTH REPORT                      ║\n");
             sb.append("╠══════════════════════════════════════════════════════════════╣\n");
             sb.append(String.format("║ Timestamp: %-50s ║%n", timestamp));
-            sb.append(String.format("║ Cluster Size: %-47d ║%n", clusterSize));
+            sb.append(String.format("║ Server Nodes: %-47d ║%n", clusterSize));
             sb.append(String.format("║ Overall Status: %-45s ║%n", overallStatus));
             sb.append("╠══════════════════════════════════════════════════════════════╣\n");
-            sb.append("║ NODE DETAILS                                                  ║\n");
+            sb.append("║ SERVER NODE DETAILS                                           ║\n");
             sb.append("╠══════════════════════════════════════════════════════════════╣\n");
 
             for (NodeSummary ns : nodeSummaries) {

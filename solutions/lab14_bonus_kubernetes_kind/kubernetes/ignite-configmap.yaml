@@ -1,0 +1,80 @@
+# ConfigMap containing Ignite configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ignite-config
+  namespace: ignite
+data:
+  ignite-config.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <beans xmlns="http://www.springframework.org/schema/beans"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://www.springframework.org/schema/beans
+                               http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+        <bean class="org.apache.ignite.configuration.IgniteConfiguration">
+            <!-- Cluster name -->
+            <property name="igniteInstanceName" value="ignite-k8s-cluster"/>
+
+            <!-- Enable peer class loading -->
+            <property name="peerClassLoadingEnabled" value="true"/>
+
+            <!-- Configure Kubernetes IP finder for automatic discovery -->
+            <property name="discoverySpi">
+                <bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi">
+                    <property name="ipFinder">
+                        <bean class="org.apache.ignite.spi.discovery.tcp.ipfinder.kubernetes.TcpDiscoveryKubernetesIpFinder">
+                            <property name="namespace" value="ignite"/>
+                            <property name="serviceName" value="ignite-service"/>
+                        </bean>
+                    </property>
+                </bean>
+            </property>
+
+            <!-- Client connector configuration (thin clients) -->
+            <property name="clientConnectorConfiguration">
+                <bean class="org.apache.ignite.configuration.ClientConnectorConfiguration">
+                    <property name="port" value="10800"/>
+                </bean>
+            </property>
+
+            <!-- REST API configuration -->
+            <property name="connectorConfiguration">
+                <bean class="org.apache.ignite.configuration.ConnectorConfiguration">
+                    <property name="port" value="8080"/>
+                </bean>
+            </property>
+
+            <!-- Data storage configuration -->
+            <property name="dataStorageConfiguration">
+                <bean class="org.apache.ignite.configuration.DataStorageConfiguration">
+                    <property name="defaultDataRegionConfiguration">
+                        <bean class="org.apache.ignite.configuration.DataRegionConfiguration">
+                            <property name="name" value="Default_Region"/>
+                            <property name="initialSize" value="#{100L * 1024 * 1024}"/>
+                            <property name="maxSize" value="#{512L * 1024 * 1024}"/>
+                            <property name="persistenceEnabled" value="false"/>
+                        </bean>
+                    </property>
+                </bean>
+            </property>
+
+            <!-- Pre-configured caches -->
+            <property name="cacheConfiguration">
+                <list>
+                    <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                        <property name="name" value="default-cache"/>
+                        <property name="cacheMode" value="PARTITIONED"/>
+                        <property name="backups" value="1"/>
+                        <property name="atomicityMode" value="ATOMIC"/>
+                    </bean>
+                    <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                        <property name="name" value="k8s-demo-cache"/>
+                        <property name="cacheMode" value="PARTITIONED"/>
+                        <property name="backups" value="1"/>
+                        <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    </bean>
+                </list>
+            </property>
+        </bean>
+    </beans>

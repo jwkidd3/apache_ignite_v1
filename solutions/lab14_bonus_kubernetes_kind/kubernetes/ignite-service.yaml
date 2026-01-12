@@ -1,0 +1,47 @@
+# Headless service for StatefulSet pod discovery
+apiVersion: v1
+kind: Service
+metadata:
+  name: ignite-service
+  namespace: ignite
+  labels:
+    app: ignite
+spec:
+  clusterIP: None
+  selector:
+    app: ignite
+  ports:
+    - name: discovery
+      port: 47500
+      targetPort: 47500
+    - name: communication
+      port: 47100
+      targetPort: 47100
+    - name: client
+      port: 10800
+      targetPort: 10800
+    - name: rest
+      port: 8080
+      targetPort: 8080
+---
+# NodePort service for external client access
+apiVersion: v1
+kind: Service
+metadata:
+  name: ignite-client-service
+  namespace: ignite
+  labels:
+    app: ignite
+spec:
+  type: NodePort
+  selector:
+    app: ignite
+  ports:
+    - name: client
+      port: 10800
+      targetPort: 10800
+      nodePort: 30100
+    - name: rest
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080
