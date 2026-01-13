@@ -4,6 +4,7 @@ import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.cache.QueryEntity;
+import org.apache.ignite.cache.QueryIndex;
 import org.apache.ignite.cache.query.SqlFieldsQuery;
 import org.apache.ignite.configuration.CacheConfiguration;
 
@@ -143,6 +144,11 @@ public class DistributedJoins {
 
         entity.setFields(fields);
         entity.setKeyFieldName("id");
+
+        // Index on dept_id is REQUIRED for distributed joins
+        entity.setIndexes(Arrays.asList(
+            new QueryIndex("dept_id")
+        ));
 
         cfg.setQueryEntities(Arrays.asList(entity));
         cfg.setSqlSchema("PUBLIC");

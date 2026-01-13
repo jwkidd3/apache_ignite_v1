@@ -473,6 +473,7 @@ import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.cache.QueryEntity;
+import org.apache.ignite.cache.QueryIndex;
 import org.apache.ignite.cache.query.SqlFieldsQuery;
 import org.apache.ignite.configuration.CacheConfiguration;
 
@@ -590,6 +591,11 @@ public class Lab06DistributedJoins {
         entity.setFields(fields);
         entity.setKeyFieldName("id");
 
+        // Index on dept_id is REQUIRED for distributed joins
+        entity.setIndexes(Arrays.asList(
+            new QueryIndex("dept_id")
+        ));
+
         cfg.setQueryEntities(Arrays.asList(entity));
         cfg.setSqlSchema("PUBLIC");
 
@@ -677,6 +683,12 @@ SqlFieldsQuery explain = new SqlFieldsQuery(
 - Ensure Ignite node is running
 - Check port 10800 is accessible
 - Verify JDBC driver in classpath
+
+**Issue: "join condition does not use index"**
+- Distributed joins REQUIRE an index on the join column
+- Add `QueryIndex` on the foreign key field (e.g., `dept_id`)
+- Example: `entity.setIndexes(Arrays.asList(new QueryIndex("dept_id")))`
+- This is mandatory for distributed joins to work
 
 **Issue: Distributed join very slow**
 - Expected behavior - requires node-to-node communication
