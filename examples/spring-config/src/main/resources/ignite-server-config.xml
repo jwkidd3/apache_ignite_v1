@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="igniteConfiguration" class="org.apache.ignite.configuration.IgniteConfiguration">
+        <!-- Node name -->
+        <property name="igniteInstanceName" value="xml-server-node"/>
+
+        <!-- Discovery configuration -->
+        <property name="discoverySpi">
+            <bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi">
+                <property name="localAddress" value="127.0.0.1"/>
+                <property name="localPort" value="47500"/>
+                <property name="localPortRange" value="10"/>
+                <property name="ipFinder">
+                    <bean class="org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder">
+                        <property name="shared" value="true"/>
+                        <property name="addresses">
+                            <list>
+                                <value>127.0.0.1:47500</value>
+                                <value>127.0.0.1:47501</value>
+                                <value>127.0.0.1:47502</value>
+                            </list>
+                        </property>
+                    </bean>
+                </property>
+            </bean>
+        </property>
+
+        <!-- Communication configuration -->
+        <property name="communicationSpi">
+            <bean class="org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi">
+                <property name="localAddress" value="127.0.0.1"/>
+                <property name="localPort" value="47100"/>
+                <property name="localPortRange" value="10"/>
+            </bean>
+        </property>
+
+        <!-- Cache configurations -->
+        <property name="cacheConfiguration">
+            <list>
+                <!-- Products cache - PARTITIONED -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="products"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="backups" value="1"/>
+                    <property name="atomicityMode" value="ATOMIC"/>
+                </bean>
+
+                <!-- Categories cache - REPLICATED -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="categories"/>
+                    <property name="cacheMode" value="REPLICATED"/>
+                    <property name="atomicityMode" value="ATOMIC"/>
+                </bean>
+            </list>
+        </property>
+    </bean>
+</beans>
