@@ -4,116 +4,143 @@ import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.CachePeekMode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+
+import java.util.Arrays;
 
 /**
  * Lab 3 Exercise 2: Cache Modes
  *
- * This exercise demonstrates different cache modes:
- * PARTITIONED and REPLICATED.
- *
- * Note: LOCAL mode was deprecated and removed in Ignite 2.x.
- * For node-local data, use a PARTITIONED cache with 0 backups.
+ * Demonstrates different cache modes: PARTITIONED and REPLICATED.
+ * Starts 3 nodes in the same JVM to show data distribution.
  */
 public class CacheModes {
 
+    private static TcpDiscoveryVmIpFinder sharedIpFinder = new TcpDiscoveryVmIpFinder(true);
+
+    static {
+        sharedIpFinder.setAddresses(Arrays.asList("127.0.0.1:47500", "127.0.0.1:47501", "127.0.0.1:47502"));
+    }
+
     public static void main(String[] args) {
-        int nodeNumber = 1;
-        if (args.length >= 1) {
-            nodeNumber = Integer.parseInt(args[0]);
-        }
+        // Start 3 server nodes
+        Ignite node1 = startNode(1);
+        Ignite node2 = startNode(2);
+        Ignite node3 = startNode(3);
 
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName("cache-mode-node-" + nodeNumber);
-
-        try (Ignite ignite = Ignition.start(cfg)) {
-            System.out.println("=== Cache Modes Lab - Node " + nodeNumber + " ===\n");
-
-            // 1. PARTITIONED Cache
+        try {
+            // PARTITIONED Cache (1 backup)
             CacheConfiguration<Integer, String> partitionedCfg =
                 new CacheConfiguration<>("partitionedCache");
             partitionedCfg.setCacheMode(CacheMode.PARTITIONED);
-            partitionedCfg.setBackups(1); // Number of backup copies
+            partitionedCfg.setBackups(1);
 
             IgniteCache<Integer, String> partitionedCache =
-                ignite.getOrCreateCache(partitionedCfg);
+                node1.getOrCreateCache(partitionedCfg);
 
-            // 2. REPLICATED Cache
+            // REPLICATED Cache
             CacheConfiguration<Integer, String> replicatedCfg =
                 new CacheConfiguration<>("replicatedCache");
             replicatedCfg.setCacheMode(CacheMode.REPLICATED);
 
             IgniteCache<Integer, String> replicatedCache =
-                ignite.getOrCreateCache(replicatedCfg);
+                node1.getOrCreateCache(replicatedCfg);
 
-            // 3. PARTITIONED with no backups (node-local behavior simulation)
+            // PARTITIONED with no backups
             CacheConfiguration<Integer, String> noBackupCfg =
                 new CacheConfiguration<>("noBackupCache");
             noBackupCfg.setCacheMode(CacheMode.PARTITIONED);
-            noBackupCfg.setBackups(0); // No backups - data only on primary node
+            noBackupCfg.setBackups(0);
 
             IgniteCache<Integer, String> noBackupCache =
-                ignite.getOrCreateCache(noBackupCfg);
+                node1.getOrCreateCache(noBackupCfg);
 
-            // Populate caches (only from node 1)
-            if (nodeNumber == 1) {
-                System.out.println("Node 1: Populating caches...\n");
-
-                for (int i = 1; i <= 10; i++) {
-                    partitionedCache.put(i, "Partitioned-" + i);
-                    replicatedCache.put(i, "Replicated-" + i);
-                    noBackupCache.put(i, "NoBackup-" + i);
-                }
-                System.out.println("Added 10 entries to each cache");
+            // Populate caches
+            for (int i = 1; i <= 10; i++) {
+                partitionedCache.put(i, "Partitioned-" + i);
+                replicatedCache.put(i, "Replicated-" + i);
+                noBackupCache.put(i, "NoBackup-" + i);
             }
 
-            // Wait for data to propagate
-            Thread.sleep(1000);
+            // Wait for rebalancing
+            Thread.sleep(3000);
 
-            // Check cache sizes on each node
-            System.out.println("\n=== Cache Sizes on Node " + nodeNumber + " ===");
-            System.out.println("Partitioned cache size: " + partitionedCache.size());
-            System.out.println("Replicated cache size: " + replicatedCache.size());
-            System.out.println("No-backup cache size: " + noBackupCache.size());
+            // Get caches from other nodes
+            IgniteCache<Integer, String> partitionedNode2 = node2.cache("partitionedCache");
+            IgniteCache<Integer, String> replicatedNode2 = node2.cache("replicatedCache");
+            IgniteCache<Integer, String> noBackupNode2 = node2.cache("noBackupCache");
 
-            // Check local sizes (data actually stored on this node)
-            System.out.println("\n=== Local Cache Sizes (data on this node) ===");
-            System.out.println("Partitioned local size: " +
-                partitionedCache.localSize());
-            System.out.println("Replicated local size: " +
-                replicatedCache.localSize());
-            System.out.println("No-backup local size: " +
-                noBackupCache.localSize());
+            IgniteCache<Integer, String> partitionedNode3 = node3.cache("partitionedCache");
+            IgniteCache<Integer, String> replicatedNode3 = node3.cache("replicatedCache");
+            IgniteCache<Integer, String> noBackupNode3 = node3.cache("noBackupCache");
 
-            // Demonstrate data access
+            // Display cache information
+            System.out.println("\n=== Cache Modes Demo (3 nodes) ===\n");
+
+            System.out.println("=== Cluster-Wide Cache Sizes ===");
+            System.out.println("Partitioned (1 backup): " + partitionedCache.size());
+            System.out.println("Replicated:             " + replicatedCache.size());
+            System.out.println("No-backup (0 backups):  " + noBackupCache.size());
+
+            System.out.println("\n=== Node 1 Local Sizes ===");
+            System.out.println("Partitioned: primary=" + partitionedCache.localSize(CachePeekMode.PRIMARY) +
+                ", backup=" + partitionedCache.localSize(CachePeekMode.BACKUP));
+            System.out.println("Replicated:  " + replicatedCache.localSize(CachePeekMode.ALL) + " (full copy)");
+            System.out.println("No-backup:   primary=" + noBackupCache.localSize(CachePeekMode.PRIMARY));
+
+            System.out.println("\n=== Node 2 Local Sizes ===");
+            System.out.println("Partitioned: primary=" + partitionedNode2.localSize(CachePeekMode.PRIMARY) +
+                ", backup=" + partitionedNode2.localSize(CachePeekMode.BACKUP));
+            System.out.println("Replicated:  " + replicatedNode2.localSize(CachePeekMode.ALL) + " (full copy)");
+            System.out.println("No-backup:   primary=" + noBackupNode2.localSize(CachePeekMode.PRIMARY));
+
+            System.out.println("\n=== Node 3 Local Sizes ===");
+            System.out.println("Partitioned: primary=" + partitionedNode3.localSize(CachePeekMode.PRIMARY) +
+                ", backup=" + partitionedNode3.localSize(CachePeekMode.BACKUP));
+            System.out.println("Replicated:  " + replicatedNode3.localSize(CachePeekMode.ALL) + " (full copy)");
+            System.out.println("No-backup:   primary=" + noBackupNode3.localSize(CachePeekMode.PRIMARY));
+
             System.out.println("\n=== Data Access Test ===");
-            System.out.println("Partitioned cache key 1: " +
-                partitionedCache.get(1));
-            System.out.println("Replicated cache key 1: " +
-                replicatedCache.get(1));
-            System.out.println("No-backup cache key 1: " +
-                noBackupCache.get(1));
+            System.out.println("partitionedCache.get(1) = " + partitionedCache.get(1));
+            System.out.println("replicatedCache.get(5)  = " + replicatedCache.get(5));
+            System.out.println("noBackupCache.get(10)   = " + noBackupCache.get(10));
 
             System.out.println("\n=== Cache Mode Characteristics ===");
-            System.out.println("PARTITIONED: Data distributed across nodes, " +
-                "with configurable backups");
-            System.out.println("  - Best for: Large datasets, scalability");
-            System.out.println("  - Memory usage: Divided across nodes");
-
-            System.out.println("\nREPLICATED: Full copy of data on every node");
-            System.out.println("  - Best for: Small, read-heavy datasets");
-            System.out.println("  - Memory usage: Full dataset per node");
-
-            System.out.println("\nPARTITIONED (0 backups): Data only on primary node");
-            System.out.println("  - Best for: Temporary data, no fault tolerance needed");
-            System.out.println("  - Memory usage: Minimal, but no redundancy");
-
-            System.out.println("\nPress Enter to exit...");
-            System.in.read();
+            System.out.println("PARTITIONED (1 backup): Data distributed, each entry on 2 nodes");
+            System.out.println("REPLICATED: Full copy on every node (10 entries each)");
+            System.out.println("NO-BACKUP: Data distributed across nodes, no redundancy");
 
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            node3.close();
+            node2.close();
+            node1.close();
         }
+    }
+
+    private static Ignite startNode(int nodeNumber) {
+        IgniteConfiguration cfg = new IgniteConfiguration();
+        cfg.setIgniteInstanceName("cache-mode-node-" + nodeNumber);
+
+        TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
+        discoverySpi.setLocalAddress("127.0.0.1");
+        discoverySpi.setLocalPort(47500);
+        discoverySpi.setLocalPortRange(10);
+        discoverySpi.setIpFinder(sharedIpFinder);
+        cfg.setDiscoverySpi(discoverySpi);
+
+        TcpCommunicationSpi commSpi = new TcpCommunicationSpi();
+        commSpi.setLocalAddress("127.0.0.1");
+        commSpi.setLocalPort(47100);
+        commSpi.setLocalPortRange(10);
+        cfg.setCommunicationSpi(commSpi);
+
+        return Ignition.start(cfg);
     }
 }

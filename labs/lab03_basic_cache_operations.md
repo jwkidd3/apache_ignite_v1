@@ -169,13 +169,15 @@ public class Lab03CacheModes {
             IgniteCache<Integer, String> replicatedCache =
                 ignite.getOrCreateCache(replicatedCfg);
 
-            // 3. LOCAL Cache
-            CacheConfiguration<Integer, String> localCfg =
-                new CacheConfiguration<>("localCache");
-            localCfg.setCacheMode(CacheMode.LOCAL);
+            // 3. PARTITIONED with no backups (simulates node-local behavior)
+            // Note: LOCAL mode was deprecated in Ignite 2.x
+            CacheConfiguration<Integer, String> noBackupCfg =
+                new CacheConfiguration<>("noBackupCache");
+            noBackupCfg.setCacheMode(CacheMode.PARTITIONED);
+            noBackupCfg.setBackups(0); // No backups - data only on primary node
 
-            IgniteCache<Integer, String> localCache =
-                ignite.getOrCreateCache(localCfg);
+            IgniteCache<Integer, String> noBackupCache =
+                ignite.getOrCreateCache(noBackupCfg);
 
             // Populate caches (only from node 1)
             if (nodeNumber == 1) {
@@ -184,51 +186,70 @@ public class Lab03CacheModes {
                 for (int i = 1; i <= 10; i++) {
                     partitionedCache.put(i, "Partitioned-" + i);
                     replicatedCache.put(i, "Replicated-" + i);
-                    localCache.put(i, "Local-" + i);
+                    noBackupCache.put(i, "NoBackup-" + i);
                 }
                 System.out.println("Added 10 entries to each cache");
             }
 
-            // Wait for data to propagate
-            Thread.sleep(1000);
+            // Wait for rebalancing to complete
+            // When a new node joins, data must be rebalanced across nodes
+            // For PARTITIONED with 0 backups, entries physically MOVE between nodes
+            System.out.println("\nWaiting for cluster rebalancing...");
+            Thread.sleep(5000);
+            System.out.println("Rebalancing complete.\n");
 
-            // Check cache sizes on each node
-            System.out.println("\n=== Cache Sizes on Node " + nodeNumber + " ===");
-            System.out.println("Partitioned cache size: " + partitionedCache.size());
-            System.out.println("Replicated cache size: " + replicatedCache.size());
-            System.out.println("Local cache size: " + localCache.size());
+            // Check cache sizes (total entries across cluster)
+            // Use CachePeekMode.ALL to count all entries
+            System.out.println("=== Total Cache Sizes (cluster-wide) ===");
+            System.out.println("Partitioned cache size: " +
+                partitionedCache.size(org.apache.ignite.cache.CachePeekMode.ALL));
+            System.out.println("Replicated cache size: " +
+                replicatedCache.size(org.apache.ignite.cache.CachePeekMode.ALL));
+            System.out.println("No-backup cache size: " +
+                noBackupCache.size(org.apache.ignite.cache.CachePeekMode.ALL));
 
-            // Check local sizes (data actually stored on this node)
-            System.out.println("\n=== Local Cache Sizes (data on this node) ===");
-            System.out.println("Partitioned local size: " +
-                partitionedCache.localSize());
-            System.out.println("Replicated local size: " +
-                replicatedCache.localSize());
-            System.out.println("Local cache local size: " +
-                localCache.localSize());
+            // Check local sizes - this is where cache modes differ!
+            System.out.println("\n=== Local Cache Sizes (data physically on THIS node) ===");
+
+            // Show primary vs backup breakdown
+            System.out.println("Partitioned (1 backup): local=" +
+                partitionedCache.localSize() + " (primary=" +
+                partitionedCache.localSize(org.apache.ignite.cache.CachePeekMode.PRIMARY) +
+                ", backup=" +
+                partitionedCache.localSize(org.apache.ignite.cache.CachePeekMode.BACKUP) + ")");
+
+            System.out.println("Replicated: local=" +
+                replicatedCache.localSize() + " (should be ALL 10 on every node)");
+
+            System.out.println("No-backup: local=" +
+                noBackupCache.localSize() + " (primary only, NO redundancy)");
 
             // Demonstrate data access
             System.out.println("\n=== Data Access Test ===");
-            System.out.println("Partitioned cache key 1: " +
-                partitionedCache.get(1));
-            System.out.println("Replicated cache key 1: " +
-                replicatedCache.get(1));
-            System.out.println("Local cache key 1: " +
-                localCache.get(1));
+            System.out.println("Partitioned cache key 1: " + partitionedCache.get(1));
+            System.out.println("Replicated cache key 1: " + replicatedCache.get(1));
+            System.out.println("No-backup cache key 1: " + noBackupCache.get(1));
+
+            // Expected behavior explanation
+            int clusterSize = ignite.cluster().forServers().nodes().size();
+            System.out.println("\n=== Expected with " + clusterSize + " Node(s) ===");
+            if (clusterSize == 1) {
+                System.out.println("Single node: ALL entries are local (no distribution)");
+            } else {
+                System.out.println("PARTITIONED (1 backup): ~10 local (primary + backup)");
+                System.out.println("REPLICATED: 10 local (full copy on every node)");
+                System.out.println("NO-BACKUP: ~" + (10/clusterSize) + " local (no redundancy!)");
+            }
 
             System.out.println("\n=== Cache Mode Characteristics ===");
-            System.out.println("PARTITIONED: Data distributed across nodes, " +
-                "with configurable backups");
-            System.out.println("  - Best for: Large datasets, scalability");
-            System.out.println("  - Memory usage: Divided across nodes");
+            System.out.println("PARTITIONED: Data distributed across nodes");
+            System.out.println("  - Best for: Large datasets, horizontal scaling");
 
-            System.out.println("\nREPLICATED: Full copy of data on every node");
-            System.out.println("  - Best for: Small, read-heavy datasets");
-            System.out.println("  - Memory usage: Full dataset per node");
+            System.out.println("\nREPLICATED: Full copy of ALL data on EVERY node");
+            System.out.println("  - Best for: Small, read-heavy reference data");
 
-            System.out.println("\nLOCAL: Data exists only on this node");
-            System.out.println("  - Best for: Node-specific data, no sharing");
-            System.out.println("  - Memory usage: Only local data");
+            System.out.println("\nPARTITIONED (0 backups): No redundancy");
+            System.out.println("  - Data lost if node fails!");
 
             System.out.println("\nPress Enter to exit...");
             System.in.read();

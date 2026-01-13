@@ -22,6 +22,7 @@ replay_pid*
 # Maven
 # ===================================
 target/
+ignite/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
