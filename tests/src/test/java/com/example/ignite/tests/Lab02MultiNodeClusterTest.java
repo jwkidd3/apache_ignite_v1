@@ -106,7 +106,11 @@ public class Lab02MultiNodeClusterTest extends BaseIgniteTest {
         cache1.put(1, "value1");
         cache1.put(2, "value2");
 
-        IgniteCache<Integer, String> cache2 = node2.cache(getTestCacheName());
+        // Use getOrCreateCache to ensure cache is accessible on node2
+        IgniteCache<Integer, String> cache2 = node2.getOrCreateCache(cfg);
+
+        // Wait for replication
+        await().until(() -> cache2.get(1) != null);
 
         assertThat(cache2.get(1)).isEqualTo("value1");
         assertThat(cache2.get(2)).isEqualTo("value2");

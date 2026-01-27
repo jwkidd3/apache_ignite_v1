@@ -122,8 +122,7 @@ Professional training course for Apache Ignite, covering fundamentals through pr
 apache_ignite_v1/
 ├── README.md                    # This file
 ├── .gitignore                   # Git ignore rules
-├── labs/                        # All 12 hands-on labs
-│   ├── README.md
+├── labs/                        # Hands-on labs
 │   ├── lab01_environment_setup.md
 │   ├── lab02_multinode_cluster.md
 │   ├── lab03_basic_cache_operations.md
@@ -137,7 +136,6 @@ apache_ignite_v1/
 │   ├── lab11_performance_tuning.md
 │   └── lab12_production_deployment.md
 ├── presentations/               # reveal.js presentations
-│   ├── README.md
 │   ├── module-01-intro-inmemory-computing.html
 │   ├── module-02-architecture-deep-dive.html
 │   ├── module-03-basic-cache-operations.html
@@ -150,6 +148,12 @@ apache_ignite_v1/
 │   ├── module-10-integration-connectivity.html
 │   ├── module-11-performance-tuning.html
 │   └── module-12-production-deployment.html
+├── examples/                    # Example projects
+│   └── version-differences/     # Ignite 2.16 vs 3.x comparison
+│       ├── version-differences-presentation.html
+│       ├── version-differences-lab.md
+│       ├── pom.xml
+│       └── src/
 └── tests/                       # JUnit test suite
     ├── pom.xml
     └── src/test/java/com/example/ignite/tests/
