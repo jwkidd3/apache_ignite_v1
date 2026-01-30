@@ -5,7 +5,7 @@ import org.junit.platform.suite.api.Suite;
 import org.junit.platform.suite.api.SuiteDisplayName;
 
 /**
- * Comprehensive Test Suite for All 12 Apache Ignite Labs
+ * Comprehensive Test Suite for All 13 Apache Ignite Labs
  *
  * This suite runs all tests covering 100% of lab operations:
  *
@@ -21,13 +21,14 @@ import org.junit.platform.suite.api.SuiteDisplayName;
  * - Lab07: Transactions and ACID (covered in transaction tests)
  * - Lab08: Advanced Caching Patterns (covered in advanced tests)
  *
- * Day 3 (Labs 9-12):
+ * Day 3 (Labs 9-13):
  * - Lab09: Compute Grid Fundamentals
  * - Lab10: Integration and Connectivity
  * - Lab11: Performance Tuning and Monitoring
  * - Lab12: Production Deployment
+ * - Lab13: Version Differences (2.x vs 3.x) (31 tests)
  *
- * Total Coverage: 100+ tests covering all operations
+ * Total Coverage: 300+ tests covering all operations
  * Expected Pass Rate: 100%
  */
 @Suite

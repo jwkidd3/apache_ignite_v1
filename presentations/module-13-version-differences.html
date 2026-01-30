@@ -1,0 +1,2043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 13: Apache Ignite Version Differences (2.16 vs 3.x)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+    <style>
+        :root {
+            --heading-color: #2c3e50;
+            --accent-color: #e67e22;
+            --text-color: #333;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --v2-color: #3498db;
+            --v3-color: #9b59b6;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--heading-color);
+            font-weight: 600;
+        }
+
+        .reveal h1 { font-size: 2.2em; }
+
+        .reveal h2 {
+            font-size: 1.4em;
+            margin-bottom: 0.3em;
+        }
+
+        .reveal h3 {
+            font-size: 1.1em;
+            color: var(--accent-color);
+            margin-bottom: 0.2em;
+        }
+
+        .reveal a { color: var(--accent-color); }
+        .reveal a:hover { color: #d35400; }
+
+        .reveal .slides section {
+            text-align: left;
+            overflow: hidden;
+        }
+
+        .reveal .slides { overflow: visible; }
+
+        .reveal ul, .reveal ol {
+            display: block;
+            margin-left: 1em;
+        }
+
+        .reveal li {
+            margin-bottom: 0.3em;
+            font-size: 0.75em;
+            line-height: 1.3;
+        }
+
+        .reveal li li { font-size: 0.9em; }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.45em;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .reveal pre code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1em;
+        }
+
+        .reveal table {
+            font-size: 0.6em;
+            margin: 0 auto;
+            border-collapse: collapse;
+        }
+
+        .reveal table th {
+            background: var(--heading-color);
+            color: white;
+            padding: 0.5em 0.8em;
+        }
+
+        .reveal table td {
+            padding: 0.4em 0.8em;
+            border: 1px solid #ddd;
+        }
+
+        .reveal table tr:nth-child(even) { background: #f9f9f9; }
+
+        .reveal .title-slide h1 {
+            font-size: 2.5em;
+            color: var(--accent-color);
+        }
+
+        .reveal .title-slide h2 {
+            color: var(--heading-color);
+            font-size: 1.4em;
+        }
+
+        .reveal .highlight-box {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            padding: 1em;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+            margin: 0.5em 0;
+        }
+
+        .reveal .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .reveal .two-column > div { flex: 1; }
+
+        .reveal .checkmark { color: var(--success-color); }
+        .reveal .crossmark { color: var(--danger-color); }
+        .reveal .warning { color: var(--warning-color); }
+
+        .reveal .architecture-box {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 0.8em;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.45em;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            text-align: left;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
+        .reveal .metric {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .reveal .subtitle {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: -0.5em;
+        }
+
+        .reveal strong { color: var(--heading-color); }
+
+        .reveal .fragment.highlight-current-orange.current-fragment {
+            color: var(--accent-color);
+        }
+
+        .reveal .v2-box {
+            background: linear-gradient(135deg, #e8f4fc 0%, #d6eaf8 100%);
+            padding: 0.8em;
+            border-radius: 8px;
+            border-left: 4px solid var(--v2-color);
+            margin: 0.5em 0;
+        }
+
+        .reveal .v3-box {
+            background: linear-gradient(135deg, #f5eef8 0%, #ebdef0 100%);
+            padding: 0.8em;
+            border-radius: 8px;
+            border-left: 4px solid var(--v3-color);
+            margin: 0.5em 0;
+        }
+
+        .reveal .version-badge {
+            display: inline-block;
+            padding: 0.2em 0.5em;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 0.5em;
+        }
+
+        .reveal .v2-badge {
+            background: var(--v2-color);
+            color: white;
+        }
+
+        .reveal .v3-badge {
+            background: var(--v3-color);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Title Slide -->
+            <section class="title-slide" data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+                <h1 style="color: white;">Apache Ignite Version Differences</h1>
+                <h2 style="color: #f0f0f0;">2.16 vs 3.x - A Complete Architectural Comparison</h2>
+                <p style="color: #ddd; margin-top: 2em;">
+                    Module 13 | Apache Ignite Training<br>
+                    <em>Understanding the Evolution of Apache Ignite</em>
+                </p>
+            </section>
+
+            <!-- Module Objectives -->
+            <section>
+                <h2>Module Objectives</h2>
+                <p>By the end of this module, you will understand:</p>
+                <ul>
+                    <li class="fragment">The fundamental architectural differences between Ignite 2.x and 3.x</li>
+                    <li class="fragment">Key API, configuration, and schema management changes</li>
+                    <li class="fragment">Discovery, networking, and cluster lifecycle differences</li>
+                    <li class="fragment">Compute grid, serialization, and security model changes</li>
+                    <li class="fragment">Data colocation, distribution zones, and storage engines</li>
+                    <li class="fragment">Monitoring, async APIs, and multi-language support differences</li>
+                    <li class="fragment">Migration considerations and decision criteria</li>
+                </ul>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 1: THE BIG PICTURE -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>1. The Big Picture</h2>
+                    <h3>A Complete Rewrite, Not an Upgrade</h3>
+                    <div class="highlight-box">
+                        <p><strong>Apache Ignite 3.0 is a ground-up architectural rewrite</strong> - it's not an incremental update from 2.x. Think of it as a new product built on lessons learned from Ignite 2.x.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Philosophy Shift</h3>
+                    <div class="two-column">
+                        <div class="v2-box">
+                            <p><span class="version-badge v2-badge">2.x</span><strong>Cache-First</strong></p>
+                            <ul>
+                                <li>Data accessed via Cache API</li>
+                                <li>Key-value operations primary</li>
+                                <li>SQL layered on top of cache</li>
+                                <li>Schema defined via Java annotations</li>
+                                <li>Configuration embedded in application</li>
+                            </ul>
+                        </div>
+                        <div class="v3-box">
+                            <p><span class="version-badge v3-badge">3.x</span><strong>Schema-First</strong></p>
+                            <ul>
+                                <li>Schema defined upfront via SQL DDL</li>
+                                <li>SQL is a first-class citizen</li>
+                                <li>Multiple data access views</li>
+                                <li>Language-agnostic schema definition</li>
+                                <li>Cluster managed externally via CLI/REST</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Java Version Requirements</h3>
+                    <div class="two-column">
+                        <div class="v2-box">
+                            <p><span class="version-badge v2-badge">2.16</span></p>
+                            <ul>
+                                <li><strong>Minimum: Java 8</strong></li>
+                                <li>Supports Java 8, 11, 17</li>
+                                <li>Older codebases compatible</li>
+                                <li>Uses older Java APIs and patterns</li>
+                            </ul>
+                        </div>
+                        <div class="v3-box">
+                            <p><span class="version-badge v3-badge">3.x</span></p>
+                            <ul>
+                                <li><strong>Minimum: Java 11</strong></li>
+                                <li>Designed for Java 11+ features</li>
+                                <li>Modern API design (var, records, etc.)</li>
+                                <li>Better memory management with newer JVMs</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="highlight-box">
+                        <p><strong>Impact:</strong> Projects still on Java 8 must upgrade to Java 11+ before adopting Ignite 3.x.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Timeline and Maturity</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Milestone</th><th>Date</th><th>Notes</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Ignite 2.0</td><td>May 2017</td><td>Major rewrite from GridGain origins</td></tr>
+                            <tr><td>Ignite 2.16</td><td>Dec 2023</td><td>Latest 2.x, mature, feature-complete</td></tr>
+                            <tr><td>Ignite 3.0 Beta</td><td>Jan 2024</td><td>First public beta</td></tr>
+                            <tr><td>Ignite 3.0 GA</td><td>Mar 2025</td><td>General availability</td></tr>
+                            <tr><td>Ignite 2.x Maintenance</td><td>Ongoing</td><td>Bug fixes, security patches continue</td></tr>
+                        </tbody>
+                    </table>
+                    <p class="subtitle">Ignite 2.x is <strong>not</strong> end-of-life - it continues receiving maintenance releases</p>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 2: ARCHITECTURE -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>2. Architecture Comparison</h2>
+                    <h3>Core Architectural Differences</h3>
+                </section>
+
+                <section>
+                    <h3>Consensus and Replication</h3>
+                    <div class="two-column">
+                        <div class="v2-box">
+                            <p><span class="version-badge v2-badge">2.16</span></p>
+                            <ul>
+                                <li>Custom replication protocol</li>
+                                <li>Baseline topology for persistence</li>
+                                <li>Manual partition management</li>
+                                <li>Split-brain handling varies by config</li>
+                                <li>Eventual consistency possible under failures</li>
+                            </ul>
+                        </div>
+                        <div class="v3-box">
+                            <p><span class="version-badge v3-badge">3.x</span></p>
+                            <ul>
+                                <li><strong>RAFT consensus algorithm</strong></li>
+                                <li>Automatic leader election per partition</li>
+                                <li>Built-in split-brain protection</li>
+                                <li>Guaranteed linearizable reads/writes</li>
+                                <li>Zone-based replication (3.1+)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="highlight-box">
+                        <p><strong>Why RAFT?</strong> It is an industry-standard consensus protocol (also used by etcd, CockroachDB, TiKV). It provides formally proven consistency guarantees that Ignite 2.x's custom protocol lacked.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Storage Architecture</h3>
+                    <div class="v2-box">
+                        <p><span class="version-badge v2-badge">Ignite 2.16</span></p>
+                        <ul>
+                            <li>On-heap + Off-heap memory regions</li>
+                            <li>Native persistence (optional, all-or-nothing per data region)</li>
+                            <li>Single storage engine - page-based B+ tree</li>
+                            <li>Write-Ahead Log (WAL) for durability</li>
+                            <li>Checkpointing for persistence snapshots</li>
+                        </ul>
+                    </div>
+                    <div class="v3-box">
+                        <p><span class="version-badge v3-badge">Ignite 3.x</span></p>
+                        <ul>
+                            <li><strong>Pluggable storage engines per table:</strong>
+                                <ul>
+                                    <li><code>aimem</code> - Pure in-memory, volatile, lowest latency</li>
+                                    <li><code>aipersist</code> - Memory-first with disk persistence, balanced</li>
+                                    <li><code>RocksDB</code> - LSM-tree disk-based, write-optimized, large datasets</li>
+                                </ul>
+                            </li>
+                            <li>Choose engine <strong>per table</strong> via storage profiles</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Storage Engine Selection Guide (3.x)</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Engine</th><th>Best For</th><th>Latency</th><th>Durability</th><th>Dataset Size</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>aimem</code></td>
+                                <td>Caching, sessions, temp data</td>
+                                <td>Sub-ms</td>
+                                <td>None (volatile)</td>
+                                <td>Fits in RAM</td>
+                            </tr>
+                            <tr>
+                                <td><code>aipersist</code></td>
+                                <td>General purpose, OLTP</td>
+                                <td>Low ms</td>
+                                <td>Full</td>
+                                <td>RAM + Disk overflow</td>
+                            </tr>
+                            <tr>
+                                <td><code>RocksDB</code></td>
+                                <td>Write-heavy, large datasets</td>
+                                <td>Higher ms</td>
+                                <td>Full</td>
+                                <td>Disk-bound</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <pre><code class="language-sql">-- Ignite 3.x: different engines for different tables
+CREATE ZONE fast_zone WITH storage_profiles='in-memory-profile';
+CREATE ZONE durable_zone WITH storage_profiles='persistent-profile';
+
+CREATE TABLE sessions (...) WITH PRIMARY_ZONE='fast_zone';
+CREATE TABLE orders (...) WITH PRIMARY_ZONE='durable_zone';</code></pre>
+                </section>
+
+                <section>
+                    <h3>Architecture Diagram</h3>
+                    <div class="architecture-box">
+Ignite 2.x Architecture:
++-----------------------------------------------------+
+|                    Application                       |
++-----------------------------------------------------+
+|  Cache API  |  SQL Engine   |  Compute Grid          |
+|  (primary)  |  (on cache)   |  (full featured)       |
++-----------------------------------------------------+
+|         Data Grid (Key-Value + Partitioning)         |
+|       Custom Replication | Baseline Topology         |
++-----------------------------------------------------+
+|    On-Heap    |    Off-Heap    |  Native Persistence  |
+|               |  (page-based)  |  (WAL + Checkpoint)  |
++-----------------------------------------------------+
+
+Ignite 3.x Architecture:
++-----------------------------------------------------+
+|                    Application                       |
++-----------------------------------------------------+
+|  Table API  |  Key-Value API  |  SQL API  | Compute  |
+|  (RecordView)|  (KV View)     |  (first   | (basic)  |
+|             |                 |   class)  |          |
++-----------------------------------------------------+
+|       Unified Schema Layer (Catalog Service)         |
+|           RAFT Consensus (per partition)              |
+|         Distribution Zones (data placement)          |
++-----------------------------------------------------+
+|   aimem   |   aipersist   |   RocksDB (pluggable)   |
++-----------------------------------------------------+</div>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 3: DISCOVERY & NETWORKING -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>3. Discovery and Networking</h2>
+                    <h3>How Nodes Find Each Other</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: TcpDiscoverySpi</h3>
+                    <pre><code class="language-java">// Ignite 2.x - TcpDiscoverySpi with pluggable IP finders
+TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
+
+// Option 1: Static IP list
+TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+ipFinder.setAddresses(Arrays.asList(
+    "192.168.1.10:47500..47509",
+    "192.168.1.11:47500..47509"
+));
+
+// Option 2: Multicast (default, local network only)
+TcpDiscoveryMulticastIpFinder multicast = new TcpDiscoveryMulticastIpFinder();
+multicast.setMulticastGroup("228.10.10.157");
+
+// Option 3: ZooKeeper
+TcpDiscoveryZookeeperIpFinder zkFinder = new TcpDiscoveryZookeeperIpFinder();
+zkFinder.setZkConnectionString("host1:2181,host2:2181");
+
+// Option 4: Cloud-specific (AWS S3, GCE, Azure)
+// Requires additional ignite-aws, ignite-gce modules
+
+discoverySpi.setIpFinder(ipFinder);
+discoverySpi.setLocalPort(47500);
+discoverySpi.setLocalPortRange(10);
+cfg.setDiscoverySpi(discoverySpi);</code></pre>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: Discovery Ring Topology</h3>
+                    <div class="architecture-box">
+Ignite 2.x uses a RING topology for discovery:
+
+  Node A ──> Node B ──> Node C ──> Node D
+    ^                                 |
+    └─────────────────────────────────┘
+
+- Each node knows its "next" neighbor
+- Messages travel around the ring
+- Coordinator = first node in ring
+- Node failure detected by neighbor
+- Ring must be rebuilt on topology changes
+- Can be slow with many nodes (O(n) propagation)</div>
+                    <ul>
+                        <li><strong>Ports:</strong> Discovery on 47500-47509, Communication on 47100-47199</li>
+                        <li><strong>Protocols:</strong> Custom TCP protocol for both discovery and data</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: Built-in Node Finder with SWIM</h3>
+                    <pre><code class="language-javascript">// Ignite 3.x HOCON configuration
+ignite {
+  network {
+    port: 3344
+    nodeFinder {
+      // Simple list of seed nodes
+      netClusterNodes: [
+        "192.168.1.10:3344",
+        "192.168.1.11:3344",
+        "192.168.1.12:3344"
+      ]
+    }
+  }
+  clientConnector {
+    port: 10800   // Client connections
+  }
+  rest {
+    port: 10300   // REST API
+  }
+}</code></pre>
+                    <div class="highlight-box">
+                        <p><strong>Key Change:</strong> Ignite 3.x uses a <strong>SWIM-based protocol</strong> (Scalable Weakly-consistent Infection-style process group Membership) for failure detection - faster and more scalable than the 2.x ring topology.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Discovery Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Aspect</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Protocol</td><td>Ring-based TCP</td><td>SWIM gossip</td></tr>
+                            <tr><td>Failure Detection</td><td>Heartbeat from neighbor</td><td>Randomized probing</td></tr>
+                            <tr><td>Scalability</td><td>O(n) message propagation</td><td>O(log n) convergence</td></tr>
+                            <tr><td>IP Finders</td><td>VM, Multicast, ZK, AWS, GCE</td><td>Static node list (built-in)</td></tr>
+                            <tr><td>Discovery Port</td><td>47500</td><td>3344</td></tr>
+                            <tr><td>Communication Port</td><td>47100</td><td>3344 (shared)</td></tr>
+                            <tr><td>Client Port</td><td>10800</td><td>10800</td></tr>
+                            <tr><td>REST Port</td><td>8080 (optional module)</td><td>10300 (built-in)</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 4: CLUSTER LIFECYCLE -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>4. Cluster Lifecycle</h2>
+                    <h3>Starting, Managing, and Stopping Clusters</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: Embedded Lifecycle</h3>
+                    <pre><code class="language-java">// Ignite 2.x - cluster starts when first node starts
+Ignite ignite = Ignition.start("ignite-config.xml");
+
+// Cluster state management
+ignite.cluster().state(ClusterState.ACTIVE);       // Activate
+ignite.cluster().state(ClusterState.ACTIVE_READ_ONLY); // Read-only
+ignite.cluster().state(ClusterState.INACTIVE);     // Deactivate
+
+// Baseline topology (persistence only)
+ignite.cluster().setBaselineTopology(
+    ignite.cluster().forServers().nodes()
+);
+
+// Node types decided at startup
+IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setClientMode(true);  // or false for server</code></pre>
+                    <ul>
+                        <li>Cluster forms automatically when nodes discover each other</li>
+                        <li>Baseline topology must be managed manually when using persistence</li>
+                        <li>Activation/deactivation controls data operations</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: Explicit Cluster Initialization</h3>
+                    <pre><code class="language-bash"># Step 1: Start nodes (they are idle until initialized)
+ignite3 node start
+
+# Step 2: Initialize cluster (explicit, one-time operation)
+ignite3 cluster init \
+  --name=myCluster \
+  --meta-storage-node=node1 \
+  --meta-storage-node=node2 \
+  --meta-storage-node=node3
+
+# Step 3: Check status
+ignite3 cluster status
+# Output: name=myCluster, status=active
+
+# No activation/deactivation - cluster is always active once initialized
+# No baseline topology - RAFT handles membership automatically</code></pre>
+                    <div class="highlight-box">
+                        <p><strong>Key Differences:</strong></p>
+                        <ul>
+                            <li>3.x requires explicit initialization - nodes don't auto-form a cluster</li>
+                            <li>Meta-storage nodes hold cluster metadata (RAFT group)</li>
+                            <li>No activation/deactivation states - cluster is always active</li>
+                            <li>No baseline topology management</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Lifecycle Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Operation</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Cluster Formation</td><td>Automatic on discovery</td><td>Explicit <code>cluster init</code></td></tr>
+                            <tr><td>Node Addition</td><td>Auto-joins ring</td><td>Joins via node finder, auto-recognized</td></tr>
+                            <tr><td>Activation</td><td><code>cluster.state(ACTIVE)</code></td><td>Always active after init</td></tr>
+                            <tr><td>Baseline Topology</td><td>Manual management</td><td>Automatic (RAFT)</td></tr>
+                            <tr><td>Node Types</td><td>Server vs Client at startup</td><td>Server nodes + external clients</td></tr>
+                            <tr><td>Embedded Mode</td><td>Fully supported</td><td>Server-only; apps connect as clients</td></tr>
+                            <tr><td>Graceful Shutdown</td><td><code>Ignition.stop()</code></td><td><code>ignite3 node stop</code></td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 5: CONFIGURATION -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>5. Configuration</h2>
+                    <h3>From Spring XML to HOCON</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: Spring XML Configuration</h3>
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;beans xmlns="http://www.springframework.org/schema/beans"&gt;
+  &lt;bean class="org.apache.ignite.configuration.IgniteConfiguration"&gt;
+    &lt;property name="igniteInstanceName" value="myCluster"/&gt;
+    &lt;property name="discoverySpi"&gt;
+      &lt;bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi"&gt;
+        &lt;property name="ipFinder"&gt;
+          &lt;bean class="...TcpDiscoveryVmIpFinder"&gt;
+            &lt;property name="addresses"&gt;
+              &lt;list&gt;&lt;value&gt;127.0.0.1:47500..47509&lt;/value&gt;&lt;/list&gt;
+            &lt;/property&gt;
+          &lt;/bean&gt;
+        &lt;/property&gt;
+      &lt;/bean&gt;
+    &lt;/property&gt;
+    &lt;property name="dataStorageConfiguration"&gt;
+      &lt;bean class="...DataStorageConfiguration"&gt;
+        &lt;property name="defaultDataRegionConfiguration"&gt;
+          &lt;bean class="...DataRegionConfiguration"&gt;
+            &lt;property name="maxSize" value="#{512L * 1024 * 1024}"/&gt;
+            &lt;property name="persistenceEnabled" value="true"/&gt;
+          &lt;/bean&gt;
+        &lt;/property&gt;
+      &lt;/bean&gt;
+    &lt;/property&gt;
+  &lt;/bean&gt;
+&lt;/beans&gt;</code></pre>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: Programmatic Configuration</h3>
+                    <pre><code class="language-java">IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setIgniteInstanceName("myCluster");
+cfg.setPeerClassLoadingEnabled(true);
+
+// Discovery
+TcpDiscoverySpi disco = new TcpDiscoverySpi();
+TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
+ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
+disco.setIpFinder(ipFinder);
+cfg.setDiscoverySpi(disco);
+
+// Data storage
+DataStorageConfiguration dsc = new DataStorageConfiguration();
+DataRegionConfiguration drc = new DataRegionConfiguration();
+drc.setMaxSize(512L * 1024 * 1024); // 512 MB
+drc.setPersistenceEnabled(true);
+dsc.setDefaultDataRegionConfiguration(drc);
+cfg.setDataStorageConfiguration(dsc);
+
+// Cache configuration
+CacheConfiguration&lt;Integer, Person&gt; cc = new CacheConfiguration&lt;&gt;("persons");
+cc.setCacheMode(CacheMode.PARTITIONED);
+cc.setBackups(1);
+cc.setIndexedTypes(Integer.class, Person.class);
+cfg.setCacheConfiguration(cc);
+
+Ignite ignite = Ignition.start(cfg);</code></pre>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: HOCON Configuration</h3>
+                    <pre><code class="language-javascript">ignite {
+  network {
+    port: 3344
+    nodeFinder {
+      netClusterNodes: ["localhost:3344", "localhost:3345"]
+    }
+  }
+
+  storage {
+    profiles: [
+      { name: "default", engine: "aipersist", size: 536870912 }
+      { name: "in-memory", engine: "aimem", size: 268435456 }
+      { name: "large-data", engine: "rocksdb" }
+    ]
+  }
+
+  cluster {
+    name: "myCluster"
+  }
+
+  rest {
+    port: 10300
+  }
+
+  clientConnector {
+    port: 10800
+  }
+}</code></pre>
+                    <p class="subtitle">HOCON = Human-Optimized Config Object Notation (JSON superset)</p>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: Dynamic Configuration via CLI</h3>
+                    <pre><code class="language-bash"># View current cluster configuration
+ignite3 cluster config show
+
+# View specific section
+ignite3 cluster config show --selector=storage
+
+# Update configuration at runtime (no restart!)
+ignite3 cluster config update "gc.lowWatermark=0.3"
+ignite3 cluster config update "compute.threadPoolSize=16"
+
+# View node-specific configuration
+ignite3 node config show
+ignite3 node config show --selector=network
+
+# Update node configuration
+ignite3 node config update "network.port=3345"</code></pre>
+                    <div class="highlight-box">
+                        <p><strong>Dynamic configuration</strong> is a major advantage: most 2.x config changes require cluster restart, while 3.x supports live updates for many settings.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Configuration Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Aspect</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Format</td><td>Spring XML or Java code</td><td>HOCON file or CLI</td></tr>
+                            <tr><td>Runtime Changes</td><td>Requires restart</td><td>Dynamic via CLI/REST</td></tr>
+                            <tr><td>Discovery</td><td>TcpDiscoverySpi + IP finders</td><td>Built-in node finder</td></tr>
+                            <tr><td>Persistence</td><td>DataStorageConfiguration</td><td>Storage profiles</td></tr>
+                            <tr><td>Cache/Table Config</td><td>CacheConfiguration in app code</td><td>SQL DDL or CLI</td></tr>
+                            <tr><td>Peer Class Loading</td><td>Supported</td><td>Not applicable (no thick clients)</td></tr>
+                            <tr><td>Spring Integration</td><td>Native Spring XML support</td><td>Separate from node config</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 6: API CHANGES -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>6. API Changes</h2>
+                    <h3>From Cache API to Table API</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: Cache API</h3>
+                    <pre><code class="language-java">// Starting Ignite 2.x
+Ignite ignite = Ignition.start();
+
+// Creating a cache
+IgniteCache&lt;Integer, Person&gt; cache = ignite.getOrCreateCache("persons");
+
+// CRUD operations
+cache.put(1, new Person("John", "Doe"));
+Person person = cache.get(1);
+boolean removed = cache.remove(1);
+
+// Batch operations
+Map&lt;Integer, Person&gt; batch = new HashMap&lt;&gt;();
+batch.put(1, new Person("John", "Doe"));
+batch.put(2, new Person("Jane", "Smith"));
+cache.putAll(batch);
+Map&lt;Integer, Person&gt; results = cache.getAll(Set.of(1, 2));
+
+// SQL query (layered on cache)
+SqlFieldsQuery query = new SqlFieldsQuery(
+    "SELECT * FROM Person WHERE lastName = ?");
+query.setArgs("Doe");
+List&lt;List&lt;?&gt;&gt; results = cache.query(query).getAll();</code></pre>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: Table API - RecordView</h3>
+                    <pre><code class="language-java">// Starting Ignite 3.x client
+IgniteClient client = IgniteClient.builder()
+    .addresses("localhost:10800")
+    .build();
+
+// Schema must exist first (created via SQL DDL)
+// CREATE TABLE persons (id INT PRIMARY KEY, firstName VARCHAR, lastName VARCHAR)
+
+// Getting a table
+Table personTable = client.tables().table("persons");
+
+// RecordView - Tuple-based (flexible, no Java class needed)
+RecordView&lt;Tuple&gt; recordView = personTable.recordView();
+
+Tuple record = Tuple.create()
+    .set("id", 1)
+    .set("firstName", "John")
+    .set("lastName", "Doe");
+
+recordView.upsert(null, record);
+Tuple result = recordView.get(null, Tuple.create().set("id", 1));
+boolean deleted = recordView.delete(null, Tuple.create().set("id", 1));</code></pre>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: Table API - KeyValueView</h3>
+                    <pre><code class="language-java">// KeyValueView - closest to Ignite 2.x Cache API
+KeyValueView&lt;Integer, Person&gt; kvView =
+    personTable.keyValueView(Integer.class, Person.class);
+
+// Familiar put/get operations
+kvView.put(null, 1, new Person("John", "Doe"));
+Person person = kvView.get(null, 1);
+kvView.remove(null, 1);
+
+// Batch operations
+kvView.putAll(null, Map.of(
+    1, new Person("John", "Doe"),
+    2, new Person("Jane", "Smith")
+));
+Map&lt;Integer, Person&gt; results = kvView.getAll(null, Set.of(1, 2));</code></pre>
+                    <div class="highlight-box">
+                        <p><strong>Multiple views of the same data:</strong> RecordView (tuples), KeyValueView (key-value pairs), and SQL all access the same underlying table. Choose the view that fits your use case.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: SQL API</h3>
+                    <pre><code class="language-java">// SQL is a first-class citizen in 3.x
+// Direct SQL execution (no need for a cache/table reference)
+ResultSet&lt;SqlRow&gt; rs = client.sql().execute(null,
+    "SELECT * FROM persons WHERE lastName = ?", "Doe");
+
+while (rs.hasNext()) {
+    SqlRow row = rs.next();
+    System.out.println(row.stringValue("firstName"));
+}
+
+// DDL operations via SQL
+client.sql().execute(null,
+    "CREATE TABLE orders (id INT PRIMARY KEY, amount DECIMAL, personId INT)");
+
+// DML operations
+client.sql().execute(null,
+    "INSERT INTO orders VALUES (1, 99.99, 1)");
+
+// SQL is independent of any specific table/cache object
+// No need for cache.query() or indexed types</code></pre>
+                </section>
+
+                <section>
+                    <h3>Client Model Changes</h3>
+                    <div class="two-column">
+                        <div class="v2-box">
+                            <p><span class="version-badge v2-badge">2.16</span></p>
+                            <ul>
+                                <li><strong>Thick Client:</strong> Joins cluster, full functionality, peer class loading, runs compute tasks locally</li>
+                                <li><strong>Thin Client:</strong> Lightweight TCP, limited features (no compute, no continuous queries, no transactions initially)</li>
+                                <li>Must choose based on needs</li>
+                                <li>Thick client adds cluster overhead</li>
+                            </ul>
+                        </div>
+                        <div class="v3-box">
+                            <p><span class="version-badge v3-badge">3.x</span></p>
+                            <ul>
+                                <li><strong>Unified client protocol</strong></li>
+                                <li>All features via single client type</li>
+                                <li>No thick/thin distinction</li>
+                                <li>Consistent API across all languages</li>
+                                <li>Clients never join the cluster</li>
+                                <li>Reduced cluster overhead</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Async API Differences</h3>
+                    <div class="v2-box">
+                        <p><span class="version-badge v2-badge">Ignite 2.16</span> - <code>IgniteFuture</code> (custom future type)</p>
+                        <pre><code class="language-java">// Async operations return IgniteFuture
+IgniteFuture&lt;Person&gt; future = cache.getAsync(1);
+future.listen(f -> System.out.println("Got: " + f.get()));
+
+// Or convert to CompletableFuture
+CompletableFuture&lt;Person&gt; cf = future.toCompletableFuture();</code></pre>
+                    </div>
+                    <div class="v3-box">
+                        <p><span class="version-badge v3-badge">Ignite 3.x</span> - <code>CompletableFuture</code> (standard Java)</p>
+                        <pre><code class="language-java">// Async operations return standard CompletableFuture
+CompletableFuture&lt;Tuple&gt; future = recordView.getAsync(null, key);
+future.thenAccept(t -> System.out.println("Got: " + t));
+
+// Compose async operations naturally
+recordView.getAsync(null, key1)
+    .thenCompose(r -> recordView.upsertAsync(null, transform(r)))
+    .thenAccept(v -> System.out.println("Done"));</code></pre>
+                    </div>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 7: SQL -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>7. SQL Improvements in 3.x</h2>
+                    <h3>SQL as a First-Class Citizen</h3>
+                </section>
+
+                <section>
+                    <h3>SQL Engine Evolution</h3>
+                    <div class="v2-box">
+                        <p><span class="version-badge v2-badge">Ignite 2.16</span></p>
+                        <ul>
+                            <li>Originally H2-based SQL engine</li>
+                            <li>Calcite engine added (newer, optional)</li>
+                            <li>SQL queries execute via <code>cache.query()</code></li>
+                            <li>SQL transactions limited (KV transactions more robust)</li>
+                            <li>Cannot mix SQL and KV in same transaction easily</li>
+                            <li>Distributed joins can be slow without colocation</li>
+                        </ul>
+                    </div>
+                    <div class="v3-box">
+                        <p><span class="version-badge v3-badge">Ignite 3.x</span></p>
+                        <ul>
+                            <li><strong>Apache Calcite only</strong> - modern, optimized</li>
+                            <li>SQL executed directly via <code>client.sql()</code></li>
+                            <li><strong>Full SQL transaction support</strong></li>
+                            <li>Strictly serializable isolation</li>
+                            <li>Mix SQL and KV operations in same transaction</li>
+                            <li>Cost-based query optimization</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>SQL Transaction Example (3.x)</h3>
+                    <pre><code class="language-java">// Ignite 3.x - Full transactional SQL + KV in same transaction
+try (Transaction tx = client.transactions().begin()) {
+    // SQL operations
+    client.sql().execute(tx,
+        "INSERT INTO accounts (id, balance) VALUES (?, ?)", 1, 1000);
+
+    client.sql().execute(tx,
+        "UPDATE accounts SET balance = balance - 200 WHERE id = ?", 1);
+
+    // Key-Value operations in SAME transaction
+    KeyValueView&lt;Integer, Account&gt; kv =
+        accountsTable.keyValueView(Integer.class, Account.class);
+    kv.put(tx, 2, new Account(2, 2000));
+
+    // Both SQL and KV committed atomically
+    tx.commit();
+} catch (Exception e) {
+    // Automatic rollback on exception
+}</code></pre>
+                    <div class="highlight-box">
+                        <p><strong>RDBMS migration-friendly:</strong> Developers familiar with JDBC transactions will find Ignite 3.x's SQL transaction model natural.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Calcite SQL Engine Benefits</h3>
+                    <ul>
+                        <li><strong>Cost-based optimization:</strong> Chooses optimal join order, index usage, and scan strategy based on table statistics</li>
+                        <li><strong>Better SQL standard compliance:</strong> More ANSI SQL features supported</li>
+                        <li><strong>Improved distributed joins:</strong> Smarter partition pruning and data movement</li>
+                        <li><strong>Extensible:</strong> Custom functions, type coercions, and optimization rules</li>
+                        <li><strong>Query plan caching:</strong> Compiled plans reused for repeated queries</li>
+                    </ul>
+                    <pre><code class="language-sql">-- Ignite 3.x: View query execution plan
+EXPLAIN PLAN FOR
+SELECT o.id, p.firstName, o.amount
+FROM orders o JOIN persons p ON o.personId = p.id
+WHERE o.amount > 100;</code></pre>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 8: SCHEMA MANAGEMENT -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>8. Schema Management</h2>
+                    <h3>Defining Data Structures</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: Annotation-Based Schema</h3>
+                    <pre><code class="language-java">// Define schema via Java annotations
+public class Person implements Serializable {
+    @QuerySqlField(index = true)
+    private int id;
+
+    @QuerySqlField
+    private String firstName;
+
+    @QuerySqlField(index = true)
+    private String lastName;
+
+    @QuerySqlField
+    private int age;
+}
+
+// Register with cache configuration
+CacheConfiguration&lt;Integer, Person&gt; cfg = new CacheConfiguration&lt;&gt;("persons");
+cfg.setIndexedTypes(Integer.class, Person.class);
+// OR use QueryEntity for more control:
+QueryEntity qe = new QueryEntity(Integer.class, Person.class);
+qe.setFields(new LinkedHashMap&lt;&gt;(Map.of(
+    "id", Integer.class.getName(),
+    "firstName", String.class.getName()
+)));
+cfg.setQueryEntities(Arrays.asList(qe));</code></pre>
+                    <p class="subtitle">Schema is tightly coupled to Java classes</p>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: SQL DDL Schema</h3>
+                    <pre><code class="language-sql">-- Create table using SQL DDL (language-agnostic)
+CREATE TABLE persons (
+    id INT PRIMARY KEY,
+    firstName VARCHAR(100),
+    lastName VARCHAR(100),
+    age INT
+) WITH PRIMARY_ZONE='default';
+
+-- Create indexes separately
+CREATE INDEX idx_lastname ON persons (lastName);
+CREATE INDEX idx_age ON persons (age);
+
+-- Alter table schema dynamically
+ALTER TABLE persons ADD COLUMN email VARCHAR(200);
+ALTER TABLE persons DROP COLUMN age;
+
+-- Composite keys
+CREATE TABLE order_items (
+    orderId INT,
+    itemId INT,
+    quantity INT,
+    price DECIMAL(10,2),
+    PRIMARY KEY (orderId, itemId)
+);</code></pre>
+                    <div class="highlight-box">
+                        <p><strong>Key Change:</strong> Schema is defined via SQL DDL, not Java annotations. This makes it language-agnostic, familiar to DBA teams, and allows dynamic schema evolution.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Schema Evolution Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Operation</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Add column</td><td>Requires code change + restart or SQL ALTER (limited)</td><td><span class="checkmark">ALTER TABLE ADD COLUMN</span></td></tr>
+                            <tr><td>Drop column</td><td><span class="crossmark">Not supported</span></td><td><span class="checkmark">ALTER TABLE DROP COLUMN</span></td></tr>
+                            <tr><td>Add index</td><td>Possible via SQL or config (complex)</td><td><span class="checkmark">CREATE INDEX</span></td></tr>
+                            <tr><td>Drop index</td><td>SQL DROP INDEX</td><td><span class="checkmark">DROP INDEX</span></td></tr>
+                            <tr><td>Change column type</td><td><span class="crossmark">Not supported</span></td><td><span class="warning">Limited support</span></td></tr>
+                            <tr><td>Rename table</td><td><span class="crossmark">Not supported</span></td><td><span class="warning">Planned</span></td></tr>
+                            <tr><td>Schema versioning</td><td>Not built-in</td><td>Catalog service tracks versions</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 9: DATA COLOCATION & ZONES -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>9. Data Colocation and Distribution</h2>
+                    <h3>Controlling Where Data Lives</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: Affinity Keys</h3>
+                    <pre><code class="language-java">// Ignite 2.x - Affinity key for colocation
+public class OrderKey implements Serializable {
+    @AffinityKeyMapped
+    private int customerId;  // Colocate with customer
+    private int orderId;
+
+    public OrderKey(int customerId, int orderId) {
+        this.customerId = customerId;
+        this.orderId = orderId;
+    }
+}
+
+// Orders for same customer are on same node as customer
+CacheConfiguration&lt;OrderKey, Order&gt; orderCfg = new CacheConfiguration&lt;&gt;("orders");
+orderCfg.setBackups(1);
+
+// Affinity function controls partitioning
+RendezvousAffinityFunction af = new RendezvousAffinityFunction();
+af.setPartitions(1024);  // Number of partitions
+orderCfg.setAffinity(af);
+
+// Affinity-aware operations
+ignite.compute().affinityRun("orders", customerId, () -> {
+    // Runs on the node that owns customerId's partition
+});</code></pre>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: Distribution Zones</h3>
+                    <pre><code class="language-sql">-- Ignite 3.x - Distribution Zones control data placement
+
+-- Create zones with different replication and storage
+CREATE ZONE hot_zone WITH
+    replicas=3,
+    partitions=256,
+    storage_profiles='in-memory-profile';
+
+CREATE ZONE warm_zone WITH
+    replicas=2,
+    partitions=512,
+    storage_profiles='persistent-profile';
+
+CREATE ZONE cold_zone WITH
+    replicas=1,
+    partitions=128,
+    storage_profiles='rocksdb-profile';
+
+-- Assign tables to zones
+CREATE TABLE sessions (...) WITH PRIMARY_ZONE='hot_zone';
+CREATE TABLE orders (...) WITH PRIMARY_ZONE='warm_zone';
+CREATE TABLE audit_log (...) WITH PRIMARY_ZONE='cold_zone';
+
+-- Colocation via colocation key
+CREATE TABLE order_items (
+    orderId INT,
+    itemId INT,
+    ...,
+    PRIMARY KEY (orderId, itemId)
+) COLOCATE BY (orderId)  -- Colocate with orders table
+WITH PRIMARY_ZONE='warm_zone';</code></pre>
+                </section>
+
+                <section>
+                    <h3>Data Distribution Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Aspect</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Colocation Mechanism</td><td>@AffinityKeyMapped annotation</td><td>COLOCATE BY clause in DDL</td></tr>
+                            <tr><td>Data Placement Control</td><td>Affinity function per cache</td><td>Distribution Zones</td></tr>
+                            <tr><td>Replication Factor</td><td>Backups per cache</td><td>Replicas per zone</td></tr>
+                            <tr><td>Partition Count</td><td>Per cache (default 1024)</td><td>Per zone</td></tr>
+                            <tr><td>Storage per Table</td><td>Same engine for all</td><td>Different per zone/profile</td></tr>
+                            <tr><td>Topology Filtering</td><td>Node filter on cache</td><td>Zone-level node filtering</td></tr>
+                            <tr><td>Hot/Warm/Cold Tiers</td><td>Manual via data regions</td><td>Built-in via zones + profiles</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 10: COMPUTE GRID -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>10. Compute Grid</h2>
+                    <h3>Distributed Computing Differences</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: Full-Featured Compute Grid</h3>
+                    <pre><code class="language-java">// IgniteCallable / IgniteRunnable - simple closures
+ignite.compute().broadcast(() -> {
+    System.out.println("Running on: " + Ignition.localIgnite().name());
+});
+
+// ComputeTask - full MapReduce
+public class WordCountTask extends ComputeTaskAdapter&lt;String, Map&lt;String, Integer&gt;&gt; {
+    @Override
+    public Map&lt;? extends ComputeJob, ClusterNode&gt; map(
+            List&lt;ClusterNode&gt; nodes, String arg) {
+        // Map: distribute jobs to nodes
+    }
+    @Override
+    public Map&lt;String, Integer&gt; reduce(List&lt;ComputeJobResult&gt; results) {
+        // Reduce: aggregate results
+    }
+}
+Map&lt;String, Integer&gt; result = ignite.compute().execute(new WordCountTask(), "input");
+
+// Affinity-aware compute
+ignite.compute().affinityRun("cache", key, () -> {
+    // Runs on node owning the key's partition
+});
+
+// Service Grid - deploy long-running services
+ignite.services().deployClusterSingleton("mySvc", new MyServiceImpl());</code></pre>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: Additional Compute Features</h3>
+                    <ul>
+                        <li><strong>ComputeTaskSplitAdapter:</strong> Auto-split work across nodes</li>
+                        <li><strong>ComputeTaskSession:</strong> Share state between map and reduce phases</li>
+                        <li><strong>Failover SPI:</strong> Automatic job retry on node failure</li>
+                        <li><strong>Load Balancing SPI:</strong> Round-robin, weighted, adaptive</li>
+                        <li><strong>Peer Class Loading:</strong> Deploy code dynamically to cluster</li>
+                        <li><strong>Continuous Computation:</strong> Long-running distributed computations</li>
+                        <li><strong>ExecutorService:</strong> Standard Java ExecutorService over the grid</li>
+                    </ul>
+                    <pre><code class="language-java">// Use cluster as a standard Java ExecutorService
+ExecutorService exec = ignite.executorService();
+Future&lt;String&gt; future = exec.submit(() -> "computed on grid");
+String result = future.get();</code></pre>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: Simplified Compute</h3>
+                    <pre><code class="language-java">// Ignite 3.x - Simplified compute API
+// Execute on specific nodes
+Set&lt;ClusterNode&gt; nodes = client.clusterNodes();
+
+// Run a job on all nodes (broadcast)
+Map&lt;ClusterNode, String&gt; results = client.compute()
+    .execute(nodes, MyJob.class, "arg");
+
+// Run on a single node
+String result = client.compute()
+    .execute(Set.of(targetNode), MyJob.class, "arg");
+
+// Colocated compute - run on node owning the key
+String result = client.compute()
+    .executeColocated("tableName", Tuple.create().set("id", 42),
+        MyJob.class, "arg");</code></pre>
+                    <div class="highlight-box">
+                        <p><strong>Status:</strong> Ignite 3.x compute is functional but still evolving. It supports basic job execution and colocated compute. Full MapReduce, Service Grid, peer class loading, and failover SPI are <strong>not yet available</strong> in 3.x.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Compute Grid Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Feature</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Basic job execution</td><td><span class="checkmark">Yes</span></td><td><span class="checkmark">Yes</span></td></tr>
+                            <tr><td>Broadcast</td><td><span class="checkmark">Yes</span></td><td><span class="checkmark">Yes</span></td></tr>
+                            <tr><td>Colocated compute</td><td><span class="checkmark">affinityRun/Call</span></td><td><span class="checkmark">executeColocated</span></td></tr>
+                            <tr><td>MapReduce (ComputeTask)</td><td><span class="checkmark">Full support</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Service Grid</td><td><span class="checkmark">Yes</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Peer Class Loading</td><td><span class="checkmark">Yes</span></td><td><span class="crossmark">Not applicable</span></td></tr>
+                            <tr><td>Failover SPI</td><td><span class="checkmark">Configurable</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Load Balancing</td><td><span class="checkmark">Multiple strategies</span></td><td><span class="warning">Basic</span></td></tr>
+                            <tr><td>ExecutorService</td><td><span class="checkmark">Yes</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Job deployment</td><td>Classpath or peer loading</td><td>Deployment units</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 11: SERIALIZATION -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>11. Serialization</h2>
+                    <h3>How Data Is Stored and Transferred</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: Binary Object Marshaller</h3>
+                    <pre><code class="language-java">// Ignite 2.x - BinaryObject for schema-less access
+IgniteCache&lt;Integer, BinaryObject&gt; binaryCache =
+    cache.withKeepBinary();
+
+// Access fields without deserializing to Java class
+BinaryObject bo = binaryCache.get(1);
+String name = bo.field("firstName");
+int age = bo.field("age");
+
+// Modify without full deserialization
+BinaryObject modified = bo.toBuilder()
+    .setField("age", 31)
+    .build();
+binaryCache.put(1, modified);</code></pre>
+                    <ul>
+                        <li><strong>BinaryMarshaller:</strong> Default, schema-aware binary format</li>
+                        <li><strong>BinaryObject:</strong> Access data without deserializing to Java class</li>
+                        <li>Java Serializable also supported but slower</li>
+                        <li>Objects stored in binary format on-heap and off-heap</li>
+                        <li>Schema tracked per type across cluster</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: Schema-Based Serialization</h3>
+                    <pre><code class="language-java">// Ignite 3.x - Tuple-based access (no serialization concern for users)
+RecordView&lt;Tuple&gt; view = table.recordView();
+
+// Tuples are schema-aware - fields validated against table schema
+Tuple record = Tuple.create()
+    .set("id", 1)
+    .set("firstName", "John")
+    .set("lastName", "Doe");
+view.upsert(null, record);
+
+// Typed (POJO) mapping with automatic marshalling
+RecordView&lt;Person&gt; typedView = table.recordView(Person.class);
+typedView.upsert(null, new Person(1, "John", "Doe"));
+Person p = typedView.get(null, new Person(1));  // Only key fields needed</code></pre>
+                    <ul>
+                        <li>Schema defined by SQL DDL, not by Java class structure</li>
+                        <li>Internal serialization format based on table schema</li>
+                        <li>Tuples: flexible, no Java class needed</li>
+                        <li>POJOs: automatic mapping to/from table columns</li>
+                        <li>No BinaryObject concept - data always schema-bound</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Serialization Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Aspect</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Format</td><td>BinaryMarshaller (custom binary)</td><td>Schema-based internal format</td></tr>
+                            <tr><td>Schema Source</td><td>Java class structure</td><td>SQL DDL / Catalog</td></tr>
+                            <tr><td>Schema-less Access</td><td>BinaryObject API</td><td>Tuple API</td></tr>
+                            <tr><td>POJO Mapping</td><td>Automatic via annotations</td><td>Automatic via class reflection</td></tr>
+                            <tr><td>Java Serializable</td><td>Supported (slow)</td><td>Not used for data storage</td></tr>
+                            <tr><td>Cross-Language</td><td>Limited (binary format)</td><td>Protocol-level schema sharing</td></tr>
+                            <tr><td>Schema Evolution</td><td>Limited (add fields only)</td><td>Full DDL evolution</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 12: SECURITY -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>12. Security Model</h2>
+                    <h3>Authentication, Authorization, and Encryption</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: Plugin-Based Security</h3>
+                    <pre><code class="language-java">// Ignite 2.x - Security via GridSecurityProcessor plugin
+// SSL/TLS for transport encryption
+SslContextFactory sslFactory = new SslContextFactory();
+sslFactory.setKeyStoreFilePath("/path/to/keystore.jks");
+sslFactory.setKeyStorePassword("changeit".toCharArray());
+sslFactory.setTrustStoreFilePath("/path/to/truststore.jks");
+sslFactory.setTrustStorePassword("changeit".toCharArray());
+
+cfg.setSslContextFactory(sslFactory);
+
+// Thin client SSL
+ClientConfiguration clientCfg = new ClientConfiguration();
+clientCfg.setAddresses("localhost:10800");
+clientCfg.setSslMode(SslMode.REQUIRED);
+clientCfg.setSslClientCertificateKeyStorePath("/path/to/keystore.jks");
+
+// Authentication - plugin-based (not built into core)
+// Typically provided by GridGain (commercial) or custom implementation
+// Community edition has limited built-in auth</code></pre>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: Built-in Security</h3>
+                    <pre><code class="language-bash"># Ignite 3.x - Built-in authentication
+# Enable authentication via CLI
+ignite3 cluster config update "security.enabled=true"
+
+# Configure authentication provider
+ignite3 cluster config update \
+  "security.authentication.providers.basic.type=basic"
+
+# SSL/TLS configuration
+ignite3 node config update '{
+  ssl: {
+    enabled: true,
+    keyStore: { path: "/path/to/keystore.p12", password: "changeit" },
+    trustStore: { path: "/path/to/truststore.p12", password: "changeit" }
+  }
+}'</code></pre>
+                    <div class="highlight-box">
+                        <p><strong>Key Improvement:</strong> Ignite 3.x has authentication and authorization built into the core, not as a plugin. This means security features are available to all users, not just commercial editions.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Security Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Feature</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>SSL/TLS Encryption</td><td><span class="checkmark">Yes</span></td><td><span class="checkmark">Yes</span></td></tr>
+                            <tr><td>Authentication</td><td>Plugin-based (limited in OSS)</td><td><span class="checkmark">Built-in</span></td></tr>
+                            <tr><td>Authorization</td><td>Plugin-based (limited in OSS)</td><td><span class="checkmark">Built-in role-based</span></td></tr>
+                            <tr><td>Encryption at Rest</td><td><span class="checkmark">Transparent Data Encryption</span></td><td><span class="warning">Evolving</span></td></tr>
+                            <tr><td>Configuration</td><td>Java/XML (static)</td><td>CLI/HOCON (dynamic)</td></tr>
+                            <tr><td>Audit Logging</td><td>Plugin-based</td><td>Built-in</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 13: MONITORING -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>13. Monitoring and Metrics</h2>
+                    <h3>Observability Differences</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: JMX + Custom Metrics</h3>
+                    <pre><code class="language-java">// JMX beans exposed automatically
+// Access via JConsole, VisualVM, or JMX clients
+
+// Cluster metrics
+ClusterMetrics metrics = ignite.cluster().metrics();
+System.out.println("CPUs: " + metrics.getTotalCpus());
+System.out.println("Heap Used: " + metrics.getHeapMemoryUsed());
+System.out.println("Nodes: " + metrics.getTotalNodes());
+
+// Cache metrics
+CacheMetrics cacheMetrics = cache.metrics();
+System.out.println("Hits: " + cacheMetrics.getCacheHits());
+System.out.println("Misses: " + cacheMetrics.getCacheMisses());
+System.out.println("Size: " + cacheMetrics.getCacheSize());
+
+// Enable metrics export
+cfg.setMetricsLogFrequency(60000); // Log every 60 seconds
+
+// OpenCensus metrics exporter (2.16)
+cfg.setPluginProviders(new OpenCensusMetricExporterSpi());</code></pre>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: Modern Metrics and REST API</h3>
+                    <pre><code class="language-bash"># REST API for metrics (built-in)
+curl http://localhost:10300/management/v1/metric/node
+
+# Cluster status via CLI
+ignite3 cluster status
+ignite3 node status
+
+# Metric sets available via REST API
+# /management/v1/metric/node     - node-level metrics
+# /management/v1/metric/cluster  - cluster-level metrics
+
+# Configuration-based metric export
+ignite3 cluster config update '{
+  metrics: {
+    exporters: {
+      jmx: { enabled: true },
+      log: { enabled: true, period: 60000 }
+    }
+  }
+}'</code></pre>
+                    <div class="highlight-box">
+                        <p><strong>Key Improvement:</strong> Ignite 3.x provides a built-in REST API for monitoring, eliminating the need for JMX agents or custom monitoring code. Metrics are also available via OpenMetrics/Prometheus format.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Monitoring Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Feature</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>JMX</td><td><span class="checkmark">Primary interface</span></td><td><span class="checkmark">Available</span></td></tr>
+                            <tr><td>REST API</td><td>Optional module (limited)</td><td><span class="checkmark">Built-in, comprehensive</span></td></tr>
+                            <tr><td>Metrics Format</td><td>JMX MBeans</td><td>OpenMetrics + JMX</td></tr>
+                            <tr><td>Cluster Metrics API</td><td><code>cluster().metrics()</code></td><td>REST + CLI</td></tr>
+                            <tr><td>Cache/Table Metrics</td><td><code>cache.metrics()</code></td><td>REST API</td></tr>
+                            <tr><td>Query Statistics</td><td>SQL system views</td><td>SQL system views + REST</td></tr>
+                            <tr><td>Prometheus Support</td><td>Via plugin (OpenCensus)</td><td>Built-in OpenMetrics</td></tr>
+                            <tr><td>Log-based Metrics</td><td>MetricsLogFrequency</td><td>Configurable log exporter</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 14: MULTI-LANGUAGE -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>14. Multi-Language Support</h2>
+                    <h3>Client Libraries and Language Support</h3>
+                </section>
+
+                <section>
+                    <h3>Language Support Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Language</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Java</td><td><span class="checkmark">Full (thick + thin)</span></td><td><span class="checkmark">Full (unified client)</span></td></tr>
+                            <tr><td>.NET/C#</td><td><span class="checkmark">Thick + thin client</span></td><td><span class="checkmark">Unified client</span></td></tr>
+                            <tr><td>C++</td><td><span class="checkmark">Thick + thin client</span></td><td><span class="checkmark">Unified client</span></td></tr>
+                            <tr><td>Python</td><td><span class="checkmark">Thin client</span></td><td><span class="checkmark">Unified client</span></td></tr>
+                            <tr><td>Node.js</td><td><span class="checkmark">Thin client</span></td><td><span class="warning">Planned</span></td></tr>
+                            <tr><td>Go</td><td><span class="warning">Community contrib</span></td><td><span class="warning">Planned</span></td></tr>
+                            <tr><td>JDBC</td><td><span class="checkmark">Yes</span></td><td><span class="checkmark">Yes</span></td></tr>
+                            <tr><td>ODBC</td><td><span class="checkmark">Yes</span></td><td><span class="checkmark">Yes</span></td></tr>
+                        </tbody>
+                    </table>
+                    <div class="highlight-box">
+                        <p><strong>3.x advantage:</strong> All languages get the same features via the unified client protocol. In 2.x, thin clients in non-Java languages had significantly fewer features than the Java thick client.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Client Connection Examples</h3>
+                    <div class="v2-box">
+                        <p><span class="version-badge v2-badge">Ignite 2.16</span> - Java thick client joins cluster</p>
+                        <pre><code class="language-java">// Thick client - becomes part of the cluster
+IgniteConfiguration cfg = new IgniteConfiguration();
+cfg.setClientMode(true);
+Ignite client = Ignition.start(cfg);
+// Now a full cluster member (heavier resource usage)</code></pre>
+                    </div>
+                    <div class="v3-box">
+                        <p><span class="version-badge v3-badge">Ignite 3.x</span> - Lightweight external client</p>
+                        <pre><code class="language-java">// All clients are lightweight and external
+IgniteClient client = IgniteClient.builder()
+    .addresses("node1:10800", "node2:10800")
+    .retryPolicy(new RetryLimitPolicy().retryLimit(5))
+    .connectTimeout(5000)
+    .build();</code></pre>
+                    </div>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 15: CLI AND TOOLING -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>15. CLI and Tooling</h2>
+                    <h3>Management and Operations</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16: control.sh</h3>
+                    <pre><code class="language-bash"># Activate/deactivate cluster
+./control.sh --activate
+./control.sh --deactivate
+./control.sh --state
+
+# Baseline topology management
+./control.sh --baseline
+./control.sh --baseline add node1ConsistentId,node2ConsistentId
+./control.sh --baseline remove node3ConsistentId
+./control.sh --baseline set node1,node2,node3 --yes
+
+# Cache operations
+./control.sh --cache list
+./control.sh --cache validate_indexes
+./control.sh --cache idle_verify
+
+# Diagnostic commands
+./control.sh --diagnostic
+./control.sh --tx   # List active transactions</code></pre>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x: Unified CLI (ignite3)</h3>
+                    <pre><code class="language-bash"># Cluster management
+ignite3 cluster init --name=myCluster --meta-storage-node=node1
+ignite3 cluster status
+ignite3 cluster config show
+ignite3 cluster config update "compute.threadPoolSize=16"
+
+# Node management
+ignite3 node start
+ignite3 node stop
+ignite3 node status
+ignite3 node config show
+ignite3 node config update "network.port=3345"
+
+# Run SQL directly from CLI
+ignite3 sql "SELECT * FROM persons"
+ignite3 sql "CREATE TABLE test (id INT PRIMARY KEY, name VARCHAR)"
+ignite3 sql "INSERT INTO test VALUES (1, 'hello')"
+
+# Connect to specific cluster
+ignite3 cluster --url=http://node1:10300 status</code></pre>
+                </section>
+
+                <section>
+                    <h3>Tooling Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Tool</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>CLI</td><td>control.sh (limited)</td><td>ignite3 (comprehensive)</td></tr>
+                            <tr><td>SQL from CLI</td><td><span class="crossmark">Not built-in</span></td><td><span class="checkmark">ignite3 sql</span></td></tr>
+                            <tr><td>REST API</td><td>Optional module, basic</td><td>Built-in, full management</td></tr>
+                            <tr><td>Installation</td><td>Binary ZIP download</td><td>RPM, DEB, Docker, ZIP</td></tr>
+                            <tr><td>Configuration</td><td>Static (restart required)</td><td>Dynamic (live updates)</td></tr>
+                            <tr><td>Visor (GUI)</td><td>Deprecated</td><td><span class="crossmark">Removed</span></td></tr>
+                            <tr><td>Web Console</td><td>GridGain (commercial)</td><td>Planned/community tools</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 16: DEPENDENCY CHANGES -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>16. Dependency and Module Changes</h2>
+                    <h3>Maven/Gradle Configuration</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16 Dependencies</h3>
+                    <pre><code class="language-xml">&lt;!-- Many separate modules --&gt;
+&lt;dependencies&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.apache.ignite&lt;/groupId&gt;
+        &lt;artifactId&gt;ignite-core&lt;/artifactId&gt;         &lt;!-- Core API --&gt;
+        &lt;version&gt;2.16.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;artifactId&gt;ignite-spring&lt;/artifactId&gt;       &lt;!-- Spring XML config --&gt;
+        &lt;version&gt;2.16.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;artifactId&gt;ignite-indexing&lt;/artifactId&gt;     &lt;!-- SQL support --&gt;
+        &lt;version&gt;2.16.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;!-- Plus: ignite-rest-http, ignite-aws, ignite-zookeeper,
+         ignite-spring-data, ignite-hibernate, ignite-kafka, etc. --&gt;
+&lt;/dependencies&gt;</code></pre>
+                    <p class="subtitle">20+ optional modules for different features</p>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x Dependencies</h3>
+                    <pre><code class="language-xml">&lt;!-- Simplified module structure --&gt;
+&lt;dependencies&gt;
+    &lt;!-- Client dependency (most common for applications) --&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.apache.ignite&lt;/groupId&gt;
+        &lt;artifactId&gt;ignite-client&lt;/artifactId&gt;
+        &lt;version&gt;3.0.0&lt;/version&gt;
+    &lt;/dependency&gt;
+
+    &lt;!-- For embedded/server nodes (less common) --&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.apache.ignite&lt;/groupId&gt;
+        &lt;artifactId&gt;ignite-runner&lt;/artifactId&gt;
+        &lt;version&gt;3.0.0&lt;/version&gt;
+    &lt;/dependency&gt;
+
+    &lt;!-- JDBC driver --&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.apache.ignite&lt;/groupId&gt;
+        &lt;artifactId&gt;ignite-jdbc&lt;/artifactId&gt;
+        &lt;version&gt;3.0.0&lt;/version&gt;
+    &lt;/dependency&gt;
+&lt;/dependencies&gt;</code></pre>
+                    <p class="subtitle">Fewer modules - SQL, REST, security built into core</p>
+                </section>
+
+                <section>
+                    <h3>Package and Class Name Changes</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Concept</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Entry point</td><td><code>Ignition.start()</code></td><td><code>IgniteClient.builder()</code></td></tr>
+                            <tr><td>Main interface</td><td><code>Ignite</code></td><td><code>IgniteClient</code></td></tr>
+                            <tr><td>Data access</td><td><code>IgniteCache</code></td><td><code>Table</code> / <code>RecordView</code></td></tr>
+                            <tr><td>Transaction</td><td><code>o.a.i.transactions.Transaction</code></td><td><code>o.a.i.tx.Transaction</code></td></tr>
+                            <tr><td>SQL query</td><td><code>SqlFieldsQuery</code></td><td><code>client.sql().execute()</code></td></tr>
+                            <tr><td>SQL result</td><td><code>QueryCursor&lt;List&lt;?&gt;&gt;</code></td><td><code>ResultSet&lt;SqlRow&gt;</code></td></tr>
+                            <tr><td>Configuration</td><td><code>IgniteConfiguration</code></td><td>HOCON file</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 17: FEATURE MATRIX -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>17. Complete Feature Comparison</h2>
+                    <h3>What's Available in Each Version</h3>
+                </section>
+
+                <section>
+                    <h3>Core Features</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Feature</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Distributed Storage</td><td><span class="checkmark">Cache API</span></td><td><span class="checkmark">Table API</span></td></tr>
+                            <tr><td>SQL Queries</td><td><span class="checkmark">H2 + Calcite</span></td><td><span class="checkmark">Calcite (improved)</span></td></tr>
+                            <tr><td>ACID Transactions</td><td><span class="checkmark">KV + limited SQL</span></td><td><span class="checkmark">Full KV + SQL</span></td></tr>
+                            <tr><td>Persistence</td><td><span class="checkmark">Native persistence</span></td><td><span class="checkmark">Pluggable engines</span></td></tr>
+                            <tr><td>Partitioning</td><td><span class="checkmark">Affinity-based</span></td><td><span class="checkmark">Distribution zones</span></td></tr>
+                            <tr><td>Compute Grid</td><td><span class="checkmark">Full featured</span></td><td><span class="warning">Basic (evolving)</span></td></tr>
+                            <tr><td>Dynamic Schema</td><td><span class="warning">Limited</span></td><td><span class="checkmark">Full DDL support</span></td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Advanced Features</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Feature</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Continuous Queries</td><td><span class="checkmark">Yes</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Near Cache</td><td><span class="checkmark">Yes</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Service Grid</td><td><span class="checkmark">Yes</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Machine Learning</td><td><span class="checkmark">Yes</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Streaming</td><td><span class="checkmark">Yes</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Entry Processors</td><td><span class="checkmark">Yes</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Expiry Policies</td><td><span class="checkmark">Yes</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Cache Store</td><td><span class="checkmark">Write-through/behind</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                        </tbody>
+                    </table>
+                    <p class="subtitle">Ignite 3.x is actively evolving - features are being added with each release</p>
+                </section>
+
+                <section>
+                    <h3>New in Ignite 3.x (Not in 2.x)</h3>
+                    <ul>
+                        <li><span class="checkmark">RAFT consensus</span> - Industry-standard consistency guarantees</li>
+                        <li><span class="checkmark">Pluggable storage engines</span> - Choose engine per table</li>
+                        <li><span class="checkmark">Distribution zones</span> - Flexible data placement policies</li>
+                        <li><span class="checkmark">Unified client protocol</span> - Same features in all languages</li>
+                        <li><span class="checkmark">Dynamic configuration</span> - No restart required for most changes</li>
+                        <li><span class="checkmark">Native installers</span> - RPM, DEB packages</li>
+                        <li><span class="checkmark">Comprehensive CLI</span> - SQL, config, management all in one tool</li>
+                        <li><span class="checkmark">Built-in REST API</span> - Monitoring and management</li>
+                        <li><span class="checkmark">Built-in security</span> - Auth and authorization in core</li>
+                        <li><span class="checkmark">Catalog service</span> - Schema versioning and metadata management</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 18: INTEGRATION -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>18. Integration Ecosystem</h2>
+                    <h3>Spring, Kafka, Hibernate, and More</h3>
+                </section>
+
+                <section>
+                    <h3>Integration Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Integration</th><th>Ignite 2.16</th><th>Ignite 3.x</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Spring Framework</td><td><span class="checkmark">Native (ignite-spring)</span></td><td><span class="warning">Via JDBC/client</span></td></tr>
+                            <tr><td>Spring Data</td><td><span class="checkmark">ignite-spring-data module</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Spring Boot</td><td><span class="checkmark">Auto-configuration</span></td><td><span class="warning">Manual setup</span></td></tr>
+                            <tr><td>Hibernate L2 Cache</td><td><span class="checkmark">ignite-hibernate module</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>Apache Kafka</td><td><span class="checkmark">ignite-kafka module</span></td><td><span class="crossmark">Not yet</span></td></tr>
+                            <tr><td>JDBC</td><td><span class="checkmark">Yes</span></td><td><span class="checkmark">Yes (improved)</span></td></tr>
+                            <tr><td>ODBC</td><td><span class="checkmark">Yes</span></td><td><span class="checkmark">Yes</span></td></tr>
+                            <tr><td>MyBatis</td><td><span class="checkmark">Via JDBC</span></td><td><span class="checkmark">Via JDBC</span></td></tr>
+                        </tbody>
+                    </table>
+                    <div class="highlight-box">
+                        <p><strong>Note:</strong> Ignite 2.x has a much richer integration ecosystem today. For applications relying on Spring Data, Hibernate L2, or Kafka connectors, Ignite 2.16 is currently the better choice.</p>
+                    </div>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SECTION 19: MIGRATION -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>19. Migration Considerations</h2>
+                    <h3>From 2.x to 3.x</h3>
+                </section>
+
+                <section>
+                    <h3>No Direct Migration Path</h3>
+                    <div class="highlight-box" style="border-left-color: var(--danger-color);">
+                        <p><strong>There is no in-place upgrade from Ignite 2.x to 3.x.</strong> The architectural differences are too significant. Migration requires:</p>
+                        <ol>
+                            <li>Setting up a new Ignite 3.x cluster</li>
+                            <li>Recreating schema using SQL DDL</li>
+                            <li>Migrating data (export/import or dual-write)</li>
+                            <li>Updating all application code</li>
+                            <li>Replacing integrations (Spring, Kafka, etc.)</li>
+                        </ol>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Code Migration Examples</h3>
+                    <pre><code class="language-java">// === Connection ===
+// 2.x: Embedded node
+Ignite ignite = Ignition.start(cfg);
+// 3.x: External client
+IgniteClient client = IgniteClient.builder().addresses("localhost:10800").build();
+
+// === Data Access ===
+// 2.x: Cache API
+IgniteCache&lt;Integer, Person&gt; cache = ignite.cache("persons");
+cache.put(1, person);
+Person p = cache.get(1);
+// 3.x: Table API (KeyValueView for similarity)
+KeyValueView&lt;Integer, Person&gt; kv =
+    client.tables().table("persons").keyValueView(Integer.class, Person.class);
+kv.put(null, 1, person);   // null = no transaction
+Person p = kv.get(null, 1);
+
+// === SQL ===
+// 2.x: Query via cache
+cache.query(new SqlFieldsQuery("SELECT * FROM Person")).getAll();
+// 3.x: Direct SQL
+client.sql().execute(null, "SELECT * FROM persons");
+
+// === Transactions ===
+// 2.x: ignite.transactions().txStart(PESSIMISTIC, REPEATABLE_READ)
+// 3.x: client.transactions().begin()</code></pre>
+                </section>
+
+                <section>
+                    <h3>Migration Toolkit (3.1+)</h3>
+                    <p>Apache Ignite 3.1 includes migration tools:</p>
+                    <ul>
+                        <li><strong>DDL Generator</strong> - Convert 2.x schema to 3.x SQL</li>
+                        <li><strong>Data Migration</strong> - Export from 2.x, import to 3.x</li>
+                        <li><strong>Progress Tracking</strong> - Monitor migration status</li>
+                        <li><strong>Type Conversion</strong> - Handle legacy Java types</li>
+                    </ul>
+                    <pre><code class="language-bash"># Example migration commands
+ignite3 migration generate-ddl --source-config=ignite2-config.xml
+ignite3 migration export-data --source-config=ignite2-config.xml --output=data.bin
+ignite3 migration import-data --input=data.bin</code></pre>
+                </section>
+
+                <section>
+                    <h3>Migration Strategy</h3>
+                    <ol>
+                        <li><strong>Assess Current Usage</strong>
+                            <ul>
+                                <li>Which features do you use? Are they available in 3.x?</li>
+                                <li>Compute Grid, Continuous Queries, Service Grid = stay on 2.x</li>
+                            </ul>
+                        </li>
+                        <li><strong>Plan Parallel Operation</strong>
+                            <ul>
+                                <li>Run both versions during transition</li>
+                                <li>Dual-write for gradual cutover</li>
+                            </ul>
+                        </li>
+                        <li><strong>Migrate Incrementally</strong>
+                            <ul>
+                                <li>Start with new features on 3.x</li>
+                                <li>Move existing workloads gradually</li>
+                            </ul>
+                        </li>
+                        <li><strong>Test Thoroughly</strong>
+                            <ul>
+                                <li>Behavior differences exist (e.g., transaction semantics)</li>
+                                <li>Performance characteristics differ</li>
+                                <li>Error handling and failure modes differ</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h3>Decision Matrix: When to Use Which</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Scenario</th><th>Recommendation</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>New project, SQL-heavy</td><td><span class="v3-badge">Ignite 3.x</span></td></tr>
+                            <tr><td>New project, compute-heavy</td><td><span class="v2-badge">Ignite 2.16</span></td></tr>
+                            <tr><td>Existing 2.x deployment</td><td><span class="v2-badge">Stay on 2.16</span></td></tr>
+                            <tr><td>Need Continuous Queries</td><td><span class="v2-badge">Ignite 2.16</span></td></tr>
+                            <tr><td>Need Service Grid</td><td><span class="v2-badge">Ignite 2.16</span></td></tr>
+                            <tr><td>Need Spring Data / Hibernate L2</td><td><span class="v2-badge">Ignite 2.16</span></td></tr>
+                            <tr><td>RDBMS migration</td><td><span class="v3-badge">Ignite 3.x</span></td></tr>
+                            <tr><td>Maximum consistency required</td><td><span class="v3-badge">Ignite 3.x</span></td></tr>
+                            <tr><td>Multi-language team</td><td><span class="v3-badge">Ignite 3.x</span></td></tr>
+                            <tr><td>Dynamic schema needs</td><td><span class="v3-badge">Ignite 3.x</span></td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ======================= -->
+            <!-- SUMMARY -->
+            <!-- ======================= -->
+            <section>
+                <section>
+                    <h2>20. Summary</h2>
+                    <h3>Key Takeaways</h3>
+                </section>
+
+                <section>
+                    <h3>Ignite 2.16 - Choose When</h3>
+                    <ul>
+                        <li><span class="checkmark">You need production-proven stability</span></li>
+                        <li><span class="checkmark">You require full Compute Grid (MapReduce, services)</span></li>
+                        <li><span class="checkmark">You need Continuous Queries or Near Caches</span></li>
+                        <li><span class="checkmark">You need Spring Data, Hibernate L2, or Kafka integration</span></li>
+                        <li><span class="checkmark">You have existing 2.x deployment</span></li>
+                        <li><span class="checkmark">You need ML/Streaming features</span></li>
+                        <li><span class="checkmark">You are on Java 8</span></li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Ignite 3.x - Choose When</h3>
+                    <ul>
+                        <li><span class="checkmark">Starting a new project with SQL as primary interface</span></li>
+                        <li><span class="checkmark">You need strong consistency (RAFT)</span></li>
+                        <li><span class="checkmark">You're migrating from an RDBMS</span></li>
+                        <li><span class="checkmark">You want modern tooling (CLI, REST, dynamic config)</span></li>
+                        <li><span class="checkmark">You want pluggable storage engines</span></li>
+                        <li><span class="checkmark">You need built-in security (auth/authz)</span></li>
+                        <li><span class="checkmark">Multi-language team needs feature parity</span></li>
+                        <li><span class="checkmark">Dynamic schema evolution is important</span></li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>The Bottom Line</h3>
+                    <div class="highlight-box">
+                        <p><strong>Ignite 2.16</strong> is mature, feature-complete, and production-proven. It's the safe choice for existing workloads and applications needing advanced features like compute grid, continuous queries, or rich integrations.</p>
+                    </div>
+                    <div class="highlight-box">
+                        <p><strong>Ignite 3.x</strong> is the future, with a cleaner architecture, RAFT consensus, SQL-first design, and better operational tooling. Choose it for new SQL-heavy projects and teams prioritizing consistency and modern ops.</p>
+                    </div>
+                    <p style="text-align: center; margin-top: 1em;"><em>Both versions will coexist - Ignite 2.x continues receiving maintenance releases.</em></p>
+                </section>
+            </section>
+
+            <!-- Questions -->
+            <section data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+                <h2 style="color: white;">Questions?</h2>
+                <h3 style="color: #f0f0f0;">Discussion Topics</h3>
+                <ul style="color: #ddd;">
+                    <li>Your migration scenarios</li>
+                    <li>Feature availability concerns</li>
+                    <li>Performance considerations</li>
+                    <li>Integration requirements</li>
+                    <li>Architecture decisions</li>
+                </ul>
+                <p style="color: #f0f0f0; margin-top: 2em;"><strong>Next:</strong> Lab 13 - Hands-on Version Comparison</p>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/markdown/markdown.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all',
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            center: false,
+            width: 1100,
+            height: 750,
+            margin: 0.05,
+            minScale: 0.5,
+            maxScale: 1.5,
+            plugins: [RevealHighlight, RevealNotes, RevealMarkdown]
+        });
+    </script>
+</body>
+</html>
