@@ -1,653 +1,553 @@
 package com.example.ignite.tests;
 
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteCache;
-import org.apache.ignite.IgniteCompute;
-import org.apache.ignite.binary.BinaryObject;
-import org.apache.ignite.cache.CacheAtomicityMode;
-import org.apache.ignite.cache.CacheMode;
-import org.apache.ignite.cache.query.QueryCursor;
-import org.apache.ignite.cache.query.ScanQuery;
-import org.apache.ignite.cache.query.SqlFieldsQuery;
-import org.apache.ignite.cache.query.annotations.QuerySqlField;
-import org.apache.ignite.cluster.ClusterNode;
-import org.apache.ignite.cluster.ClusterState;
-import org.apache.ignite.compute.ComputeJob;
-import org.apache.ignite.compute.ComputeJobResult;
-import org.apache.ignite.compute.ComputeTaskAdapter;
-import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.lang.IgniteCallable;
-import org.apache.ignite.lang.IgniteFuture;
-import org.apache.ignite.lang.IgniteRunnable;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
-import org.apache.ignite.transactions.Transaction;
-import org.apache.ignite.transactions.TransactionConcurrency;
-import org.apache.ignite.transactions.TransactionIsolation;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.table.RecordView;
+import org.apache.ignite.table.Table;
+import org.apache.ignite.table.Tuple;
+import org.apache.ignite.table.KeyValueView;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+import org.apache.ignite.tx.Transaction;
+import org.junit.jupiter.api.*;
 
-import javax.cache.Cache;
-import java.io.Serializable;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.*;
-import static org.awaitility.Awaitility.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Comprehensive tests for Lab 13: Version Differences (2.x vs 3.x)
- * Tests validate the Ignite 2.x concepts demonstrated in the lab,
- * since Ignite 3.x requires a separate cluster and cannot be tested here.
- *
- * Coverage areas:
- * - Discovery configuration (TcpDiscoverySpi)
- * - Cluster lifecycle and state management
- * - Configuration approaches (programmatic)
- * - Cache API operations (CRUD, batch, BinaryObject)
- * - SQL queries via cache
- * - Transaction models (PESSIMISTIC/OPTIMISTIC)
- * - Compute grid (broadcast, callable, affinity-aware, MapReduce)
- * - Async operations (IgniteFuture)
- * - Multi-node cluster formation
- * - Schema via annotations (@QuerySqlField)
+ * Integration tests for Lab 13: Version Differences
+ * Tests the Apache Ignite 3.x client API against a running Ignite 3 cluster.
+ * Tests are skipped if no Ignite 3 node is available at 127.0.0.1:10800.
  */
-@DisplayName("Lab 13: Version Differences Tests")
-public class Lab13VersionDifferencesTest extends BaseIgniteTest {
+@Tag("integration")
+@DisplayName("Lab 13: Ignite 3.x Integration Tests")
+public class Lab13VersionDifferencesTest {
 
-    // ==========================================
-    // Part 1: Discovery and Cluster Lifecycle
-    // ==========================================
+    private static IgniteClient client;
 
-    @Test
-    @DisplayName("Test TcpDiscoverySpi configuration (2.x discovery model)")
-    public void testTcpDiscoverySpiConfiguration() {
-        TcpDiscoverySpi spi = new TcpDiscoverySpi();
-        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
-        ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
-        spi.setIpFinder(ipFinder);
-
-        assertThat(spi.getIpFinder()).isNotNull();
-        assertThat(spi.getIpFinder()).isInstanceOf(TcpDiscoveryVmIpFinder.class);
-
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setDiscoverySpi(spi);
-        assertThat(cfg.getDiscoverySpi()).isEqualTo(spi);
-    }
-
-    @Test
-    @DisplayName("Test cluster auto-formation on node start (2.x behavior)")
-    public void testClusterAutoFormation() {
-        // In 2.x, cluster forms automatically when nodes discover each other
-        assertThat(ignite.cluster().nodes()).hasSize(1);
-        assertThat(ignite.cluster().state()).isEqualTo(ClusterState.ACTIVE);
-
-        Ignite node2 = startAdditionalNode(testName + "-node2");
-        await().until(() -> ignite.cluster().nodes().size() == 2);
-
-        // Both nodes automatically form a cluster — no explicit init required (unlike 3.x)
-        assertThat(ignite.cluster().nodes()).hasSize(2);
-        assertThat(node2.cluster().nodes()).hasSize(2);
-
-        node2.close();
-    }
-
-    @Test
-    @DisplayName("Test cluster state management (2.x API)")
-    public void testClusterStateManagement() {
-        ClusterState state = ignite.cluster().state();
-        assertThat(state).isEqualTo(ClusterState.ACTIVE);
-        assertThat(state.active()).isTrue();
-
-        // 2.x supports ACTIVE, ACTIVE_READ_ONLY, INACTIVE
-        ignite.cluster().state(ClusterState.ACTIVE);
-        assertThat(ignite.cluster().state()).isEqualTo(ClusterState.ACTIVE);
-    }
-
-    @Test
-    @DisplayName("Test baseline topology API (2.x concept)")
-    public void testBaselineTopology() {
-        Collection<ClusterNode> serverNodes = ignite.cluster().forServers().nodes();
-        assertThat(serverNodes).isNotEmpty();
-
-        // Baseline topology is a 2.x concept for persistent clusters
-        // In non-persistent mode it may be null
-        Collection<?> baseline = ignite.cluster().currentBaselineTopology();
-        // Just verify API is accessible
-        assertThat(ignite.cluster().state()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("Test topology version tracking")
-    public void testTopologyVersionTracking() {
-        long initialVersion = ignite.cluster().topologyVersion();
-        assertThat(initialVersion).isGreaterThan(0);
-
-        Ignite node2 = startAdditionalNode(testName + "-node2");
-        await().until(() -> ignite.cluster().nodes().size() == 2);
-
-        long newVersion = ignite.cluster().topologyVersion();
-        assertThat(newVersion).isGreaterThan(initialVersion);
-
-        node2.close();
-    }
-
-    // ==========================================
-    // Part 2: Configuration (2.x approach)
-    // ==========================================
-
-    @Test
-    @DisplayName("Test programmatic configuration (2.x style)")
-    public void testProgrammaticConfiguration() {
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName("test-programmatic");
-        cfg.setClientMode(false);
-        cfg.setPeerClassLoadingEnabled(true);
-        cfg.setMetricsLogFrequency(0);
-
-        assertThat(cfg.getIgniteInstanceName()).isEqualTo("test-programmatic");
-        assertThat(cfg.isClientMode()).isFalse();
-        assertThat(cfg.isPeerClassLoadingEnabled()).isTrue();
-    }
-
-    @Test
-    @DisplayName("Test cache configuration options (2.x)")
-    public void testCacheConfigurationOptions() {
-        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>("test-cache-cfg");
-        cfg.setCacheMode(CacheMode.PARTITIONED);
-        cfg.setBackups(2);
-        cfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
-
-        assertThat(cfg.getCacheMode()).isEqualTo(CacheMode.PARTITIONED);
-        assertThat(cfg.getBackups()).isEqualTo(2);
-        assertThat(cfg.getAtomicityMode()).isEqualTo(CacheAtomicityMode.TRANSACTIONAL);
-    }
-
-    @Test
-    @DisplayName("Test cache modes: PARTITIONED and REPLICATED")
-    public void testCacheModes() {
-        // PARTITIONED
-        CacheConfiguration<Integer, String> partCfg = new CacheConfiguration<>(getTestCacheName() + "-part");
-        partCfg.setCacheMode(CacheMode.PARTITIONED);
-        IgniteCache<Integer, String> partCache = ignite.getOrCreateCache(partCfg);
-        assertThat(partCache.getConfiguration(CacheConfiguration.class).getCacheMode())
-            .isEqualTo(CacheMode.PARTITIONED);
-
-        // REPLICATED
-        CacheConfiguration<Integer, String> replCfg = new CacheConfiguration<>(getTestCacheName() + "-repl");
-        replCfg.setCacheMode(CacheMode.REPLICATED);
-        IgniteCache<Integer, String> replCache = ignite.getOrCreateCache(replCfg);
-        assertThat(replCache.getConfiguration(CacheConfiguration.class).getCacheMode())
-            .isEqualTo(CacheMode.REPLICATED);
-
-        // Verify both modes are distinct
-        assertThat(partCache.getConfiguration(CacheConfiguration.class).getCacheMode())
-            .isNotEqualTo(replCache.getConfiguration(CacheConfiguration.class).getCacheMode());
-    }
-
-    // ==========================================
-    // Part 3: Cache API (2.x style)
-    // ==========================================
-
-    @Test
-    @DisplayName("Test basic CRUD via Cache API (2.x)")
-    public void testCacheApiCrud() {
-        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(getTestCacheName());
-
-        // Create
-        cache.put(1, "alpha");
-        cache.put(2, "beta");
-        cache.put(3, "gamma");
-
-        // Read
-        assertThat(cache.get(1)).isEqualTo("alpha");
-        assertThat(cache.get(2)).isEqualTo("beta");
-
-        // Update
-        cache.put(1, "alpha-updated");
-        assertThat(cache.get(1)).isEqualTo("alpha-updated");
-
-        // Delete
-        cache.remove(3);
-        assertThat(cache.get(3)).isNull();
-
-        assertThat(cache.size()).isEqualTo(2);
-    }
-
-    @Test
-    @DisplayName("Test batch operations via putAll/getAll (2.x)")
-    public void testBatchOperations() {
-        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(getTestCacheName());
-
-        Map<Integer, String> batch = new HashMap<>();
-        for (int i = 0; i < 50; i++) {
-            batch.put(i, "value-" + i);
+    @BeforeAll
+    static void connectToCluster() {
+        try {
+            client = IgniteClient.builder()
+                    .addresses("127.0.0.1:10800")
+                    .build();
+            // Verify the connection is alive
+            client.connections();
+            Assumptions.assumeTrue(client != null, "Ignite 3.x cluster not available");
+        } catch (Exception e) {
+            Assumptions.assumeTrue(false, "Could not connect to Ignite 3.x at 127.0.0.1:10800: " + e.getMessage());
         }
-        cache.putAll(batch);
-
-        Set<Integer> keys = new HashSet<>(Arrays.asList(0, 10, 20, 30, 40));
-        Map<Integer, String> results = cache.getAll(keys);
-
-        assertThat(results).hasSize(5);
-        assertThat(results.get(10)).isEqualTo("value-10");
-        assertThat(results.get(40)).isEqualTo("value-40");
     }
 
-    @Test
-    @DisplayName("Test BinaryObject access (2.x serialization)")
-    public void testBinaryObjectAccess() {
-        CacheConfiguration<Integer, Person> cfg = new CacheConfiguration<>(getTestCacheName());
-        IgniteCache<Integer, Person> cache = ignite.getOrCreateCache(cfg);
-
-        cache.put(1, new Person("Alice", 30));
-        cache.put(2, new Person("Bob", 25));
-
-        // Access via BinaryObject — 2.x uses BinaryMarshaller
-        IgniteCache<Integer, BinaryObject> binaryCache = cache.withKeepBinary();
-        BinaryObject bo = binaryCache.get(1);
-
-        assertThat(bo).isNotNull();
-        assertThat(bo.<String>field("name")).isEqualTo("Alice");
-        assertThat(bo.<Integer>field("age")).isEqualTo(30);
-    }
-
-    @Test
-    @DisplayName("Test ScanQuery on cache (2.x)")
-    public void testScanQuery() {
-        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(getTestCacheName());
-        for (int i = 0; i < 20; i++) {
-            cache.put(i, "val-" + i);
+    @AfterAll
+    static void closeClient() {
+        if (client != null) {
+            try {
+                client.close();
+            } catch (Exception ignored) {
+            }
         }
+    }
 
-        List<Cache.Entry<Integer, String>> results = new ArrayList<>();
-        try (QueryCursor<Cache.Entry<Integer, String>> cursor =
-                 cache.query(new ScanQuery<>((k, v) -> k >= 10))) {
-            cursor.forEach(results::add);
+    @AfterEach
+    void cleanup() {
+        tryExecSql("DROP TABLE IF EXISTS test_persons");
+        tryExecSql("DROP TABLE IF EXISTS test_kvtable");
+        tryExecSql("DROP TABLE IF EXISTS test_txn");
+        tryExecSql("DROP TABLE IF EXISTS test_mixed");
+        tryExecSql("DROP TABLE IF EXISTS test_orders");
+        tryExecSql("DROP TABLE IF EXISTS test_customers");
+        tryExecSql("DROP TABLE IF EXISTS test_colocate_parent");
+        tryExecSql("DROP TABLE IF EXISTS test_colocate_child");
+        tryExecSql("DROP TABLE IF EXISTS test_ddl");
+        tryExecSql("DROP TABLE IF EXISTS test_aggregate");
+        tryExecSql("DROP TABLE IF EXISTS test_pojo");
+        tryExecSql("DROP TABLE IF EXISTS test_rollback");
+        tryExecSql("DROP TABLE IF EXISTS test_notthere");
+    }
+
+    private void tryExecSql(String sql) {
+        try {
+            executeSql(sql);
+        } catch (Exception ignored) {
         }
-
-        assertThat(results).hasSize(10);
     }
 
-    // ==========================================
-    // Part 4: SQL via Cache (2.x approach)
-    // ==========================================
-
-    @Test
-    @DisplayName("Test SQL queries via SqlFieldsQuery (2.x)")
-    public void testSqlFieldsQuery() {
-        CacheConfiguration<Integer, PersonIndexed> cfg = new CacheConfiguration<>(getTestCacheName());
-        cfg.setIndexedTypes(Integer.class, PersonIndexed.class);
-
-        IgniteCache<Integer, PersonIndexed> cache = ignite.getOrCreateCache(cfg);
-        cache.put(1, new PersonIndexed("Alice", 30));
-        cache.put(2, new PersonIndexed("Bob", 25));
-        cache.put(3, new PersonIndexed("Charlie", 35));
-
-        // SQL query via cache (2.x approach — H2 + Calcite engine)
-        SqlFieldsQuery query = new SqlFieldsQuery(
-            "SELECT name, age FROM PersonIndexed WHERE age > ?");
-        query.setArgs(28);
-
-        List<List<?>> rows = cache.query(query).getAll();
-        assertThat(rows).hasSize(2);
-    }
-
-    @Test
-    @DisplayName("Test SQL DDL via SqlFieldsQuery (2.x)")
-    public void testSqlDdl() {
-        IgniteCache<Integer, PersonIndexed> cache = ignite.getOrCreateCache(
-            new CacheConfiguration<Integer, PersonIndexed>(getTestCacheName())
-                .setIndexedTypes(Integer.class, PersonIndexed.class));
-
-        // Insert via SQL
-        cache.query(new SqlFieldsQuery(
-            "INSERT INTO PersonIndexed (_key, name, age) VALUES (?, ?, ?)")
-            .setArgs(100, "Dave", 40)).getAll();
-
-        // Verify via cache API
-        PersonIndexed p = cache.get(100);
-        assertThat(p).isNotNull();
-        assertThat(p.name).isEqualTo("Dave");
-        assertThat(p.age).isEqualTo(40);
-    }
-
-    @Test
-    @DisplayName("Test @QuerySqlField annotations (2.x schema model)")
-    public void testQuerySqlFieldAnnotations() {
-        CacheConfiguration<Integer, PersonIndexed> cfg = new CacheConfiguration<>(getTestCacheName());
-        cfg.setIndexedTypes(Integer.class, PersonIndexed.class);
-
-        IgniteCache<Integer, PersonIndexed> cache = ignite.getOrCreateCache(cfg);
-        cache.put(1, new PersonIndexed("Alice", 30));
-
-        // Annotations define schema in 2.x (vs DDL-first in 3.x)
-        List<List<?>> rows = cache.query(
-            new SqlFieldsQuery("SELECT name FROM PersonIndexed WHERE name = ?")
-                .setArgs("Alice")).getAll();
-
-        assertThat(rows).hasSize(1);
-        assertThat(rows.get(0).get(0)).isEqualTo("Alice");
-    }
-
-    // ==========================================
-    // Part 5: Transactions (2.x models)
-    // ==========================================
-
-    @Test
-    @DisplayName("Test PESSIMISTIC REPEATABLE_READ transaction (2.x)")
-    public void testPessimisticTransaction() {
-        CacheConfiguration<Integer, Integer> cfg = new CacheConfiguration<>(getTestCacheName());
-        cfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
-        IgniteCache<Integer, Integer> cache = ignite.getOrCreateCache(cfg);
-
-        cache.put(1, 100);
-
-        try (Transaction tx = ignite.transactions().txStart(
-                TransactionConcurrency.PESSIMISTIC,
-                TransactionIsolation.REPEATABLE_READ)) {
-            int val = cache.get(1);
-            cache.put(1, val + 50);
-            tx.commit();
+    private void executeSql(String sql, Object... args) {
+        try (ResultSet<SqlRow> rs = client.sql().execute(null, sql, args)) {
+            // drain
+            while (rs.hasNext()) {
+                rs.next();
+            }
         }
-
-        assertThat(cache.get(1)).isEqualTo(150);
     }
 
-    @Test
-    @DisplayName("Test OPTIMISTIC SERIALIZABLE transaction (2.x)")
-    public void testOptimisticTransaction() {
-        CacheConfiguration<Integer, Integer> cfg = new CacheConfiguration<>(getTestCacheName());
-        cfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
-        IgniteCache<Integer, Integer> cache = ignite.getOrCreateCache(cfg);
-
-        cache.put(1, 200);
-
-        try (Transaction tx = ignite.transactions().txStart(
-                TransactionConcurrency.OPTIMISTIC,
-                TransactionIsolation.SERIALIZABLE)) {
-            int val = cache.get(1);
-            cache.put(1, val - 75);
-            tx.commit();
+    private long countRows(String table) {
+        try (ResultSet<SqlRow> rs = client.sql().execute(null, "SELECT COUNT(*) FROM " + table)) {
+            if (rs.hasNext()) {
+                return rs.next().longValue(0);
+            }
         }
-
-        assertThat(cache.get(1)).isEqualTo(125);
-    }
-
-    @Test
-    @DisplayName("Test transaction rollback (2.x)")
-    public void testTransactionRollback() {
-        CacheConfiguration<Integer, Integer> cfg = new CacheConfiguration<>(getTestCacheName());
-        cfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
-        IgniteCache<Integer, Integer> cache = ignite.getOrCreateCache(cfg);
-
-        cache.put(1, 500);
-
-        try (Transaction tx = ignite.transactions().txStart(
-                TransactionConcurrency.PESSIMISTIC,
-                TransactionIsolation.REPEATABLE_READ)) {
-            cache.put(1, 0);
-            tx.rollback();
-        }
-
-        assertThat(cache.get(1)).isEqualTo(500);
+        return 0;
     }
 
     // ==========================================
-    // Part 6: Compute Grid (2.x)
+    // 1. Client connection
     // ==========================================
 
     @Test
-    @DisplayName("Test compute broadcast (2.x)")
-    public void testComputeBroadcast() {
-        AtomicInteger counter = new AtomicInteger(0);
+    @DisplayName("Client connections() returns non-empty list")
+    void testClientConnections() {
+        assertThat(client.connections()).isNotEmpty();
+    }
 
-        ignite.compute().broadcast((IgniteRunnable) () -> {
-            // Runs on each node
+    // ==========================================
+    // 2. SQL DDL
+    // ==========================================
+
+    @Test
+    @DisplayName("CREATE TABLE via SQL DDL")
+    void testCreateTable() {
+        executeSql("CREATE TABLE test_ddl (id INT PRIMARY KEY, name VARCHAR)");
+        Table table = client.tables().table("TEST_DDL");
+        assertThat(table).isNotNull();
+    }
+
+    @Test
+    @DisplayName("DROP TABLE via SQL DDL")
+    void testDropTable() {
+        executeSql("CREATE TABLE test_ddl (id INT PRIMARY KEY, name VARCHAR)");
+        executeSql("DROP TABLE test_ddl");
+        Table table = client.tables().table("TEST_DDL");
+        assertThat(table).isNull();
+    }
+
+    // ==========================================
+    // 3. RecordView CRUD with Tuples
+    // ==========================================
+
+    @Test
+    @DisplayName("RecordView upsert and get with Tuple")
+    void testRecordViewUpsertGet() {
+        executeSql("CREATE TABLE test_persons (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        Table table = client.tables().table("TEST_PERSONS");
+        RecordView<Tuple> view = table.recordView();
+
+        Tuple record = Tuple.create()
+                .set("ID", 1)
+                .set("NAME", "Alice")
+                .set("AGE", 30);
+        view.upsert(null, record);
+
+        Tuple key = Tuple.create().set("ID", 1);
+        Tuple result = view.get(null, key);
+        assertThat(result).isNotNull();
+        assertThat(result.stringValue("NAME")).isEqualTo("Alice");
+        assertThat(result.intValue("AGE")).isEqualTo(30);
+    }
+
+    @Test
+    @DisplayName("RecordView delete with Tuple")
+    void testRecordViewDelete() {
+        executeSql("CREATE TABLE test_persons (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        Table table = client.tables().table("TEST_PERSONS");
+        RecordView<Tuple> view = table.recordView();
+
+        view.upsert(null, Tuple.create().set("ID", 1).set("NAME", "Bob").set("AGE", 25));
+        boolean deleted = view.delete(null, Tuple.create().set("ID", 1));
+        assertThat(deleted).isTrue();
+
+        Tuple result = view.get(null, Tuple.create().set("ID", 1));
+        assertThat(result).isNull();
+    }
+
+    @Test
+    @DisplayName("RecordView upsert overwrites existing record")
+    void testRecordViewUpsertOverwrite() {
+        executeSql("CREATE TABLE test_persons (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        Table table = client.tables().table("TEST_PERSONS");
+        RecordView<Tuple> view = table.recordView();
+
+        view.upsert(null, Tuple.create().set("ID", 1).set("NAME", "Alice").set("AGE", 30));
+        view.upsert(null, Tuple.create().set("ID", 1).set("NAME", "Alice Updated").set("AGE", 31));
+
+        Tuple result = view.get(null, Tuple.create().set("ID", 1));
+        assertThat(result.stringValue("NAME")).isEqualTo("Alice Updated");
+        assertThat(result.intValue("AGE")).isEqualTo(31);
+    }
+
+    // ==========================================
+    // 4. RecordView with POJO mapping
+    // ==========================================
+
+    @Test
+    @DisplayName("RecordView with POJO mapping")
+    void testRecordViewPojo() {
+        executeSql("CREATE TABLE test_pojo (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        Table table = client.tables().table("TEST_POJO");
+        RecordView<PersonPojo> view = table.recordView(PersonPojo.class);
+
+        PersonPojo person = new PersonPojo();
+        person.id = 1;
+        person.name = "Charlie";
+        person.age = 40;
+        view.upsert(null, person);
+
+        PersonPojo key = new PersonPojo();
+        key.id = 1;
+        PersonPojo result = view.get(null, key);
+        assertThat(result).isNotNull();
+        assertThat(result.name).isEqualTo("Charlie");
+        assertThat(result.age).isEqualTo(40);
+    }
+
+    // ==========================================
+    // 5. KeyValueView operations
+    // ==========================================
+
+    @Test
+    @DisplayName("KeyValueView put and get")
+    void testKeyValueViewPutGet() {
+        executeSql("CREATE TABLE test_kvtable (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        Table table = client.tables().table("TEST_KVTABLE");
+        KeyValueView<Tuple, Tuple> kvView = table.keyValueView();
+
+        Tuple key = Tuple.create().set("ID", 1);
+        Tuple val = Tuple.create().set("NAME", "Dave").set("AGE", 35);
+        kvView.put(null, key, val);
+
+        Tuple result = kvView.get(null, key);
+        assertThat(result).isNotNull();
+        assertThat(result.stringValue("NAME")).isEqualTo("Dave");
+    }
+
+    @Test
+    @DisplayName("KeyValueView contains and remove")
+    void testKeyValueViewContainsRemove() {
+        executeSql("CREATE TABLE test_kvtable (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        Table table = client.tables().table("TEST_KVTABLE");
+        KeyValueView<Tuple, Tuple> kvView = table.keyValueView();
+
+        Tuple key = Tuple.create().set("ID", 1);
+        Tuple val = Tuple.create().set("NAME", "Eve").set("AGE", 28);
+        kvView.put(null, key, val);
+
+        assertThat(kvView.contains(null, key)).isTrue();
+        kvView.remove(null, key);
+        assertThat(kvView.contains(null, key)).isFalse();
+    }
+
+    // ==========================================
+    // 6. SQL queries
+    // ==========================================
+
+    @Test
+    @DisplayName("SQL SELECT query")
+    void testSqlSelect() {
+        executeSql("CREATE TABLE test_persons (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        executeSql("INSERT INTO test_persons VALUES (1, 'Alice', 30)");
+        executeSql("INSERT INTO test_persons VALUES (2, 'Bob', 25)");
+
+        try (ResultSet<SqlRow> rs = client.sql().execute(null, "SELECT name FROM test_persons ORDER BY name")) {
+            assertThat(rs.hasNext()).isTrue();
+            assertThat(rs.next().stringValue("NAME")).isEqualTo("Alice");
+            assertThat(rs.hasNext()).isTrue();
+            assertThat(rs.next().stringValue("NAME")).isEqualTo("Bob");
+        }
+    }
+
+    @Test
+    @DisplayName("SQL INSERT statement")
+    void testSqlInsert() {
+        executeSql("CREATE TABLE test_persons (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        executeSql("INSERT INTO test_persons VALUES (1, 'Frank', 50)");
+
+        assertThat(countRows("test_persons")).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("SQL parameterized query")
+    void testSqlParameterized() {
+        executeSql("CREATE TABLE test_persons (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        executeSql("INSERT INTO test_persons VALUES (1, 'Alice', 30)");
+        executeSql("INSERT INTO test_persons VALUES (2, 'Bob', 25)");
+        executeSql("INSERT INTO test_persons VALUES (3, 'Charlie', 35)");
+
+        try (ResultSet<SqlRow> rs = client.sql().execute(null, "SELECT name FROM test_persons WHERE age > ?", 28)) {
+            int count = 0;
+            while (rs.hasNext()) {
+                rs.next();
+                count++;
+            }
+            assertThat(count).isEqualTo(2);
+        }
+    }
+
+    @Test
+    @DisplayName("SQL aggregate query")
+    void testSqlAggregate() {
+        executeSql("CREATE TABLE test_aggregate (id INT PRIMARY KEY, value INT)");
+        executeSql("INSERT INTO test_aggregate VALUES (1, 10)");
+        executeSql("INSERT INTO test_aggregate VALUES (2, 20)");
+        executeSql("INSERT INTO test_aggregate VALUES (3, 30)");
+
+        try (ResultSet<SqlRow> rs = client.sql().execute(null, "SELECT SUM(value) AS total FROM test_aggregate")) {
+            assertThat(rs.hasNext()).isTrue();
+            assertThat(rs.next().longValue("TOTAL")).isEqualTo(60L);
+        }
+    }
+
+    // ==========================================
+    // 7. Transactions
+    // ==========================================
+
+    @Test
+    @DisplayName("Manual transaction begin and commit")
+    void testManualTransaction() {
+        executeSql("CREATE TABLE test_txn (id INT PRIMARY KEY, balance INT)");
+        executeSql("INSERT INTO test_txn VALUES (1, 100)");
+
+        Transaction tx = client.transactions().begin();
+        client.sql().execute(tx, "UPDATE test_txn SET balance = balance + 50 WHERE id = 1");
+        tx.commit();
+
+        assertThat(countRows("test_txn")).isEqualTo(1);
+        try (ResultSet<SqlRow> rs = client.sql().execute(null, "SELECT balance FROM test_txn WHERE id = 1")) {
+            assertThat(rs.next().intValue("BALANCE")).isEqualTo(150);
+        }
+    }
+
+    @Test
+    @DisplayName("runInTransaction helper")
+    void testRunInTransaction() {
+        executeSql("CREATE TABLE test_txn (id INT PRIMARY KEY, balance INT)");
+        executeSql("INSERT INTO test_txn VALUES (1, 200)");
+
+        client.transactions().runInTransaction(tx -> {
+            client.sql().execute(tx, "UPDATE test_txn SET balance = balance - 75 WHERE id = 1");
         });
 
-        // If we get here without exception, broadcast succeeded
-        assertThat(ignite.cluster().nodes()).hasSize(1);
+        try (ResultSet<SqlRow> rs = client.sql().execute(null, "SELECT balance FROM test_txn WHERE id = 1")) {
+            assertThat(rs.next().intValue("BALANCE")).isEqualTo(125);
+        }
     }
 
     @Test
-    @DisplayName("Test compute callable (2.x)")
-    public void testComputeCallable() {
-        Collection<Integer> results = ignite.compute().broadcast(
-            (IgniteCallable<Integer>) () -> 42
-        );
+    @DisplayName("Transaction rollback")
+    void testTransactionRollback() {
+        executeSql("CREATE TABLE test_rollback (id INT PRIMARY KEY, balance INT)");
+        executeSql("INSERT INTO test_rollback VALUES (1, 500)");
 
-        assertThat(results).hasSize(1);
-        assertThat(results.iterator().next()).isEqualTo(42);
+        Transaction tx = client.transactions().begin();
+        client.sql().execute(tx, "UPDATE test_rollback SET balance = 0 WHERE id = 1");
+        tx.rollback();
+
+        try (ResultSet<SqlRow> rs = client.sql().execute(null, "SELECT balance FROM test_rollback WHERE id = 1")) {
+            assertThat(rs.next().intValue("BALANCE")).isEqualTo(500);
+        }
     }
 
     @Test
-    @DisplayName("Test compute call with collection (2.x)")
-    public void testComputeCallCollection() {
-        List<IgniteCallable<Integer>> jobs = new ArrayList<>();
+    @DisplayName("Mixed SQL and KV in a single transaction")
+    void testMixedSqlKvTransaction() {
+        executeSql("CREATE TABLE test_mixed (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        Table table = client.tables().table("TEST_MIXED");
+        KeyValueView<Tuple, Tuple> kvView = table.keyValueView();
+
+        Transaction tx = client.transactions().begin();
+
+        // Insert via SQL
+        client.sql().execute(tx, "INSERT INTO test_mixed VALUES (1, 'Alice', 30)");
+
+        // Insert via KV
+        kvView.put(tx, Tuple.create().set("ID", 2), Tuple.create().set("NAME", "Bob").set("AGE", 25));
+
+        tx.commit();
+
+        assertThat(countRows("test_mixed")).isEqualTo(2);
+    }
+
+    // ==========================================
+    // 8. Distribution zones
+    // ==========================================
+
+    @Test
+    @DisplayName("CREATE ZONE and DROP ZONE")
+    void testCreateAndDropZone() {
+        tryExecSql("DROP ZONE IF EXISTS test_zone");
+        executeSql("CREATE ZONE test_zone WITH STORAGE_PROFILES='default'");
+        // If we reach here, zone was created successfully
+        executeSql("DROP ZONE test_zone");
+    }
+
+    // ==========================================
+    // 9. COLOCATE BY tables
+    // ==========================================
+
+    @Test
+    @DisplayName("Create tables with COLOCATE BY")
+    void testColocateByTables() {
+        tryExecSql("DROP ZONE IF EXISTS test_colo_zone");
+        executeSql("CREATE ZONE test_colo_zone WITH STORAGE_PROFILES='default'");
+
+        executeSql("CREATE TABLE test_colocate_parent (id INT PRIMARY KEY, name VARCHAR) WITH PRIMARY_ZONE='TEST_COLO_ZONE'");
+        executeSql("CREATE TABLE test_colocate_child (id INT, parent_id INT, data VARCHAR, PRIMARY KEY (id, parent_id)) COLOCATE BY (parent_id) WITH PRIMARY_ZONE='TEST_COLO_ZONE'");
+
+        executeSql("INSERT INTO test_colocate_parent VALUES (1, 'Parent1')");
+        executeSql("INSERT INTO test_colocate_child VALUES (1, 1, 'Child1')");
+        executeSql("INSERT INTO test_colocate_child VALUES (2, 1, 'Child2')");
+
+        assertThat(countRows("test_colocate_parent")).isEqualTo(1);
+        assertThat(countRows("test_colocate_child")).isEqualTo(2);
+
+        tryExecSql("DROP TABLE IF EXISTS test_colocate_child");
+        tryExecSql("DROP TABLE IF EXISTS test_colocate_parent");
+        tryExecSql("DROP ZONE IF EXISTS test_colo_zone");
+    }
+
+    // ==========================================
+    // 10. SQL joins on colocated tables
+    // ==========================================
+
+    @Test
+    @DisplayName("SQL join on colocated tables")
+    void testSqlJoinColocated() {
+        executeSql("CREATE TABLE test_customers (id INT PRIMARY KEY, name VARCHAR)");
+        executeSql("CREATE TABLE test_orders (id INT, customer_id INT, amount INT, PRIMARY KEY (id, customer_id)) COLOCATE BY (customer_id)");
+
+        executeSql("INSERT INTO test_customers VALUES (1, 'Alice')");
+        executeSql("INSERT INTO test_customers VALUES (2, 'Bob')");
+        executeSql("INSERT INTO test_orders VALUES (1, 1, 100)");
+        executeSql("INSERT INTO test_orders VALUES (2, 1, 200)");
+        executeSql("INSERT INTO test_orders VALUES (3, 2, 150)");
+
+        try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                "SELECT c.name, SUM(o.amount) AS total " +
+                "FROM test_customers c JOIN test_orders o ON c.id = o.customer_id " +
+                "GROUP BY c.name ORDER BY total DESC")) {
+            assertThat(rs.hasNext()).isTrue();
+            SqlRow row = rs.next();
+            assertThat(row.stringValue("NAME")).isEqualTo("Alice");
+            assertThat(row.longValue("TOTAL")).isEqualTo(300L);
+        }
+    }
+
+    // ==========================================
+    // 11. System views
+    // ==========================================
+
+    @Test
+    @DisplayName("Query SYSTEM.TABLES system view")
+    void testSystemTablesView() {
+        executeSql("CREATE TABLE test_ddl (id INT PRIMARY KEY, name VARCHAR)");
+
+        try (ResultSet<SqlRow> rs = client.sql().execute(null, "SELECT * FROM SYSTEM.TABLES WHERE TABLE_NAME = 'TEST_DDL'")) {
+            assertThat(rs.hasNext()).isTrue();
+        }
+    }
+
+    // ==========================================
+    // 12. Table not found handling
+    // ==========================================
+
+    @Test
+    @DisplayName("Table not found returns null")
+    void testTableNotFound() {
+        Table table = client.tables().table("NONEXISTENT_TABLE_XYZ");
+        assertThat(table).isNull();
+    }
+
+    // ==========================================
+    // Additional coverage tests
+    // ==========================================
+
+    @Test
+    @DisplayName("Multiple record upsert and scan via SQL")
+    void testMultipleRecordsScan() {
+        executeSql("CREATE TABLE test_persons (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        for (int i = 1; i <= 10; i++) {
+            executeSql("INSERT INTO test_persons VALUES (?, ?, ?)", i, "Person" + i, 20 + i);
+        }
+
+        try (ResultSet<SqlRow> rs = client.sql().execute(null, "SELECT COUNT(*) AS cnt FROM test_persons")) {
+            assertThat(rs.next().longValue("CNT")).isEqualTo(10L);
+        }
+    }
+
+    @Test
+    @DisplayName("RecordView getAll with multiple keys")
+    void testRecordViewGetAll() {
+        executeSql("CREATE TABLE test_persons (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        Table table = client.tables().table("TEST_PERSONS");
+        RecordView<Tuple> view = table.recordView();
+
         for (int i = 1; i <= 5; i++) {
-            final int val = i;
-            jobs.add(() -> val * val);
+            view.upsert(null, Tuple.create().set("ID", i).set("NAME", "Person" + i).set("AGE", 20 + i));
         }
 
-        Collection<Integer> results = ignite.compute().call(jobs);
-        assertThat(results).hasSize(5);
-
-        int sum = results.stream().mapToInt(Integer::intValue).sum();
-        // 1+4+9+16+25 = 55
-        assertThat(sum).isEqualTo(55);
-    }
-
-    @Test
-    @DisplayName("Test affinity-aware compute (2.x)")
-    public void testAffinityCompute() {
-        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(getTestCacheName());
-        cache.put(1, "test-value");
-
-        String result = ignite.compute().affinityCall(
-            getTestCacheName(), 1,
-            () -> "executed-on-primary"
+        var keys = java.util.List.of(
+                Tuple.create().set("ID", 1),
+                Tuple.create().set("ID", 3),
+                Tuple.create().set("ID", 5)
         );
-
-        assertThat(result).isEqualTo("executed-on-primary");
+        var results = view.getAll(null, keys);
+        assertThat(results).hasSize(3);
     }
 
     @Test
-    @DisplayName("Test async compute with IgniteFuture (2.x)")
-    public void testAsyncComputeIgniteFuture() {
-        IgniteCompute asyncCompute = ignite.compute().withAsync();
+    @DisplayName("KeyValueView getAll with multiple keys")
+    void testKeyValueViewGetAll() {
+        executeSql("CREATE TABLE test_kvtable (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        Table table = client.tables().table("TEST_KVTABLE");
+        KeyValueView<Tuple, Tuple> kvView = table.keyValueView();
 
-        // 2.x uses IgniteFuture (vs CompletableFuture in 3.x)
-        IgniteFuture<Collection<Integer>> future = ignite.compute().broadcastAsync(
-            (IgniteCallable<Integer>) () -> 99
+        for (int i = 1; i <= 5; i++) {
+            kvView.put(null, Tuple.create().set("ID", i), Tuple.create().set("NAME", "KV" + i).set("AGE", 30 + i));
+        }
+
+        var keys = java.util.List.of(
+                Tuple.create().set("ID", 2),
+                Tuple.create().set("ID", 4)
         );
-
-        Collection<Integer> results = future.get();
-        assertThat(results).hasSize(1);
-        assertThat(results.iterator().next()).isEqualTo(99);
-    }
-
-    @Test
-    @DisplayName("Test MapReduce with ComputeTaskAdapter (2.x)")
-    public void testMapReduceTask() {
-        // 2.x has full MapReduce support (3.x has limited compute)
-        Integer result = ignite.compute().execute(
-            new SumMapReduceTask(), Arrays.asList(10, 20, 30, 40, 50));
-
-        assertThat(result).isEqualTo(150);
-    }
-
-    @Test
-    @DisplayName("Test compute on cluster group (2.x)")
-    public void testComputeOnClusterGroup() {
-        Ignite node2 = startAdditionalNode(testName + "-node2");
-        await().until(() -> ignite.cluster().nodes().size() == 2);
-
-        Collection<Integer> results = ignite.compute(
-            ignite.cluster().forServers()
-        ).broadcast((IgniteCallable<Integer>) () -> 1);
-
+        var results = kvView.getAll(null, keys);
         assertThat(results).hasSize(2);
-
-        node2.close();
-    }
-
-    // ==========================================
-    // Part 7: Multi-node data distribution
-    // ==========================================
-
-    @Test
-    @DisplayName("Test data visible across nodes (2.x)")
-    public void testDataVisibleAcrossNodes() {
-        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(getTestCacheName());
-        cfg.setBackups(1);
-        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cfg);
-
-        for (int i = 0; i < 50; i++) {
-            cache.put(i, "data-" + i);
-        }
-
-        Ignite node2 = startAdditionalNode(testName + "-node2");
-        await().until(() -> ignite.cluster().nodes().size() == 2);
-
-        IgniteCache<Integer, String> cache2 = node2.cache(getTestCacheName());
-        assertThat(cache2).isNotNull();
-        assertThat(cache2.get(0)).isEqualTo("data-0");
-        assertThat(cache2.get(49)).isEqualTo("data-49");
-
-        node2.close();
     }
 
     @Test
-    @DisplayName("Test affinity key mapping (2.x colocation)")
-    public void testAffinityKeyMapping() {
-        IgniteCache<Integer, String> cache = ignite.getOrCreateCache(getTestCacheName());
-        cache.put(1, "value1");
+    @DisplayName("SQL DELETE and verify")
+    void testSqlDelete() {
+        executeSql("CREATE TABLE test_persons (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        executeSql("INSERT INTO test_persons VALUES (1, 'Alice', 30)");
+        executeSql("INSERT INTO test_persons VALUES (2, 'Bob', 25)");
+        executeSql("DELETE FROM test_persons WHERE id = 1");
 
-        ClusterNode primary = ignite.affinity(getTestCacheName()).mapKeyToNode(1);
-        assertThat(primary).isNotNull();
-
-        int partition = ignite.affinity(getTestCacheName()).partition(1);
-        assertThat(partition).isGreaterThanOrEqualTo(0);
-    }
-
-    // ==========================================
-    // Part 8: Peer class loading and config
-    // ==========================================
-
-    @Test
-    @DisplayName("Test peer class loading configuration (2.x feature)")
-    public void testPeerClassLoadingConfig() {
-        // Peer class loading is a 2.x feature not in 3.x
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setPeerClassLoadingEnabled(true);
-        assertThat(cfg.isPeerClassLoadingEnabled()).isTrue();
-
-        cfg.setPeerClassLoadingEnabled(false);
-        assertThat(cfg.isPeerClassLoadingEnabled()).isFalse();
+        assertThat(countRows("test_persons")).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("Test metrics configuration (2.x JMX-based)")
-    public void testMetricsConfiguration() {
-        // 2.x uses JMX for metrics (3.x uses REST + OpenMetrics)
-        assertThat(ignite.cluster().metrics()).isNotNull();
-        assertThat(ignite.cluster().metrics().getTotalNodes()).isEqualTo(1);
-        assertThat(ignite.cluster().metrics().getTotalCpus()).isGreaterThan(0);
+    @DisplayName("SQL UPDATE and verify")
+    void testSqlUpdate() {
+        executeSql("CREATE TABLE test_persons (id INT PRIMARY KEY, name VARCHAR, age INT)");
+        executeSql("INSERT INTO test_persons VALUES (1, 'Alice', 30)");
+        executeSql("UPDATE test_persons SET age = 31 WHERE id = 1");
+
+        try (ResultSet<SqlRow> rs = client.sql().execute(null, "SELECT age FROM test_persons WHERE id = 1")) {
+            assertThat(rs.next().intValue("AGE")).isEqualTo(31);
+        }
     }
 
     @Test
-    @DisplayName("Test node attributes (2.x)")
-    public void testNodeAttributes() {
-        Map<String, ?> attrs = ignite.cluster().localNode().attributes();
-        assertThat(attrs).isNotNull();
-        assertThat(attrs).isNotEmpty();
-        // 2.x nodes expose many attributes via discovery
-        assertThat(ignite.cluster().localNode().id()).isNotNull();
-        assertThat(ignite.cluster().localNode().consistentId()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("Test server vs client mode distinction (2.x)")
-    public void testServerClientModeDistinction() {
-        // 2.x has explicit client mode on configuration
-        assertThat(ignite.configuration().isClientMode()).isFalse();
-        assertThat(ignite.cluster().localNode().isClient()).isFalse();
-
-        // forServers/forClients cluster group API
-        assertThat(ignite.cluster().forServers().nodes()).hasSize(1);
-        assertThat(ignite.cluster().forClients().nodes()).isEmpty();
+    @DisplayName("Drop table that does not exist with IF EXISTS")
+    void testDropIfExistsNonexistent() {
+        // Should not throw
+        executeSql("DROP TABLE IF EXISTS test_notthere");
     }
 
     // ==========================================
-    // Helper classes
+    // POJO class for RecordView mapping
     // ==========================================
 
-    static class Person implements Serializable {
-        String name;
-        int age;
-
-        Person(String name, int age) {
-            this.name = name;
-            this.age = age;
-        }
-    }
-
-    static class PersonIndexed implements Serializable {
-        @QuerySqlField(index = true)
-        String name;
-
-        @QuerySqlField
-        int age;
-
-        PersonIndexed(String name, int age) {
-            this.name = name;
-            this.age = age;
-        }
-    }
-
-    /**
-     * Simple MapReduce task that sums a list of integers.
-     * Demonstrates 2.x ComputeTaskAdapter (not available in 3.x).
-     */
-    static class SumMapReduceTask extends ComputeTaskAdapter<List<Integer>, Integer> {
-        @Override
-        public Map<? extends ComputeJob, ClusterNode> map(
-                List<ClusterNode> nodes, List<Integer> args) {
-            Map<ComputeJob, ClusterNode> jobMap = new HashMap<>();
-            int nodeIdx = 0;
-            for (Integer val : args) {
-                jobMap.put(new IdentityJob(val), nodes.get(nodeIdx % nodes.size()));
-                nodeIdx++;
-            }
-            return jobMap;
-        }
-
-        @Override
-        public Integer reduce(List<ComputeJobResult> results) {
-            int sum = 0;
-            for (ComputeJobResult r : results) {
-                if (r.getException() == null) {
-                    sum += r.<Integer>getData();
-                }
-            }
-            return sum;
-        }
-    }
-
-    static class IdentityJob implements ComputeJob, Serializable {
-        private final int value;
-
-        IdentityJob(int value) {
-            this.value = value;
-        }
-
-        @Override
-        public Integer execute() {
-            return value;
-        }
-
-        @Override
-        public void cancel() {}
+    public static class PersonPojo {
+        public int id;
+        public String name;
+        public int age;
     }
 }
