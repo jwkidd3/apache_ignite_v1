@@ -153,13 +153,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Apache Ignite 3.x Client -->
-        <dependency>
-            <groupId>org.apache.ignite</groupId>
-            <artifactId>ignite-client</artifactId>
-            <version>3.1.0</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>

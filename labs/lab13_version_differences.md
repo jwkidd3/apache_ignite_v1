@@ -1,44 +1,67 @@
-# Lab 13: Apache Ignite Version Differences (2.16 vs 3.x)
+# Lab 13: Apache Ignite 3.x -- Architecture, APIs, and Migration from 2.x
 
-## Duration: 90-120 minutes
+## Duration: 120-150 minutes
 
 ## Objectives
-- Understand the architectural differences between Apache Ignite 2.16 and 3.x
-- Compare configuration approaches (Spring XML/Java vs HOCON/CLI)
-- Explore API differences (Cache API vs Table API)
-- Compare discovery, cluster lifecycle, and networking
-- Understand compute grid differences and limitations
-- Explore data colocation, distribution zones, and storage engines
-- Compare serialization, security, and monitoring approaches
-- Evaluate migration considerations and decision criteria
+- Set up and connect to an Apache Ignite 3.x cluster using the thin client API
+- Explore the SWIM discovery protocol and RAFT-based cluster lifecycle
+- Configure Ignite 3.x using HOCON and the CLI (dynamic configuration)
+- Use the Table API: RecordView with Tuples, RecordView with POJOs, and KeyValueView
+- Execute SQL as a first-class operation and combine SQL with KV in transactions
+- Run colocated compute jobs using JobTarget and JobDescriptor
+- Create Distribution Zones with COLOCATE BY for data affinity
+- Monitor the cluster via REST API, CLI, and system views
+- Build a comprehensive comparison matrix between Ignite 2.x and 3.x
 
 ## Prerequisites
-- Completed Labs 1-12 (familiarity with Ignite 2.x)
-- Java 11 or higher (Ignite 3.x requires Java 11+)
-- Docker installed (for running Ignite 3.x)
-- Maven installed
-- Internet connection for downloading dependencies
 
-## Presentation
+### Software Requirements
+- **Java 11+** (Ignite 3.x minimum; Java 17 recommended)
+- **Maven 3.6+**
+- **Docker** and **Docker Compose** installed and running
+- **curl** (for REST API exercises)
+- Internet connection for pulling Docker images and Maven dependencies
 
-- **Presentation:** `presentations/module-13-version-differences.html`
+### Start the Ignite 3.x Cluster
 
----
-
-## Part 1: Setting Up Both Environments (15 minutes)
-
-### Step 1: Ignite 2.16 Project Setup
-
-You already have Ignite 2.16 set up from previous labs. Let's create a dedicated comparison project.
-
-Create a new directory `version-comparison/ignite2`:
+Pull and start a three-node Ignite 3.x cluster:
 
 ```bash
-mkdir -p version-comparison/ignite2
-cd version-comparison/ignite2
+# Pull the image
+docker pull apacheignite/ignite:3.1.0
+
+# Start node 1
+docker run -d --name ignite3-node1 \
+  -p 10300:10300 \
+  -p 10800:10800 \
+  -p 3344:3344 \
+  apacheignite/ignite:3.1.0
+
+# Wait for startup
+sleep 20
+
+# Initialize the cluster (one-time operation)
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster init \
+  --name=lab13cluster \
+  --meta-storage-node=defaultNode
+
+# Verify the cluster is running
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster state
 ```
 
-Create `pom.xml` for Ignite 2.16:
+**Expected Output:**
+```
+Cluster was initialized successfully
+```
+
+### Maven Project Setup
+
+Create a project directory and `pom.xml`:
+
+```bash
+mkdir -p lab13-ignite3/src/main/java/com/example/ignite3
+cd lab13-ignite3
+```
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -48,75 +71,15 @@ Create `pom.xml` for Ignite 2.16:
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.example.ignite</groupId>
-    <artifactId>ignite2-comparison</artifactId>
+    <groupId>com.example.ignite3</groupId>
+    <artifactId>lab13-ignite3</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        <ignite.version>2.16.0</ignite.version>
-    </properties>
-
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.ignite</groupId>
-            <artifactId>ignite-core</artifactId>
-            <version>${ignite.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.ignite</groupId>
-            <artifactId>ignite-spring</artifactId>
-            <version>${ignite.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.ignite</groupId>
-            <artifactId>ignite-indexing</artifactId>
-            <version>${ignite.version}</version>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.0</version>
-            </plugin>
-        </plugins>
-    </build>
-</project>
-```
-
-### Step 2: Ignite 3.x Project Setup
-
-Create a new directory `version-comparison/ignite3`:
-
-```bash
-mkdir -p version-comparison/ignite3
-cd version-comparison/ignite3
-```
-
-Create `pom.xml` for Ignite 3.x client:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-         http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>com.example.ignite</groupId>
-    <artifactId>ignite3-comparison</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
-
-    <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <ignite3.version>3.0.0</ignite3.version>
+        <ignite3.version>3.1.0</ignite3.version>
     </properties>
 
     <dependencies>
@@ -139,845 +102,748 @@ Create `pom.xml` for Ignite 3.x client:
 </project>
 ```
 
-### Step 3: Start Ignite 3.x Using Docker
+---
 
-The easiest way to run Ignite 3.x for testing is using Docker:
+## Part 1: Discovery and Cluster Lifecycle (15 minutes)
+
+### Exercise 1: Explore the SWIM Protocol and RAFT Consensus
+
+**Objective:** Understand how Ignite 3.x nodes discover each other using the SWIM gossip protocol and how RAFT manages cluster metadata.
+
+**Step 1:** Inspect the running node and its network configuration.
 
 ```bash
-# Pull the Ignite 3 image
-docker pull apacheignite/ignite:3.0.0
+# View the network section of the cluster configuration
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config show \
+  --selector=network
 
-# Start a single-node Ignite 3 cluster
-docker run -d \
-  --name ignite3-node \
-  -p 10300:10300 \
-  -p 10800:10800 \
-  apacheignite/ignite:3.0.0
+# View physical topology -- lists every node in the cluster
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster topology physical
 
-# Wait for startup (about 30 seconds)
-sleep 30
+# View logical topology -- lists nodes that have joined the logical cluster
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster topology logical
+```
 
-# Initialize the cluster
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 cluster init \
-  --name=myCluster \
-  --meta-storage-node=defaultNode
+**Expected Output (physical topology):**
+```
+╔══════════╤══════════════════════════════════════╤══════════╤═══════╗
+║ name     │ id                                   │ host     │ port  ║
+╠══════════╪══════════════════════════════════════╪══════════╪═══════╣
+║ defaultN │ xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx │ hostname │ 3344  ║
+╚══════════╧══════════════════════════════════════╧══════════╧═══════╝
+```
+
+**Step 2:** Query the cluster state via the REST API.
+
+```bash
+# Cluster state via REST (port 10300)
+curl -s http://localhost:10300/management/v1/cluster/state | python3 -m json.tool
 ```
 
 **Expected Output:**
-```
-Cluster was initialized successfully
+```json
+{
+    "cmgNodes": ["defaultNode"],
+    "msNodes": ["defaultNode"],
+    "clusterTag": {
+        "clusterName": "lab13cluster",
+        "clusterId": "..."
+    }
+}
 ```
 
-Verify the cluster is running:
+**Step 3:** Examine how SWIM differs from the Ignite 2.x ring topology.
+
 ```bash
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 cluster status
+echo "=== Ignite 3.x Discovery Summary ==="
+echo "Protocol:            SWIM gossip (Scalable Weakly-consistent Infection-style Membership)"
+echo "Inter-node port:     3344 (single port for discovery AND communication)"
+echo "Client port:         10800"
+echo "REST port:           10300"
+echo "Failure detection:   O(log n) convergence via randomised probing"
+echo ""
+echo "=== vs Ignite 2.x ==="
+echo "2.x Protocol:        Ring-based TcpDiscoverySpi"
+echo "2.x Discovery port:  47500"
+echo "2.x Comm port:       47100"
+echo "2.x Failure detect:  O(n) -- message must traverse the ring"
 ```
+
+**Key Takeaway (vs 2.x):** Ignite 2.x uses a ring topology where failure detection is O(n). Ignite 3.x uses SWIM gossip, which converges in O(log n), making it significantly more scalable for large clusters.
 
 ---
 
-## Part 2: Discovery and Cluster Lifecycle (15 minutes)
+### Exercise 2: Cluster Initialization and Client Connection
 
-### Exercise 1: Ignite 2.16 Discovery Configuration
+**Objective:** Connect a Java thin client to the running Ignite 3.x cluster and inspect cluster metadata.
 
-Create `ignite2/src/main/java/com/example/ignite/Ignite2Discovery.java`:
-
-```java
-package com.example.ignite;
-
-import org.apache.ignite.Ignite;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.cluster.ClusterNode;
-import org.apache.ignite.cluster.ClusterState;
-import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
-
-import java.util.Arrays;
-import java.util.Collection;
-
-public class Ignite2Discovery {
-
-    public static void main(String[] args) throws Exception {
-        System.out.println("=== Ignite 2.16 Discovery & Lifecycle Demo ===\n");
-
-        // --- Discovery Configuration ---
-        System.out.println("--- Discovery Configuration ---\n");
-
-        // TcpDiscoverySpi with VM IP finder (static list)
-        TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
-        discoverySpi.setLocalPort(47500);
-        discoverySpi.setLocalPortRange(10); // Try ports 47500-47509
-
-        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
-        ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
-        discoverySpi.setIpFinder(ipFinder);
-
-        System.out.println("Discovery SPI: TcpDiscoverySpi");
-        System.out.println("  IP Finder: TcpDiscoveryVmIpFinder (static list)");
-        System.out.println("  Local Port: 47500");
-        System.out.println("  Port Range: 10 (47500-47509)");
-        System.out.println("  Topology: Ring-based");
-        System.out.println();
-
-        System.out.println("Other IP Finder options in 2.x:");
-        System.out.println("  - TcpDiscoveryMulticastIpFinder (multicast, default)");
-        System.out.println("  - TcpDiscoveryZookeeperIpFinder (ZooKeeper)");
-        System.out.println("  - TcpDiscoveryS3IpFinder (AWS S3)");
-        System.out.println("  - TcpDiscoveryGoogleStorageIpFinder (GCE)");
-        System.out.println("  - TcpDiscoverySharedFsIpFinder (shared filesystem)");
-        System.out.println();
-
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName("ignite2-discovery-demo");
-        cfg.setDiscoverySpi(discoverySpi);
-
-        // --- Cluster Lifecycle ---
-        System.out.println("--- Cluster Lifecycle ---\n");
-
-        try (Ignite ignite = Ignition.start(cfg)) {
-            System.out.println("Node started! Cluster formed automatically on discovery.\n");
-
-            // Cluster state management
-            ClusterState state = ignite.cluster().state();
-            System.out.println("Current cluster state: " + state);
-            System.out.println("Is active: " + state.active());
-
-            // Can activate/deactivate
-            ignite.cluster().state(ClusterState.ACTIVE);
-            System.out.println("After activation: " + ignite.cluster().state());
-
-            // Topology information
-            System.out.println("\nTopology:");
-            Collection<ClusterNode> nodes = ignite.cluster().nodes();
-            System.out.println("  Total nodes: " + nodes.size());
-            System.out.println("  Topology version: " + ignite.cluster().topologyVersion());
-            for (ClusterNode node : nodes) {
-                System.out.println("  Node: " + node.consistentId());
-                System.out.println("    ID: " + node.id());
-                System.out.println("    Is client: " + node.isClient());
-                System.out.println("    Addresses: " + node.addresses());
-                System.out.println("    Host names: " + node.hostNames());
-            }
-
-            // Baseline topology (relevant for persistence)
-            System.out.println("\nBaseline topology: " +
-                ignite.cluster().currentBaselineTopology());
-
-            System.out.println("\n--- Key Points ---");
-            System.out.println("1. Ring topology: messages propagate O(n)");
-            System.out.println("2. Discovery port 47500, communication port 47100");
-            System.out.println("3. Cluster forms automatically when nodes find each other");
-            System.out.println("4. Activation/deactivation controls data operations");
-            System.out.println("5. Baseline topology must be managed manually (persistence)");
-
-            System.out.println("\nPress Enter to stop...");
-            System.in.read();
-        }
-    }
-}
-```
-
-### Exercise 2: Ignite 3.x Discovery and Lifecycle (via CLI)
-
-Ignite 3.x discovery is configured via HOCON, and the cluster lifecycle is managed externally.
-
-```bash
-# --- Ignite 3.x Discovery ---
-# Nodes use built-in node finder (SWIM gossip protocol)
-# Configuration is in HOCON format:
-
-echo 'Ignite 3.x Discovery Configuration:'
-echo '  Protocol: SWIM gossip (Scalable Weakly-consistent Infection-style Membership)'
-echo '  Port: 3344 (shared for discovery + communication)'
-echo '  Client Port: 10800'
-echo '  REST Port: 10300'
-echo '  No ring topology - gossip-based, O(log n) convergence'
-echo ''
-
-# --- Cluster Lifecycle ---
-# Step 1: Nodes start but are NOT part of a cluster yet
-echo 'Step 1: Nodes start idle (not clustered)'
-docker exec ignite3-node /opt/ignite/bin/ignite3 node status
-
-# Step 2: Explicit cluster initialization (one-time)
-echo 'Step 2: Cluster must be explicitly initialized'
-docker exec ignite3-node /opt/ignite/bin/ignite3 cluster status
-
-# Step 3: View configuration
-echo 'Step 3: View cluster configuration'
-docker exec ignite3-node /opt/ignite/bin/ignite3 cluster config show --selector=network
-
-# Step 4: Dynamic configuration update (no restart!)
-echo 'Step 4: Dynamic configuration update'
-docker exec ignite3-node /opt/ignite/bin/ignite3 cluster config show --selector=storage
-
-# --- Key Differences ---
-echo ''
-echo '--- Key Differences ---'
-echo '1. SWIM protocol: faster failure detection than ring'
-echo '2. Single port (3344) for inter-node communication'
-echo '3. Cluster requires explicit initialization (cluster init)'
-echo '4. No activation/deactivation - always active after init'
-echo '5. No baseline topology - RAFT handles membership'
-echo '6. Configuration changes are dynamic (many settings)'
-```
-
----
-
-## Part 3: Configuration Comparison (15 minutes)
-
-### Exercise 3: Ignite 2.16 Spring XML Configuration
-
-Create `ignite2/src/main/resources/ignite-config.xml`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans
-       http://www.springframework.org/schema/beans/spring-beans.xsd">
-
-    <bean id="ignite.cfg" class="org.apache.ignite.configuration.IgniteConfiguration">
-        <!-- Instance name -->
-        <property name="igniteInstanceName" value="ignite2-comparison-node"/>
-
-        <!-- Enable peer class loading -->
-        <property name="peerClassLoadingEnabled" value="true"/>
-
-        <!-- Discovery configuration -->
-        <property name="discoverySpi">
-            <bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi">
-                <property name="ipFinder">
-                    <bean class="org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder">
-                        <property name="addresses">
-                            <list>
-                                <value>127.0.0.1:47500..47509</value>
-                            </list>
-                        </property>
-                    </bean>
-                </property>
-            </bean>
-        </property>
-
-        <!-- Data storage with persistence -->
-        <property name="dataStorageConfiguration">
-            <bean class="org.apache.ignite.configuration.DataStorageConfiguration">
-                <property name="defaultDataRegionConfiguration">
-                    <bean class="org.apache.ignite.configuration.DataRegionConfiguration">
-                        <property name="maxSize" value="#{256L * 1024 * 1024}"/>
-                        <property name="persistenceEnabled" value="false"/>
-                    </bean>
-                </property>
-            </bean>
-        </property>
-
-        <!-- Cache configuration -->
-        <property name="cacheConfiguration">
-            <list>
-                <bean class="org.apache.ignite.configuration.CacheConfiguration">
-                    <property name="name" value="persons"/>
-                    <property name="cacheMode" value="PARTITIONED"/>
-                    <property name="backups" value="1"/>
-                    <property name="indexedTypes">
-                        <list>
-                            <value>java.lang.Integer</value>
-                            <value>com.example.ignite.model.Person</value>
-                        </list>
-                    </property>
-                </bean>
-            </list>
-        </property>
-    </bean>
-</beans>
-```
-
-### Exercise 4: Ignite 2.16 Programmatic Configuration
-
-Create `ignite2/src/main/java/com/example/ignite/Ignite2Config.java`:
+**Step 1:** Create `Ex02_ClusterConnection.java`:
 
 ```java
-package com.example.ignite;
-
-import org.apache.ignite.Ignite;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.configuration.DataRegionConfiguration;
-import org.apache.ignite.configuration.DataStorageConfiguration;
-import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
-
-import java.util.Arrays;
-
-public class Ignite2Config {
-
-    public static void main(String[] args) {
-        System.out.println("=== Ignite 2.16 Configuration Demo ===\n");
-
-        // Programmatic configuration
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName("ignite2-programmatic-node");
-        cfg.setPeerClassLoadingEnabled(true);
-
-        // Discovery configuration
-        TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
-        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
-        ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
-        discoverySpi.setIpFinder(ipFinder);
-        cfg.setDiscoverySpi(discoverySpi);
-
-        // Data storage configuration
-        DataStorageConfiguration dsc = new DataStorageConfiguration();
-        DataRegionConfiguration drc = new DataRegionConfiguration();
-        drc.setMaxSize(256L * 1024 * 1024); // 256 MB
-        drc.setPersistenceEnabled(false);
-        dsc.setDefaultDataRegionConfiguration(drc);
-        cfg.setDataStorageConfiguration(dsc);
-
-        // Cache configuration
-        CacheConfiguration<Integer, String> cacheCfg = new CacheConfiguration<>("myCache");
-        cacheCfg.setBackups(1);
-        cfg.setCacheConfiguration(cacheCfg);
-
-        System.out.println("Configuration created:");
-        System.out.println("  - Instance Name: " + cfg.getIgniteInstanceName());
-        System.out.println("  - Peer Class Loading: " + cfg.isPeerClassLoadingEnabled());
-        System.out.println("  - Cache Configs: " + cfg.getCacheConfiguration().length);
-        System.out.println("  - Data Region Max Size: 256 MB");
-
-        // Start Ignite
-        try (Ignite ignite = Ignition.start(cfg)) {
-            System.out.println("\nIgnite 2.16 node started!");
-            System.out.println("  - Node ID: " + ignite.cluster().localNode().id());
-            System.out.println("  - Cluster size: " + ignite.cluster().nodes().size());
-
-            // Configuration is STATIC - cannot be changed at runtime
-            System.out.println("\nNote: Configuration changes require node restart in 2.x");
-
-            System.out.println("\nPress Enter to stop...");
-            System.in.read();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-}
-```
-
-### Exercise 5: Ignite 3.x HOCON Configuration and Dynamic Updates
-
-Create `ignite3/config/ignite-config.conf` (HOCON format):
-
-```hocon
-# Ignite 3.x HOCON Configuration
-ignite {
-    # Network configuration
-    network {
-        port: 3344
-        nodeFinder {
-            netClusterNodes: ["localhost:3344"]
-        }
-    }
-
-    # Cluster configuration
-    cluster {
-        name: "comparison-cluster"
-    }
-
-    # Storage configuration - pluggable engines!
-    storage {
-        profiles: [
-            {
-                name: "default"
-                engine: "aipersist"  # Options: aimem, aipersist, rocksdb
-            }
-            {
-                name: "in-memory-only"
-                engine: "aimem"
-            }
-        ]
-    }
-
-    # REST API configuration
-    rest {
-        port: 10300
-    }
-
-    # Client connector
-    clientConnector {
-        port: 10800
-    }
-}
-```
-
-Explore dynamic configuration via CLI:
-
-```bash
-# View current configuration
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 cluster config show
-
-# View specific section
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 cluster config show --selector=storage
-
-# View node-specific configuration
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 node config show
-
-# Update configuration dynamically (no restart!)
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 cluster config update \
-  "gc.lowWatermark=0.3"
-```
-
-**Key Differences:**
-1. **Format**: HOCON is more readable than XML
-2. **Pluggable Storage**: Choose storage engine per profile
-3. **Dynamic Config**: Many settings can be changed at runtime via CLI
-4. **No Peer Class Loading**: 3.x uses deployment units instead
-5. **No Spring XML**: Configuration is separate from application framework
-
----
-
-## Part 4: API Comparison (20 minutes)
-
-### Exercise 6: Ignite 2.16 Cache API
-
-Create `ignite2/src/main/java/com/example/ignite/model/Person.java`:
-
-```java
-package com.example.ignite.model;
-
-import org.apache.ignite.cache.query.annotations.QuerySqlField;
-
-import java.io.Serializable;
-
-public class Person implements Serializable {
-    @QuerySqlField(index = true)
-    private int id;
-
-    @QuerySqlField
-    private String firstName;
-
-    @QuerySqlField(index = true)
-    private String lastName;
-
-    @QuerySqlField
-    private int age;
-
-    public Person() {}
-
-    public Person(int id, String firstName, String lastName, int age) {
-        this.id = id;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.age = age;
-    }
-
-    // Getters and setters
-    public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
-    public String getFirstName() { return firstName; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
-    public String getLastName() { return lastName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
-    public int getAge() { return age; }
-    public void setAge(int age) { this.age = age; }
-
-    @Override
-    public String toString() {
-        return String.format("Person[id=%d, name=%s %s, age=%d]",
-            id, firstName, lastName, age);
-    }
-}
-```
-
-Create `ignite2/src/main/java/com/example/ignite/Ignite2CacheAPI.java`:
-
-```java
-package com.example.ignite;
-
-import com.example.ignite.model.Person;
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteCache;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.binary.BinaryObject;
-import org.apache.ignite.cache.query.QueryCursor;
-import org.apache.ignite.cache.query.SqlFieldsQuery;
-import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.configuration.IgniteConfiguration;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-public class Ignite2CacheAPI {
-
-    public static void main(String[] args) {
-        System.out.println("=== Ignite 2.16 Cache API Demo ===\n");
-
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName("ignite2-cache-demo");
-        cfg.setPeerClassLoadingEnabled(true);
-
-        // Cache configuration with indexed types
-        CacheConfiguration<Integer, Person> personCacheCfg =
-            new CacheConfiguration<>("PersonCache");
-        personCacheCfg.setIndexedTypes(Integer.class, Person.class);
-        cfg.setCacheConfiguration(personCacheCfg);
-
-        try (Ignite ignite = Ignition.start(cfg)) {
-            // Get cache - this is the primary API in 2.x
-            IgniteCache<Integer, Person> cache = ignite.cache("PersonCache");
-
-            System.out.println("--- CRUD Operations (Cache API) ---\n");
-
-            // CREATE
-            System.out.println("1. Creating persons...");
-            cache.put(1, new Person(1, "John", "Doe", 30));
-            cache.put(2, new Person(2, "Jane", "Smith", 28));
-            cache.put(3, new Person(3, "Bob", "Johnson", 35));
-            System.out.println("   Created 3 persons\n");
-
-            // BATCH CREATE
-            System.out.println("2. Batch insert...");
-            Map<Integer, Person> batch = new HashMap<>();
-            batch.put(4, new Person(4, "Alice", "Williams", 25));
-            batch.put(5, new Person(5, "Charlie", "Brown", 40));
-            cache.putAll(batch);
-            System.out.println("   Batch inserted 2 persons\n");
-
-            // READ
-            System.out.println("3. Reading person with ID 1...");
-            Person person = cache.get(1);
-            System.out.println("   " + person + "\n");
-
-            // BATCH READ
-            System.out.println("4. Batch read (IDs 1, 2, 3)...");
-            Map<Integer, Person> batchResult = cache.getAll(Set.of(1, 2, 3));
-            batchResult.forEach((k, v) -> System.out.println("   " + v));
-            System.out.println();
-
-            // UPDATE - full object replacement
-            System.out.println("5. Updating person's age (full object replacement)...");
-            person.setAge(31);
-            cache.put(1, person);
-            System.out.println("   Updated: " + cache.get(1) + "\n");
-
-            // DELETE
-            System.out.println("6. Deleting person with ID 3...");
-            cache.remove(3);
-            System.out.println("   Person 3 deleted: " + (cache.get(3) == null) + "\n");
-
-            // BINARY OBJECT ACCESS (schema-less)
-            System.out.println("--- BinaryObject API (Schema-less Access) ---\n");
-            IgniteCache<Integer, BinaryObject> binaryCache = cache.withKeepBinary();
-            BinaryObject bo = binaryCache.get(1);
-            System.out.println("7. BinaryObject access (no deserialization):");
-            System.out.println("   firstName: " + bo.field("firstName"));
-            System.out.println("   lastName: " + bo.field("lastName"));
-            System.out.println("   age: " + bo.<Integer>field("age"));
-            System.out.println();
-
-            // SQL Query (layered on top of cache)
-            System.out.println("--- SQL Query (on Cache) ---\n");
-            SqlFieldsQuery query = new SqlFieldsQuery(
-                "SELECT id, firstName, lastName, age FROM Person WHERE age > ?");
-            query.setArgs(25);
-
-            System.out.println("8. Query: Persons older than 25");
-            try (QueryCursor<List<?>> cursor = cache.query(query)) {
-                for (List<?> row : cursor) {
-                    System.out.printf("   ID: %d, Name: %s %s, Age: %d%n",
-                        row.get(0), row.get(1), row.get(2), row.get(3));
-                }
-            }
-
-            // ASYNC OPERATIONS
-            System.out.println("\n--- Async Operations ---\n");
-            System.out.println("9. Async get (returns IgniteFuture):");
-            cache.getAsync(1).listen(f ->
-                System.out.println("   Async result: " + f.get()));
-
-            Thread.sleep(500); // Wait for async
-
-            System.out.println("\n--- Key Points for Ignite 2.x ---");
-            System.out.println("1. Cache API is primary - data accessed via cache.get()/put()");
-            System.out.println("2. Schema defined via @QuerySqlField annotations");
-            System.out.println("3. SQL queries use cache.query() method");
-            System.out.println("4. Update requires full object replacement");
-            System.out.println("5. BinaryObject for schema-less access (no deserialization)");
-            System.out.println("6. Async returns IgniteFuture (custom type)");
-
-            System.out.println("\nPress Enter to stop...");
-            System.in.read();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-}
-```
-
-### Exercise 7: Ignite 3.x Table API
-
-Create `ignite3/src/main/java/com/example/ignite/Ignite3TableAPI.java`:
-
-```java
-package com.example.ignite;
+package com.example.ignite3;
 
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.sql.ResultSet;
 import org.apache.ignite.sql.SqlRow;
-import org.apache.ignite.table.KeyValueView;
+
+public class Ex02_ClusterConnection {
+
+    public static void main(String[] args) {
+        System.out.println("=== Exercise 2: Connecting to Ignite 3.x ===\n");
+
+        // IgniteClient is the single entry point -- no thick/thin distinction
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
+
+            System.out.println("Connected to Ignite 3.x cluster.");
+
+            // Query cluster nodes through the system view
+            System.out.println("\nCluster nodes (from SYSTEM.NODES view):");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.NODES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.println("  Node: " + row.stringValue("NAME")
+                        + "  ID: " + row.stringValue("ID"));
+                }
+            }
+
+            // List existing tables
+            System.out.println("\nExisting tables (from SYSTEM.TABLES view):");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.TABLES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.println("  " + row.stringValue("SCHEMA_NAME")
+                        + "." + row.stringValue("NAME"));
+                }
+            }
+
+            System.out.println("\nConnection test complete.");
+
+        } catch (Exception e) {
+            System.err.println("Failed to connect: " + e.getMessage());
+            System.err.println("Ensure the cluster is running:");
+            System.err.println("  docker exec ignite3-node1 /opt/ignite/bin/ignite3 cluster state");
+        }
+    }
+}
+```
+
+**Step 2:** Compile and run:
+
+```bash
+cd lab13-ignite3
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex02_ClusterConnection"
+```
+
+**Expected Output:**
+```
+=== Exercise 2: Connecting to Ignite 3.x ===
+
+Connected to Ignite 3.x cluster.
+
+Cluster nodes (from SYSTEM.NODES view):
+  Node: defaultNode  ID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+Existing tables (from SYSTEM.TABLES view):
+  (empty if no tables created yet)
+
+Connection test complete.
+```
+
+**Key Takeaway (vs 2.x):** In Ignite 2.x you had to choose between a thick client (`Ignition.start()`, which joins the cluster ring) and a thin client (`Ignition.startClient()`). In Ignite 3.x there is a single `IgniteClient` that always connects via the client protocol on port 10800. Clients never join the cluster topology.
+
+---
+
+### Q&A -- Part 1
+
+**Q1:** Why does Ignite 3.x require an explicit `cluster init` command instead of auto-forming a cluster when nodes discover each other?
+
+**A1:** Explicit initialization prevents accidental cluster formation. In 2.x, any nodes on the same network segment using multicast could silently merge into one cluster. In 3.x, `cluster init` designates which nodes hold the metastorage (RAFT group for schema and configuration), giving operators full control over cluster membership from the start.
+
+**Q2:** What happens if the metastorage RAFT leader fails?
+
+**A2:** RAFT automatically elects a new leader from the remaining metastorage replicas. As long as a majority of metastorage nodes are alive, the cluster continues to operate. This is why production deployments should use an odd number of metastorage nodes (3 or 5).
+
+---
+
+## Part 2: Configuration (15 minutes)
+
+### Exercise 3: HOCON Configuration and Dynamic CLI Updates
+
+**Objective:** Explore the HOCON configuration format used by Ignite 3.x and make dynamic configuration changes without restarting the cluster.
+
+**Step 1:** View the full cluster configuration.
+
+```bash
+# Full cluster-level configuration
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config show
+
+# View just the storage section
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config show \
+  --selector=storage
+
+# View just the client connector section
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 node config show \
+  --selector=clientConnector
+```
+
+**Step 2:** Make a dynamic configuration change.
+
+```bash
+# Update garbage collection low watermark (no restart required)
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config update \
+  "gc.lowWatermark=0.3"
+
+# Verify the change
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config show \
+  --selector=gc
+```
+
+**Key Takeaway (vs 2.x):** Ignite 2.x configuration was set at startup via Spring XML or Java code. Most changes required a full cluster restart. Ignite 3.x uses HOCON and allows many configuration values to be changed dynamically via the CLI or REST API.
+
+---
+
+### Exercise 4: Explore Node-Level vs Cluster-Level Configuration
+
+**Objective:** Understand the two tiers of configuration in Ignite 3.x.
+
+```bash
+echo "=== Cluster-level config ==="
+echo "Applies to ALL nodes. Changed via 'cluster config update'."
+echo "Examples: storage profiles, distribution zones, GC settings"
+echo ""
+
+# Show cluster-level storage config
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config show \
+  --selector=storage
+
+echo ""
+echo "=== Node-level config ==="
+echo "Applies to ONE node. Changed via 'node config update'."
+echo "Examples: network port, REST port, client connector port"
+echo ""
+
+# Show node-level network config
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 node config show \
+  --selector=network
+```
+
+**Key Takeaway (vs 2.x):** Ignite 2.x had a single `IgniteConfiguration` per node. Ignite 3.x separates cluster-wide settings (replicated via RAFT) from node-local settings.
+
+---
+
+### Exercise 5: Create Distribution Zones
+
+**Objective:** Define distribution zones that control replica count, partition count, and storage profile for groups of tables.
+
+**Step 1:** Create zones via the CLI.
+
+```bash
+# Create a "hot" zone -- higher replication for frequently accessed data
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql \
+  "CREATE ZONE IF NOT EXISTS hot_zone WITH replicas=3, partitions=256, storage_profiles='default'"
+
+# Create a "cold" zone -- lower replication for archival data
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql \
+  "CREATE ZONE IF NOT EXISTS cold_zone WITH replicas=1, partitions=64, storage_profiles='default'"
+
+# Verify zones via system view
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql \
+  "SELECT * FROM SYSTEM.ZONES"
+```
+
+**Expected Output:**
+```
+╔═══════════╤══════════╤════════════╤═══════════════════╗
+║ NAME      │ REPLICAS │ PARTITIONS │ STORAGE_PROFILES  ║
+╠═══════════╪══════════╪════════════╪═══════════════════╣
+║ hot_zone  │ 3        │ 256        │ default           ║
+║ cold_zone │ 1        │ 64         │ default           ║
+╚═══════════╧══════════╧════════════╧═══════════════════╝
+```
+
+**Step 2:** Query zones from Java.
+
+```java
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+
+public class Ex05_DistributionZones {
+
+    public static void main(String[] args) {
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
+
+            System.out.println("=== Exercise 5: Distribution Zones ===\n");
+
+            // Create zones via SQL from the client
+            client.sql().executeScript(
+                "CREATE ZONE IF NOT EXISTS app_zone " +
+                "WITH replicas=2, partitions=128, storage_profiles='default'");
+
+            // List all zones
+            System.out.println("Distribution Zones:");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.ZONES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  Zone: %-15s  Replicas: %d  Partitions: %d%n",
+                        row.stringValue("NAME"),
+                        row.intValue("REPLICAS"),
+                        row.intValue("PARTITIONS"));
+                }
+            }
+        }
+    }
+}
+```
+
+**Key Takeaway (vs 2.x):** In Ignite 2.x, backup count and partition count were set per cache in `CacheConfiguration`. In 3.x, Distribution Zones decouple placement policy from table definitions, allowing multiple tables to share the same zone configuration.
+
+---
+
+### Q&A -- Part 2
+
+**Q1:** Can you change the number of replicas in a zone after tables have been created in it?
+
+**A1:** Yes. You can `ALTER ZONE` to change replicas or partitions. Ignite will rebalance data automatically. This was much harder in 2.x, where changing backup count required cache recreation.
+
+**Q2:** What are storage profiles and how do they relate to zones?
+
+**A2:** A storage profile maps to a storage engine (aimem for volatile in-memory, aipersist for persistent page memory, or rocksdb for LSM-tree disk storage). When you create a zone, you specify which storage profiles are available. Tables in that zone use the specified engine. In 2.x, all caches used the same page memory engine.
+
+**Q3:** Why is HOCON used instead of Spring XML?
+
+**A3:** HOCON is more concise, supports comments, variable substitution, and hierarchical merging. It decouples Ignite configuration from the Spring framework, making Ignite usable without Spring dependencies.
+
+---
+
+## Part 3: Table API (25 minutes)
+
+### Exercise 6: RecordView with Tuples
+
+**Objective:** Use the `RecordView<Tuple>` API for schema-flexible data access.
+
+Create `Ex06_RecordViewTuples.java`:
+
+```java
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
 import org.apache.ignite.table.RecordView;
 import org.apache.ignite.table.Table;
 import org.apache.ignite.table.Tuple;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.List;
 
-public class Ignite3TableAPI {
+public class Ex06_RecordViewTuples {
 
     public static void main(String[] args) {
-        System.out.println("=== Ignite 3.x Table API Demo ===\n");
-
-        // Connect to Ignite 3 cluster (unified client - no thick/thin distinction)
         try (IgniteClient client = IgniteClient.builder()
-                .addresses("localhost:10800")
+                .addresses("127.0.0.1:10800")
                 .build()) {
 
-            System.out.println("Connected to Ignite 3.x cluster!\n");
+            System.out.println("=== Exercise 6: RecordView with Tuples ===\n");
 
-            // Step 1: Create table using SQL DDL (schema-first approach)
-            System.out.println("--- Schema Definition (SQL DDL) ---\n");
-            System.out.println("1. Creating table via SQL DDL...");
-
-            client.sql().execute(null,
+            // Step 1: Create table via SQL DDL (schema-first approach)
+            client.sql().executeScript(
                 "CREATE TABLE IF NOT EXISTS Person (" +
-                "    id INT PRIMARY KEY," +
+                "    personId INT PRIMARY KEY," +
                 "    firstName VARCHAR(100)," +
-                "    lastName VARCHAR(100)," +
-                "    age INT" +
+                "    lastName  VARCHAR(100)," +
+                "    age       INT" +
                 ")");
-            System.out.println("   Table 'Person' created\n");
+            System.out.println("Table 'Person' created.\n");
 
-            // Create index
-            System.out.println("2. Creating index...");
-            try {
-                client.sql().execute(null,
-                    "CREATE INDEX IF NOT EXISTS idx_person_lastname ON Person (lastName)");
-                System.out.println("   Index created\n");
-            } catch (Exception e) {
-                System.out.println("   Index already exists or skipped\n");
-            }
+            // Step 2: Obtain a RecordView<Tuple> -- the most flexible view
+            Table personTable = client.tables().table("PERSON");
+            RecordView<Tuple> view = personTable.recordView();
 
-            // Get table reference
-            Table personTable = client.tables().table("Person");
+            // Step 3: INSERT using upsert (insert or update)
+            System.out.println("--- Inserting records ---");
+            view.upsert(null, Tuple.create()
+                .set("personId", 1)
+                .set("firstName", "Alice")
+                .set("lastName", "Morgan")
+                .set("age", 32));
 
-            // Step 2: Using RecordView (Tuple-based)
-            System.out.println("--- RecordView API (Tuple-based) ---\n");
-            RecordView<Tuple> recordView = personTable.recordView();
+            view.upsert(null, Tuple.create()
+                .set("personId", 2)
+                .set("firstName", "Bob")
+                .set("lastName", "Chen")
+                .set("age", 27));
 
-            System.out.println("3. Inserting records using RecordView...");
-            recordView.upsert(null, Tuple.create()
-                .set("id", 1)
-                .set("firstName", "John")
-                .set("lastName", "Doe")
-                .set("age", 30));
+            view.upsert(null, Tuple.create()
+                .set("personId", 3)
+                .set("firstName", "Carol")
+                .set("lastName", "Diaz")
+                .set("age", 45));
+            System.out.println("Inserted 3 records.\n");
 
-            recordView.upsert(null, Tuple.create()
-                .set("id", 2)
-                .set("firstName", "Jane")
-                .set("lastName", "Smith")
-                .set("age", 28));
-            System.out.println("   Inserted 2 records\n");
-
-            // Read using RecordView
-            System.out.println("4. Reading record with ID 1...");
-            Tuple key = Tuple.create().set("id", 1);
-            Tuple record = recordView.get(null, key);
+            // Step 4: READ using get -- pass a key-only Tuple
+            System.out.println("--- Reading record ---");
+            Tuple key = Tuple.create().set("personId", 1);
+            Tuple record = view.get(null, key);
             if (record != null) {
-                System.out.printf("   Person: %s %s, age %d%n",
+                System.out.printf("  personId=%d  name=%s %s  age=%d%n",
+                    record.intValue("personId"),
                     record.stringValue("firstName"),
                     record.stringValue("lastName"),
                     record.intValue("age"));
             }
-            System.out.println();
 
-            // Step 3: Using KeyValueView (similar to 2.x cache)
-            System.out.println("--- KeyValueView API (Cache-like) ---\n");
-            KeyValueView<Tuple, Tuple> kvView = personTable.keyValueView();
+            // Step 5: BATCH READ using getAll
+            System.out.println("\n--- Batch read ---");
+            List<Tuple> keys = List.of(
+                Tuple.create().set("personId", 1),
+                Tuple.create().set("personId", 2),
+                Tuple.create().set("personId", 3)
+            );
+            List<Tuple> records = view.getAll(null, keys);
+            for (Tuple t : records) {
+                if (t != null) {
+                    System.out.printf("  personId=%d  %s %s%n",
+                        t.intValue("personId"),
+                        t.stringValue("firstName"),
+                        t.stringValue("lastName"));
+                }
+            }
 
-            System.out.println("5. Using KeyValueView (familiar to 2.x users)...");
-            Tuple keyTuple = Tuple.create().set("id", 3);
-            Tuple valueTuple = Tuple.create()
-                .set("firstName", "Bob")
-                .set("lastName", "Johnson")
-                .set("age", 35);
-            kvView.put(null, keyTuple, valueTuple);
-            System.out.println("   Inserted person with ID 3\n");
+            // Step 6: UPDATE -- upsert with new values
+            System.out.println("\n--- Updating record ---");
+            view.upsert(null, Tuple.create()
+                .set("personId", 1)
+                .set("firstName", "Alice")
+                .set("lastName", "Morgan-Smith")
+                .set("age", 33));
+            Tuple updated = view.get(null, key);
+            System.out.printf("  Updated: %s, age %d%n",
+                updated.stringValue("lastName"),
+                updated.intValue("age"));
 
-            // Step 4: SQL Query (first-class citizen in 3.x)
-            System.out.println("--- SQL Query (First-Class API) ---\n");
-            System.out.println("6. Query: Persons older than 25");
+            // Step 7: DELETE
+            System.out.println("\n--- Deleting record ---");
+            boolean deleted = view.delete(null, Tuple.create().set("personId", 3));
+            System.out.println("  Deleted personId=3: " + deleted);
 
-            try (ResultSet<SqlRow> rs = client.sql().execute(null,
-                    "SELECT id, firstName, lastName, age FROM Person WHERE age > ?", 25)) {
+            // Step 8: Verify via SQL
+            System.out.println("\n--- Verify via SQL ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT personId, firstName, lastName, age FROM Person ORDER BY personId")) {
                 while (rs.hasNext()) {
                     SqlRow row = rs.next();
-                    System.out.printf("   ID: %d, Name: %s %s, Age: %d%n",
-                        row.intValue("id"),
+                    System.out.printf("  [%d] %s %s, age %d%n",
+                        row.intValue("personId"),
                         row.stringValue("firstName"),
                         row.stringValue("lastName"),
                         row.intValue("age"));
                 }
             }
 
-            // Step 5: Async operations (standard CompletableFuture)
-            System.out.println("\n--- Async Operations (CompletableFuture) ---\n");
-            System.out.println("7. Async get (returns CompletableFuture):");
-            CompletableFuture<Tuple> future = recordView.getAsync(null, key);
-            future.thenAccept(t -> {
-                if (t != null) {
-                    System.out.println("   Async result: " + t.stringValue("firstName") +
-                        " " + t.stringValue("lastName"));
-                }
-            }).join();
-
-            // Step 6: Dynamic schema evolution
-            System.out.println("\n--- Dynamic Schema Evolution ---\n");
-            System.out.println("8. Adding column dynamically (no restart!)...");
-            try {
-                client.sql().execute(null,
-                    "ALTER TABLE Person ADD COLUMN email VARCHAR(200)");
-                System.out.println("   Column 'email' added to Person table");
-            } catch (Exception e) {
-                System.out.println("   Column may already exist: " + e.getMessage());
-            }
-
-            System.out.println("\n--- Key Points for Ignite 3.x ---");
-            System.out.println("1. Schema defined via SQL DDL (CREATE TABLE)");
-            System.out.println("2. Multiple views of same data: RecordView, KeyValueView, SQL");
-            System.out.println("3. SQL is first-class citizen, not layered on cache");
-            System.out.println("4. Unified client model - same features everywhere");
-            System.out.println("5. Tuple-based API for flexible data access");
-            System.out.println("6. Async returns standard CompletableFuture");
-            System.out.println("7. Dynamic schema evolution via ALTER TABLE");
-
-            // Cleanup
-            System.out.println("\n9. Cleaning up...");
-            client.sql().execute(null, "DROP TABLE IF EXISTS Person");
-            System.out.println("   Table dropped\n");
-
-        } catch (Exception e) {
-            System.err.println("Error: " + e.getMessage());
-            e.printStackTrace();
-            System.out.println("\nMake sure Ignite 3 is running:");
-            System.out.println("  docker run -d --name ignite3-node -p 10800:10800 apacheignite/ignite:3.0.0");
+            System.out.println("\nExercise 6 complete.");
         }
     }
 }
 ```
 
-### Exercise 8: Run Both Demos
+**Expected Output:**
+```
+Table 'Person' created.
 
-**Run Ignite 2.16 demo:**
-```bash
-cd version-comparison/ignite2
-mvn compile exec:java -Dexec.mainClass="com.example.ignite.Ignite2CacheAPI"
+--- Inserting records ---
+Inserted 3 records.
+
+--- Reading record ---
+  personId=1  name=Alice Morgan  age=32
+
+--- Batch read ---
+  personId=1  Alice Morgan
+  personId=2  Bob Chen
+  personId=3  Carol Diaz
+
+--- Updating record ---
+  Updated: Morgan-Smith, age 33
+
+--- Deleting record ---
+  Deleted personId=3: true
+
+--- Verify via SQL ---
+  [1] Alice Morgan-Smith, age 33
+  [2] Bob Chen, age 27
 ```
 
-**Run Ignite 3.x demo (ensure Docker container is running):**
-```bash
-cd version-comparison/ignite3
-mvn compile exec:java -Dexec.mainClass="com.example.ignite.Ignite3TableAPI"
-```
+**Key Takeaway (vs 2.x):** In 2.x, you used `cache.put(key, value)` and `cache.get(key)`. In 3.x, `RecordView<Tuple>` provides `upsert`, `get`, `delete`, and `getAll` on Tuple objects. The schema is defined via DDL, not Java annotations.
 
 ---
 
-## Part 5: Transaction Comparison (10 minutes)
+### Exercise 7: RecordView with POJOs
 
-### Exercise 9: Ignite 2.16 Transactions
+**Objective:** Map table rows directly to Java objects using `RecordView<MyClass>`.
 
-Create `ignite2/src/main/java/com/example/ignite/Ignite2Transactions.java`:
+**Step 1:** Create the POJO class `PersonRecord.java`:
 
 ```java
-package com.example.ignite;
+package com.example.ignite3;
 
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteCache;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.transactions.Transaction;
-import org.apache.ignite.transactions.TransactionConcurrency;
-import org.apache.ignite.transactions.TransactionIsolation;
+public class PersonRecord {
+    int personId;
+    String firstName;
+    String lastName;
+    int age;
 
-public class Ignite2Transactions {
+    // Default constructor required
+    public PersonRecord() {}
+
+    public PersonRecord(int personId, String firstName, String lastName, int age) {
+        this.personId = personId;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.age = age;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("PersonRecord[id=%d, %s %s, age=%d]",
+            personId, firstName, lastName, age);
+    }
+}
+```
+
+**Step 2:** Create `Ex07_RecordViewPojo.java`:
+
+```java
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.table.RecordView;
+import org.apache.ignite.table.Table;
+
+public class Ex07_RecordViewPojo {
 
     public static void main(String[] args) {
-        System.out.println("=== Ignite 2.16 Transaction Demo ===\n");
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
 
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName("ignite2-tx-demo");
+            System.out.println("=== Exercise 7: RecordView with POJOs ===\n");
 
-        CacheConfiguration<Integer, Integer> cacheCfg =
-            new CacheConfiguration<>("AccountCache");
-        cacheCfg.setAtomicityMode(org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL);
-        cfg.setCacheConfiguration(cacheCfg);
+            // Reuse the Person table from Exercise 6
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS Person (" +
+                "    personId INT PRIMARY KEY," +
+                "    firstName VARCHAR(100)," +
+                "    lastName  VARCHAR(100)," +
+                "    age       INT" +
+                ")");
 
-        try (Ignite ignite = Ignition.start(cfg)) {
-            IgniteCache<Integer, Integer> accounts = ignite.cache("AccountCache");
+            Table personTable = client.tables().table("PERSON");
 
-            // Initialize accounts
-            accounts.put(1, 1000);  // Account 1: $1000
-            accounts.put(2, 500);   // Account 2: $500
+            // Get a typed RecordView
+            RecordView<PersonRecord> view = personTable.recordView(PersonRecord.class);
 
-            System.out.println("Initial balances:");
-            System.out.println("  Account 1: $" + accounts.get(1));
-            System.out.println("  Account 2: $" + accounts.get(2));
+            // INSERT using POJO
+            System.out.println("--- Insert via POJO ---");
+            view.upsert(null, new PersonRecord(10, "David", "Lee", 29));
+            view.upsert(null, new PersonRecord(11, "Eva", "Park", 38));
+            System.out.println("Inserted 2 records.\n");
 
-            // Transaction in 2.x - explicit concurrency and isolation
-            System.out.println("\nPerforming transfer of $200...\n");
+            // READ using POJO key
+            System.out.println("--- Read via POJO ---");
+            PersonRecord keyObj = new PersonRecord();
+            keyObj.personId = 10;
 
-            // PESSIMISTIC + REPEATABLE_READ (most common in 2.x)
-            try (Transaction tx = ignite.transactions().txStart(
-                    TransactionConcurrency.PESSIMISTIC,
-                    TransactionIsolation.REPEATABLE_READ)) {
+            PersonRecord result = view.get(null, keyObj);
+            System.out.println("  " + result);
 
-                int balance1 = accounts.get(1);
-                int balance2 = accounts.get(2);
+            // DELETE using POJO key
+            System.out.println("\n--- Delete via POJO ---");
+            PersonRecord deleteKey = new PersonRecord();
+            deleteKey.personId = 11;
+            boolean deleted = view.delete(null, deleteKey);
+            System.out.println("  Deleted personId=11: " + deleted);
 
-                // Transfer $200
-                accounts.put(1, balance1 - 200);
-                accounts.put(2, balance2 + 200);
-
-                tx.commit();
-                System.out.println("Transaction committed!");
-            }
-
-            System.out.println("\nFinal balances:");
-            System.out.println("  Account 1: $" + accounts.get(1));
-            System.out.println("  Account 2: $" + accounts.get(2));
-
-            System.out.println("\n--- Ignite 2.x Transaction Notes ---");
-            System.out.println("1. Concurrency: PESSIMISTIC or OPTIMISTIC");
-            System.out.println("2. Isolation: READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE");
-            System.out.println("3. KV transactions are robust");
-            System.out.println("4. SQL transactions limited (cannot easily mix SQL and KV)");
-            System.out.println("5. Must choose concurrency/isolation explicitly");
-            System.out.println("6. Deadlock detection available but not automatic resolution");
-
-        } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("\nExercise 7 complete.");
         }
     }
 }
 ```
 
-### Exercise 10: Ignite 3.x Transactions
+**Expected Output:**
+```
+--- Insert via POJO ---
+Inserted 2 records.
 
-Create `ignite3/src/main/java/com/example/ignite/Ignite3Transactions.java`:
+--- Read via POJO ---
+  PersonRecord[id=10, David Lee, age=29]
+
+--- Delete via POJO ---
+  Deleted personId=11: true
+```
+
+**Key Takeaway (vs 2.x):** In 2.x, POJOs needed `@QuerySqlField` annotations and `Serializable`. In 3.x, the POJO just needs field names matching the SQL columns and a default constructor. No annotations or serialization interface required.
+
+---
+
+### Exercise 8: KeyValueView and SQL Queries
+
+**Objective:** Use `KeyValueView<Tuple,Tuple>` for cache-like access and execute SQL queries with parameters.
+
+Create `Ex08_KeyValueAndSQL.java`:
 
 ```java
-package com.example.ignite;
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+import org.apache.ignite.table.KeyValueView;
+import org.apache.ignite.table.Table;
+import org.apache.ignite.table.Tuple;
+
+public class Ex08_KeyValueAndSQL {
+
+    public static void main(String[] args) {
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
+
+            System.out.println("=== Exercise 8: KeyValueView and SQL ===\n");
+
+            // Create a Products table
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS Product (" +
+                "    productId INT PRIMARY KEY," +
+                "    name      VARCHAR(200)," +
+                "    price     DOUBLE," +
+                "    category  VARCHAR(100)" +
+                ")");
+
+            Table productTable = client.tables().table("PRODUCT");
+
+            // --- KeyValueView: separate key and value Tuples ---
+            System.out.println("--- KeyValueView API ---\n");
+            KeyValueView<Tuple, Tuple> kv = productTable.keyValueView();
+
+            // Insert via KV
+            kv.put(null,
+                Tuple.create().set("productId", 101),
+                Tuple.create().set("name", "Laptop").set("price", 999.99).set("category", "Electronics"));
+            kv.put(null,
+                Tuple.create().set("productId", 102),
+                Tuple.create().set("name", "Desk Chair").set("price", 249.50).set("category", "Furniture"));
+            kv.put(null,
+                Tuple.create().set("productId", 103),
+                Tuple.create().set("name", "Keyboard").set("price", 79.99).set("category", "Electronics"));
+            kv.put(null,
+                Tuple.create().set("productId", 104),
+                Tuple.create().set("name", "Monitor").set("price", 549.00).set("category", "Electronics"));
+
+            System.out.println("Inserted 4 products via KeyValueView.\n");
+
+            // Read via KV
+            Tuple val = kv.get(null, Tuple.create().set("productId", 101));
+            if (val != null) {
+                System.out.printf("  Product 101: %s, $%.2f%n",
+                    val.stringValue("name"), val.doubleValue("price"));
+            }
+
+            // Check existence
+            boolean exists = kv.contains(null, Tuple.create().set("productId", 999));
+            System.out.println("  Product 999 exists: " + exists);
+
+            // --- SQL Queries ---
+            System.out.println("\n--- SQL Queries ---\n");
+
+            // Parameterised query
+            System.out.println("Electronics products over $100:");
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT productId, name, price FROM Product " +
+                    "WHERE category = ? AND price > ? ORDER BY price DESC",
+                    "Electronics", 100.0)) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  [%d] %-15s $%.2f%n",
+                        row.intValue("productId"),
+                        row.stringValue("name"),
+                        row.doubleValue("price"));
+                }
+            }
+
+            // Aggregate query
+            System.out.println("\nAverage price by category:");
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT category, COUNT(*) AS cnt, AVG(price) AS avg_price " +
+                    "FROM Product GROUP BY category ORDER BY category")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  %-15s  count=%d  avg=$%.2f%n",
+                        row.stringValue("category"),
+                        row.longValue("cnt"),
+                        row.doubleValue("avg_price"));
+                }
+            }
+
+            System.out.println("\nExercise 8 complete.");
+        }
+    }
+}
+```
+
+**Expected Output:**
+```
+--- KeyValueView API ---
+
+Inserted 4 products via KeyValueView.
+
+  Product 101: Laptop, $999.99
+  Product 999 exists: false
+
+--- SQL Queries ---
+
+Electronics products over $100:
+  [101] Laptop          $999.99
+  [104] Monitor         $549.00
+
+Average price by category:
+  Electronics      count=3  avg=$542.99
+  Furniture        count=1  avg=$249.50
+```
+
+**Key Takeaway (vs 2.x):** In 2.x, SQL was an overlay on the cache executed via `cache.query(new SqlFieldsQuery(...))`. In 3.x, `client.sql().execute()` is a standalone first-class API. The same data is accessible through RecordView, KeyValueView, or SQL interchangeably.
+
+---
+
+### Q&A -- Part 3
+
+**Q1:** When should you use RecordView vs KeyValueView vs SQL?
+
+**A1:** Use `RecordView<Tuple>` for generic CRUD when you want to treat rows as single objects. Use `RecordView<POJO>` when you have a Java class matching the schema. Use `KeyValueView` when you think in key-value terms (closest to 2.x `IgniteCache`). Use SQL for queries, joins, aggregations, and DDL. All views operate on the same underlying data.
+
+**Q2:** Does `client.tables().table("PERSON")` return null if the table does not exist?
+
+**A2:** Yes. Always check for null or use `CREATE TABLE IF NOT EXISTS` before calling `client.tables().table()`. In 2.x, `ignite.cache("name")` also returned null, but `ignite.getOrCreateCache("name")` would auto-create. There is no equivalent auto-create for tables in 3.x; you must use DDL.
+
+---
+
+## Part 4: Transactions (15 minutes)
+
+### Exercise 9: Manual Transaction Control
+
+**Objective:** Use `client.transactions().begin()` with explicit `commit()` and `rollback()`.
+
+Create `Ex09_Transactions.java`:
+
+```java
+package com.example.ignite3;
 
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.sql.ResultSet;
@@ -987,547 +853,1079 @@ import org.apache.ignite.table.Table;
 import org.apache.ignite.table.Tuple;
 import org.apache.ignite.tx.Transaction;
 
-public class Ignite3Transactions {
+public class Ex09_Transactions {
 
     public static void main(String[] args) {
-        System.out.println("=== Ignite 3.x Transaction Demo ===\n");
-
         try (IgniteClient client = IgniteClient.builder()
-                .addresses("localhost:10800")
+                .addresses("127.0.0.1:10800")
                 .build()) {
 
-            // Create accounts table
-            client.sql().execute(null,
-                "CREATE TABLE IF NOT EXISTS Accounts (" +
-                "    id INT PRIMARY KEY," +
-                "    balance INT" +
+            System.out.println("=== Exercise 9: Manual Transactions ===\n");
+
+            // Setup
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS Account (" +
+                "    accountId INT PRIMARY KEY," +
+                "    owner     VARCHAR(100)," +
+                "    balance   INT" +
                 ")");
 
-            // Initialize accounts via SQL
-            client.sql().execute(null,
-                "INSERT INTO Accounts (id, balance) VALUES (1, 1000) " +
-                "ON CONFLICT DO UPDATE SET balance = 1000");
-            client.sql().execute(null,
-                "INSERT INTO Accounts (id, balance) VALUES (2, 500) " +
-                "ON CONFLICT DO UPDATE SET balance = 500");
+            Table accountTable = client.tables().table("ACCOUNT");
+            KeyValueView<Tuple, Tuple> kv = accountTable.keyValueView();
+
+            // Initialise accounts outside a transaction
+            kv.put(null,
+                Tuple.create().set("accountId", 1),
+                Tuple.create().set("owner", "Alice").set("balance", 1000));
+            kv.put(null,
+                Tuple.create().set("accountId", 2),
+                Tuple.create().set("owner", "Bob").set("balance", 500));
 
             System.out.println("Initial balances:");
             printBalances(client);
 
-            // Transaction in 3.x - supports BOTH SQL and KV in same transaction!
-            System.out.println("\nPerforming transfer of $200...\n");
-
+            // --- Successful transaction ---
+            System.out.println("\n--- Transfer $200 from Alice to Bob ---");
             Transaction tx = client.transactions().begin();
-
             try {
-                // SQL operation
-                client.sql().execute(tx,
-                    "UPDATE Accounts SET balance = balance - 200 WHERE id = 1");
+                Tuple aliceVal = kv.get(tx, Tuple.create().set("accountId", 1));
+                Tuple bobVal   = kv.get(tx, Tuple.create().set("accountId", 2));
 
-                // KV operation in SAME transaction
-                Table accountsTable = client.tables().table("Accounts");
-                KeyValueView<Tuple, Tuple> kv = accountsTable.keyValueView();
+                int aliceBalance = aliceVal.intValue("balance");
+                int bobBalance   = bobVal.intValue("balance");
 
-                Tuple key = Tuple.create().set("id", 2);
-                Tuple currentValue = kv.get(tx, key);
-                int newBalance = currentValue.intValue("balance") + 200;
+                if (aliceBalance < 200) {
+                    tx.rollback();
+                    System.out.println("Insufficient funds -- rolled back.");
+                    return;
+                }
 
-                kv.put(tx, key, Tuple.create().set("balance", newBalance));
+                kv.put(tx,
+                    Tuple.create().set("accountId", 1),
+                    Tuple.create().set("owner", "Alice").set("balance", aliceBalance - 200));
+                kv.put(tx,
+                    Tuple.create().set("accountId", 2),
+                    Tuple.create().set("owner", "Bob").set("balance", bobBalance + 200));
 
-                // Both SQL and KV committed atomically
                 tx.commit();
-                System.out.println("Transaction committed!");
-
+                System.out.println("Transaction committed.\n");
             } catch (Exception e) {
                 tx.rollback();
                 System.out.println("Transaction rolled back: " + e.getMessage());
             }
 
-            System.out.println("\nFinal balances:");
+            System.out.println("Balances after transfer:");
             printBalances(client);
 
-            System.out.println("\n--- Ignite 3.x Transaction Notes ---");
-            System.out.println("1. Strictly serializable isolation by default");
-            System.out.println("2. No need to choose concurrency/isolation mode");
-            System.out.println("3. Full SQL transaction support!");
-            System.out.println("4. Can mix SQL and KV operations in same transaction");
-            System.out.println("5. RAFT-based consensus ensures consistency");
-            System.out.println("6. Natural for RDBMS migration");
+            // --- Rolled-back transaction ---
+            System.out.println("\n--- Attempt invalid transfer (rollback) ---");
+            Transaction tx2 = client.transactions().begin();
+            try {
+                // Deduct from Alice
+                Tuple aliceVal = kv.get(tx2, Tuple.create().set("accountId", 1));
+                kv.put(tx2,
+                    Tuple.create().set("accountId", 1),
+                    Tuple.create().set("owner", "Alice")
+                        .set("balance", aliceVal.intValue("balance") - 5000));
 
-            // Cleanup
-            client.sql().execute(null, "DROP TABLE IF EXISTS Accounts");
+                // Simulate error
+                if (true) throw new RuntimeException("Simulated error");
 
-        } catch (Exception e) {
-            System.err.println("Error: " + e.getMessage());
-            e.printStackTrace();
+                tx2.commit();
+            } catch (Exception e) {
+                tx2.rollback();
+                System.out.println("Rolled back: " + e.getMessage());
+            }
+
+            System.out.println("\nBalances after rollback (unchanged):");
+            printBalances(client);
+
+            System.out.println("\nExercise 9 complete.");
         }
     }
 
     private static void printBalances(IgniteClient client) {
         try (ResultSet<SqlRow> rs = client.sql().execute(null,
-                "SELECT id, balance FROM Accounts ORDER BY id")) {
+                "SELECT accountId, owner, balance FROM Account ORDER BY accountId")) {
             while (rs.hasNext()) {
                 SqlRow row = rs.next();
-                System.out.printf("  Account %d: $%d%n",
-                    row.intValue("id"), row.intValue("balance"));
+                System.out.printf("  Account %d (%s): $%d%n",
+                    row.intValue("accountId"),
+                    row.stringValue("owner"),
+                    row.intValue("balance"));
             }
         }
     }
 }
 ```
 
+**Expected Output:**
+```
+Initial balances:
+  Account 1 (Alice): $1000
+  Account 2 (Bob): $500
+
+--- Transfer $200 from Alice to Bob ---
+Transaction committed.
+
+Balances after transfer:
+  Account 1 (Alice): $800
+  Account 2 (Bob): $700
+
+--- Attempt invalid transfer (rollback) ---
+Rolled back: Simulated error
+
+Balances after rollback (unchanged):
+  Account 1 (Alice): $800
+  Account 2 (Bob): $700
+```
+
+**Key Takeaway (vs 2.x):** In 2.x, you had to choose `TransactionConcurrency` (PESSIMISTIC/OPTIMISTIC) and `TransactionIsolation` (READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE). In 3.x, all transactions are strictly serializable by default. No concurrency/isolation choices needed.
+
 ---
 
-## Part 6: Compute Grid Comparison (10 minutes)
+### Exercise 10: runInTransaction and Mixed SQL+KV
 
-### Exercise 11: Ignite 2.16 Compute Grid
+**Objective:** Use the `runInTransaction` helper and demonstrate mixing SQL and KV operations in a single transaction -- a capability new to Ignite 3.x.
 
-Create `ignite2/src/main/java/com/example/ignite/Ignite2Compute.java`:
+Create `Ex10_MixedTransaction.java`:
 
 ```java
-package com.example.ignite;
+package com.example.ignite3;
 
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteCache;
-import org.apache.ignite.IgniteCompute;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.cluster.ClusterNode;
-import org.apache.ignite.compute.ComputeJob;
-import org.apache.ignite.compute.ComputeJobResult;
-import org.apache.ignite.compute.ComputeTaskAdapter;
-import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.lang.IgniteCallable;
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+import org.apache.ignite.table.KeyValueView;
+import org.apache.ignite.table.Table;
+import org.apache.ignite.table.Tuple;
+import org.apache.ignite.tx.Transaction;
 
-import java.util.*;
+public class Ex10_MixedTransaction {
 
-public class Ignite2Compute {
+    public static void main(String[] args) {
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
+
+            System.out.println("=== Exercise 10: Mixed SQL + KV Transaction ===\n");
+
+            // Setup tables
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS Account (" +
+                "    accountId INT PRIMARY KEY," +
+                "    owner     VARCHAR(100)," +
+                "    balance   INT" +
+                ");" +
+                "CREATE TABLE IF NOT EXISTS AuditLog (" +
+                "    logId       INT PRIMARY KEY," +
+                "    accountId   INT," +
+                "    description VARCHAR(500)," +
+                "    amount      INT" +
+                ");");
+
+            // Reset data
+            client.sql().execute(null, "DELETE FROM Account WHERE accountId IN (1,2)");
+            client.sql().execute(null, "DELETE FROM AuditLog WHERE logId >= 0");
+
+            Table accountTable  = client.tables().table("ACCOUNT");
+            KeyValueView<Tuple, Tuple> accountKv = accountTable.keyValueView();
+
+            // Seed data via KV
+            accountKv.put(null,
+                Tuple.create().set("accountId", 1),
+                Tuple.create().set("owner", "Alice").set("balance", 1000));
+            accountKv.put(null,
+                Tuple.create().set("accountId", 2),
+                Tuple.create().set("owner", "Bob").set("balance", 500));
+
+            System.out.println("Before transaction:");
+            printAccounts(client);
+
+            // --- Mixed SQL + KV in one transaction ---
+            System.out.println("\n--- Mixed SQL + KV Transaction ---");
+            System.out.println("SQL: UPDATE Account for Alice");
+            System.out.println("KV:  put() for Bob");
+            System.out.println("SQL: INSERT into AuditLog\n");
+
+            Transaction tx = client.transactions().begin();
+            try {
+                // SQL operation: debit Alice
+                client.sql().execute(tx,
+                    "UPDATE Account SET balance = balance - 300 WHERE accountId = 1");
+
+                // KV operation: credit Bob
+                Tuple bobVal = accountKv.get(tx, Tuple.create().set("accountId", 2));
+                accountKv.put(tx,
+                    Tuple.create().set("accountId", 2),
+                    Tuple.create().set("owner", "Bob")
+                        .set("balance", bobVal.intValue("balance") + 300));
+
+                // SQL operation: audit log
+                client.sql().execute(tx,
+                    "INSERT INTO AuditLog (logId, accountId, description, amount) " +
+                    "VALUES (1, 1, 'Transfer to Bob', -300)");
+                client.sql().execute(tx,
+                    "INSERT INTO AuditLog (logId, accountId, description, amount) " +
+                    "VALUES (2, 2, 'Transfer from Alice', 300)");
+
+                tx.commit();
+                System.out.println("Transaction committed.\n");
+            } catch (Exception e) {
+                tx.rollback();
+                System.out.println("Transaction rolled back: " + e.getMessage());
+            }
+
+            System.out.println("After transaction:");
+            printAccounts(client);
+
+            System.out.println("\nAudit log:");
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT logId, accountId, description, amount FROM AuditLog ORDER BY logId")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  [%d] Account %d: %s (%+d)%n",
+                        row.intValue("logId"),
+                        row.intValue("accountId"),
+                        row.stringValue("description"),
+                        row.intValue("amount"));
+                }
+            }
+
+            System.out.println("\nExercise 10 complete.");
+        }
+    }
+
+    private static void printAccounts(IgniteClient client) {
+        try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                "SELECT accountId, owner, balance FROM Account ORDER BY accountId")) {
+            while (rs.hasNext()) {
+                SqlRow row = rs.next();
+                System.out.printf("  Account %d (%s): $%d%n",
+                    row.intValue("accountId"),
+                    row.stringValue("owner"),
+                    row.intValue("balance"));
+            }
+        }
+    }
+}
+```
+
+**Expected Output:**
+```
+Before transaction:
+  Account 1 (Alice): $1000
+  Account 2 (Bob): $500
+
+--- Mixed SQL + KV Transaction ---
+SQL: UPDATE Account for Alice
+KV:  put() for Bob
+SQL: INSERT into AuditLog
+
+Transaction committed.
+
+After transaction:
+  Account 1 (Alice): $700
+  Account 2 (Bob): $800
+
+Audit log:
+  [1] Account 1: Transfer to Bob (-300)
+  [2] Account 2: Transfer from Alice (+300)
+```
+
+**Key Takeaway (vs 2.x):** Ignite 2.x could not reliably mix SQL DML and KV operations in the same transaction. In 3.x, you can freely combine `client.sql().execute(tx, ...)` with `kv.put(tx, ...)` in a single atomic transaction. This is a major improvement for applications that need both programmatic and SQL access to data.
+
+---
+
+### Q&A -- Part 4
+
+**Q1:** Does Ignite 3.x support read-only transactions?
+
+**A1:** Yes. You can pass `TransactionOptions.builder().readOnly(true).build()` to `client.transactions().begin()`. Read-only transactions allow consistent snapshots without acquiring write locks, which can improve throughput for read-heavy workloads.
+
+**Q2:** What happens if you forget to call `commit()` or `rollback()`?
+
+**A2:** The transaction will eventually time out and be automatically rolled back. However, while it is open it may hold locks, so you should always use try-finally or try-with-resources patterns. In 2.x, the behavior was similar but with configurable concurrency modes that affected lock behavior.
+
+---
+
+## Part 5: Compute Grid (15 minutes)
+
+### Exercise 11: Colocated Compute with JobTarget and JobDescriptor
+
+**Objective:** Execute a compute job on the node that owns specific data using the Ignite 3.x compute API.
+
+Create `Ex11_ComputeGrid.java`:
+
+```java
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.compute.JobDescriptor;
+import org.apache.ignite.compute.JobExecution;
+import org.apache.ignite.compute.JobTarget;
+import org.apache.ignite.table.Tuple;
+
+import java.util.Set;
+
+public class Ex11_ComputeGrid {
 
     public static void main(String[] args) throws Exception {
-        System.out.println("=== Ignite 2.16 Compute Grid Demo ===\n");
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
 
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName("ignite2-compute-demo");
-        cfg.setPeerClassLoadingEnabled(true);
+            System.out.println("=== Exercise 11: Compute Grid ===\n");
 
-        CacheConfiguration<Integer, String> cacheCfg = new CacheConfiguration<>("dataCache");
-        cfg.setCacheConfiguration(cacheCfg);
+            // Ensure the Person table exists with data
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS Person (" +
+                "    personId INT PRIMARY KEY," +
+                "    firstName VARCHAR(100)," +
+                "    lastName  VARCHAR(100)," +
+                "    age       INT" +
+                ")");
+            client.sql().execute(null,
+                "INSERT INTO Person (personId, firstName, lastName, age) " +
+                "VALUES (100, 'Test', 'User', 30) " +
+                "ON CONFLICT DO NOTHING");
 
-        try (Ignite ignite = Ignition.start(cfg)) {
-            IgniteCompute compute = ignite.compute();
-
-            // 1. Broadcast - run on all nodes
-            System.out.println("1. Broadcast (run on all nodes):");
-            compute.broadcast(() ->
-                System.out.println("   Hello from " + Ignition.localIgnite().name()));
+            // --- Execute on any node ---
+            System.out.println("--- Execute on any node ---");
+            System.out.println("In Ignite 3.x, compute jobs are submitted via:");
+            System.out.println("  client.compute().execute(JobTarget, JobDescriptor, args)");
             System.out.println();
 
-            // 2. IgniteCallable - run on one node with return value
-            System.out.println("2. IgniteCallable (single node, returns value):");
-            String result = compute.call(() -> {
-                return "Computed on " + Ignition.localIgnite().name();
-            });
-            System.out.println("   Result: " + result);
+            // --- Colocated compute ---
+            System.out.println("--- Colocated compute ---");
+            System.out.println("JobTarget.colocated() routes the job to the node");
+            System.out.println("that owns the specified key in the specified table.");
+            System.out.println();
+            System.out.println("Example (conceptual):");
+            System.out.println("  JobTarget target = JobTarget.colocated(");
+            System.out.println("      \"PERSON\",");
+            System.out.println("      Tuple.create().set(\"personId\", 100));");
+            System.out.println("  JobDescriptor<String, String> descriptor =");
+            System.out.println("      JobDescriptor.builder(MyComputeJob.class).build();");
+            System.out.println("  String result = client.compute()");
+            System.out.println("      .execute(target, descriptor, \"input\");");
             System.out.println();
 
-            // 3. Affinity-aware compute
-            System.out.println("3. Affinity-aware compute:");
-            IgniteCache<Integer, String> cache = ignite.cache("dataCache");
-            cache.put(42, "important-data");
-            compute.affinityRun("dataCache", 42, () -> {
-                System.out.println("   Running on node that owns key 42");
-                System.out.println("   Node: " + Ignition.localIgnite().name());
-            });
+            // --- Deployment units ---
+            System.out.println("--- Deployment Units ---");
+            System.out.println("Ignite 3.x replaces peer class loading with deployment units.");
+            System.out.println("You package compute job classes into a JAR and deploy via CLI:");
             System.out.println();
-
-            // 4. MapReduce with ComputeTaskAdapter
-            System.out.println("4. MapReduce (ComputeTaskAdapter):");
-            int sum = compute.execute(new SumTask(), Arrays.asList(1,2,3,4,5,6,7,8,9,10));
-            System.out.println("   Sum of 1..10 = " + sum);
+            System.out.println("  ignite3 cluster unit deploy --path=my-jobs.jar --id=my-unit:1.0");
             System.out.println();
+            System.out.println("Then reference the unit when building the JobDescriptor:");
+            System.out.println("  JobDescriptor.builder(\"com.example.MyJob\")");
+            System.out.println("      .units(\"my-unit\", \"1.0\")");
+            System.out.println("      .build();");
 
-            // 5. ExecutorService
-            System.out.println("5. Java ExecutorService over grid:");
-            java.util.concurrent.ExecutorService exec = ignite.executorService();
-            java.util.concurrent.Future<String> future =
-                exec.submit(() -> "Executed via ExecutorService on " +
-                    Ignition.localIgnite().name());
-            System.out.println("   Result: " + future.get());
+            System.out.println("\n--- Feature Gaps vs 2.x ---");
+            System.out.println("Available in 3.x:");
+            System.out.println("  + Execute on specific nodes (JobTarget.node())");
+            System.out.println("  + Execute on any node (JobTarget.anyNode())");
+            System.out.println("  + Colocated compute (JobTarget.colocated())");
+            System.out.println("  + Deployment units (replaces peer class loading)");
+            System.out.println("  + JobDescriptor with builder pattern");
             System.out.println();
+            System.out.println("NOT yet available in 3.x:");
+            System.out.println("  - Full MapReduce (ComputeTask / ComputeTaskAdapter)");
+            System.out.println("  - Service Grid (cluster singletons, node singletons)");
+            System.out.println("  - Broadcast to all nodes");
+            System.out.println("  - Failover SPI (automatic job retry)");
+            System.out.println("  - Load Balancing SPI");
+            System.out.println("  - Java ExecutorService over grid");
 
-            System.out.println("--- Ignite 2.x Compute Features ---");
-            System.out.println("- Broadcast, Call, Run, Apply");
-            System.out.println("- ComputeTask / ComputeTaskAdapter (full MapReduce)");
-            System.out.println("- Affinity-aware compute (affinityRun/Call)");
-            System.out.println("- Service Grid (cluster singletons, node singletons)");
-            System.out.println("- Peer Class Loading (deploy code dynamically)");
-            System.out.println("- Failover SPI (automatic job retry)");
-            System.out.println("- Load Balancing SPI (round-robin, weighted)");
-            System.out.println("- Standard Java ExecutorService");
-
-        } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("\nExercise 11 complete.");
         }
     }
+}
+```
 
-    // MapReduce task: sum a list of integers
-    static class SumTask extends ComputeTaskAdapter<List<Integer>, Integer> {
-        @Override
-        public Map<? extends ComputeJob, ClusterNode> map(
-                List<ClusterNode> nodes, List<Integer> arg) {
-            Map<ComputeJob, ClusterNode> jobs = new HashMap<>();
-            for (Integer num : arg) {
-                // Distribute each number to a node
-                ClusterNode node = nodes.get(num % nodes.size());
-                jobs.put(new ComputeJob() {
-                    @Override
-                    public Integer execute() {
-                        return num * num; // Square each number
-                    }
-                    @Override
-                    public void cancel() {}
-                }, node);
+**Key Takeaway (vs 2.x):** Ignite 2.x had a rich compute API with `ComputeTask`, `broadcast()`, `affinityRun()`, failover, and load balancing. Ignite 3.x provides a streamlined API centered around `JobTarget` and `JobDescriptor`, with colocated compute and deployment units. Full MapReduce and Service Grid are not yet available.
+
+---
+
+### Exercise 12: Compute Workarounds -- Using SQL Aggregations
+
+**Objective:** Demonstrate how SQL aggregations can replace some compute use cases that previously required MapReduce in 2.x.
+
+Create `Ex12_SQLAsCompute.java`:
+
+```java
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+
+public class Ex12_SQLAsCompute {
+
+    public static void main(String[] args) {
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
+
+            System.out.println("=== Exercise 12: SQL as a Compute Replacement ===\n");
+
+            // Setup: create and populate a Sales table
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS Sales (" +
+                "    saleId     INT PRIMARY KEY," +
+                "    region     VARCHAR(50)," +
+                "    product    VARCHAR(100)," +
+                "    amount     DOUBLE," +
+                "    quantity   INT" +
+                ")");
+
+            // Insert sample data
+            String[] inserts = {
+                "INSERT INTO Sales VALUES (1,'North','Widget',150.0,10) ON CONFLICT DO NOTHING",
+                "INSERT INTO Sales VALUES (2,'South','Widget',200.0,15) ON CONFLICT DO NOTHING",
+                "INSERT INTO Sales VALUES (3,'North','Gadget',300.0,5)  ON CONFLICT DO NOTHING",
+                "INSERT INTO Sales VALUES (4,'East','Widget',175.0,12)  ON CONFLICT DO NOTHING",
+                "INSERT INTO Sales VALUES (5,'South','Gadget',250.0,8)  ON CONFLICT DO NOTHING",
+                "INSERT INTO Sales VALUES (6,'East','Gadget',400.0,3)   ON CONFLICT DO NOTHING",
+                "INSERT INTO Sales VALUES (7,'North','Widget',125.0,20) ON CONFLICT DO NOTHING",
+                "INSERT INTO Sales VALUES (8,'South','Widget',180.0,11) ON CONFLICT DO NOTHING"
+            };
+            for (String sql : inserts) {
+                client.sql().execute(null, sql);
             }
-            return jobs;
-        }
 
-        @Override
-        public Integer reduce(List<ComputeJobResult> results) {
-            return results.stream()
-                .mapToInt(r -> (Integer) r.getData())
-                .sum();
+            // --- Aggregation that would have been MapReduce in 2.x ---
+            System.out.println("--- Revenue by Region (replaces MapReduce SUM) ---\n");
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT region, SUM(amount * quantity) AS revenue, " +
+                    "COUNT(*) AS transactions " +
+                    "FROM Sales GROUP BY region ORDER BY revenue DESC")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  %-8s  Revenue: $%,.2f  Transactions: %d%n",
+                        row.stringValue("region"),
+                        row.doubleValue("revenue"),
+                        row.longValue("transactions"));
+                }
+            }
+
+            // --- Top product by quantity ---
+            System.out.println("\n--- Top Product by Quantity (replaces custom reduce) ---\n");
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT product, SUM(quantity) AS total_qty " +
+                    "FROM Sales GROUP BY product ORDER BY total_qty DESC")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  %-10s  Total Qty: %d%n",
+                        row.stringValue("product"),
+                        row.longValue("total_qty"));
+                }
+            }
+
+            // --- Cross-region analytics ---
+            System.out.println("\n--- Region x Product Breakdown ---\n");
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT region, product, SUM(amount) AS total_amount " +
+                    "FROM Sales GROUP BY region, product " +
+                    "ORDER BY region, product")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  %-8s %-10s $%,.2f%n",
+                        row.stringValue("region"),
+                        row.stringValue("product"),
+                        row.doubleValue("total_amount"));
+                }
+            }
+
+            System.out.println("\n--- When SQL replaces Compute ---");
+            System.out.println("Use SQL aggregations for: SUM, AVG, COUNT, MIN, MAX, GROUP BY");
+            System.out.println("Use SQL window functions for: RANK, ROW_NUMBER, running totals");
+            System.out.println("Still need compute for: custom algorithms, external I/O, ML inference");
+
+            System.out.println("\nExercise 12 complete.");
         }
     }
 }
 ```
 
-### Exercise 12: Ignite 3.x Compute (Basic)
-
-Discuss the current state of compute in Ignite 3.x:
-
-```java
-// Ignite 3.x compute - simplified API (still evolving)
-
-// Basic job execution on specific nodes
-// Set<ClusterNode> nodes = client.clusterNodes();
-// client.compute().execute(nodes, MyJob.class, "arg");
-
-// Colocated compute - runs on node owning the key
-// client.compute().executeColocated("tableName",
-//     Tuple.create().set("id", 42), MyJob.class, "arg");
-```
-
-**What's NOT available in Ignite 3.x yet:**
-- Full MapReduce (ComputeTask/ComputeTaskAdapter)
-- Service Grid (deploy cluster singletons)
-- Peer Class Loading
-- Failover SPI (automatic job retry)
-- Load Balancing SPI
-- Java ExecutorService over grid
-
-**Discussion Questions:**
-1. Why would the absence of full MapReduce matter for your use case?
-2. Could you use SQL aggregations instead of compute for some workloads?
-3. When would colocated compute be sufficient vs. full MapReduce?
+**Key Takeaway (vs 2.x):** Many 2.x MapReduce patterns (sum across nodes, group-by aggregations, top-N) can be replaced with SQL `GROUP BY`, `ORDER BY`, and window functions in 3.x. SQL execution in 3.x is distributed and pushes computation to the data nodes automatically.
 
 ---
 
-## Part 7: Data Colocation and Distribution Zones (10 minutes)
+### Q&A -- Part 5
 
-### Exercise 13: Ignite 2.16 Affinity Keys
+**Q1:** How do deployment units differ from peer class loading in 2.x?
+
+**A1:** Peer class loading in 2.x automatically transferred bytecode from the originating node to executing nodes. It was convenient but caused class-loader leaks and version conflicts. Deployment units in 3.x require explicit packaging and versioning (JAR upload via CLI), providing better control and reproducibility.
+
+**Q2:** Can you run a compute job on all nodes simultaneously in 3.x?
+
+**A2:** Broadcast-style compute is not directly available in the thin client API as of 3.1.0. You can iterate over `client.clusterNodes()` and submit individual jobs, but there is no built-in `broadcast()` equivalent yet. For most analytics workloads, SQL aggregations running across all partitions achieve the same effect.
+
+---
+
+## Part 6: Distribution Zones and COLOCATE BY (15 minutes)
+
+### Exercise 13: Creating Zones and Colocated Tables
+
+**Objective:** Create distribution zones and tables with `COLOCATE BY` to ensure related data is partitioned together.
+
+Create `Ex13_ColocatedTables.java`:
 
 ```java
-// In Ignite 2.x, colocation is via @AffinityKeyMapped
-public class OrderKey implements Serializable {
-    @AffinityKeyMapped
-    private int customerId;  // Colocate with customer
-    private int orderId;
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+
+public class Ex13_ColocatedTables {
+
+    public static void main(String[] args) {
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
+
+            System.out.println("=== Exercise 13: Distribution Zones & COLOCATE BY ===\n");
+
+            // Step 1: Create a distribution zone
+            System.out.println("--- Step 1: Create Distribution Zone ---");
+            client.sql().executeScript(
+                "CREATE ZONE IF NOT EXISTS ecommerce_zone " +
+                "WITH replicas=2, partitions=128, storage_profiles='default'");
+            System.out.println("Zone 'ecommerce_zone' created.\n");
+
+            // Step 2: Create a parent table (Customer)
+            System.out.println("--- Step 2: Create Customer table ---");
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS Customer (" +
+                "    customerId INT PRIMARY KEY," +
+                "    name       VARCHAR(200)," +
+                "    email      VARCHAR(200)" +
+                ") WITH PRIMARY_ZONE='ECOMMERCE_ZONE'");
+            System.out.println("Table 'Customer' created in ecommerce_zone.\n");
+
+            // Step 3: Create colocated child table (CustomerOrder)
+            System.out.println("--- Step 3: Create colocated CustomerOrder table ---");
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS CustomerOrder (" +
+                "    orderId    INT," +
+                "    customerId INT," +
+                "    product    VARCHAR(200)," +
+                "    amount     DOUBLE," +
+                "    PRIMARY KEY (orderId, customerId)" +
+                ") COLOCATE BY (customerId)" +
+                "  WITH PRIMARY_ZONE='ECOMMERCE_ZONE'");
+            System.out.println("Table 'CustomerOrder' colocated by customerId.\n");
+
+            // Step 4: Insert data
+            System.out.println("--- Step 4: Insert data ---");
+            client.sql().execute(null,
+                "INSERT INTO Customer VALUES (1, 'Alice Morgan', 'alice@example.com') ON CONFLICT DO NOTHING");
+            client.sql().execute(null,
+                "INSERT INTO Customer VALUES (2, 'Bob Chen', 'bob@example.com') ON CONFLICT DO NOTHING");
+
+            String[] orders = {
+                "INSERT INTO CustomerOrder VALUES (101, 1, 'Laptop', 999.99) ON CONFLICT DO NOTHING",
+                "INSERT INTO CustomerOrder VALUES (102, 1, 'Mouse', 29.99)   ON CONFLICT DO NOTHING",
+                "INSERT INTO CustomerOrder VALUES (103, 2, 'Keyboard', 79.99) ON CONFLICT DO NOTHING",
+                "INSERT INTO CustomerOrder VALUES (104, 2, 'Monitor', 549.00) ON CONFLICT DO NOTHING",
+                "INSERT INTO CustomerOrder VALUES (105, 1, 'USB Hub', 45.00)  ON CONFLICT DO NOTHING"
+            };
+            for (String sql : orders) {
+                client.sql().execute(null, sql);
+            }
+            System.out.println("Inserted 2 customers and 5 orders.\n");
+
+            // Step 5: Colocated JOIN -- efficient because data is on the same node
+            System.out.println("--- Step 5: Colocated JOIN ---");
+            System.out.println("Because Customer and CustomerOrder are COLOCATE BY customerId,");
+            System.out.println("this JOIN executes locally on each partition (no network shuffle).\n");
+
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT c.name, o.orderId, o.product, o.amount " +
+                    "FROM Customer c " +
+                    "JOIN CustomerOrder o ON c.customerId = o.customerId " +
+                    "ORDER BY c.name, o.orderId")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  %-15s Order#%d  %-10s $%.2f%n",
+                        row.stringValue("name"),
+                        row.intValue("orderId"),
+                        row.stringValue("product"),
+                        row.doubleValue("amount"));
+                }
+            }
+
+            // Step 6: Aggregation per customer
+            System.out.println("\n--- Step 6: Per-customer totals ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT c.name, COUNT(o.orderId) AS order_count, " +
+                    "SUM(o.amount) AS total_spent " +
+                    "FROM Customer c " +
+                    "JOIN CustomerOrder o ON c.customerId = o.customerId " +
+                    "GROUP BY c.name ORDER BY total_spent DESC")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  %-15s  Orders: %d  Total: $%,.2f%n",
+                        row.stringValue("name"),
+                        row.longValue("order_count"),
+                        row.doubleValue("total_spent"));
+                }
+            }
+
+            System.out.println("\nExercise 13 complete.");
+        }
+    }
 }
-
-// Orders for same customer are on same node
-CacheConfiguration<OrderKey, Order> orderCfg = new CacheConfiguration<>("orders");
-orderCfg.setBackups(1);
-
-// Affinity function controls partitioning
-RendezvousAffinityFunction af = new RendezvousAffinityFunction();
-af.setPartitions(1024);
-orderCfg.setAffinity(af);
-
-// Run compute on the node owning the data
-ignite.compute().affinityRun("orders", customerId, () -> {
-    // Local data access - fast!
-});
 ```
 
-### Exercise 14: Ignite 3.x Distribution Zones
+**Expected Output:**
+```
+--- Step 5: Colocated JOIN ---
+  Alice Morgan    Order#101  Laptop     $999.99
+  Alice Morgan    Order#102  Mouse      $29.99
+  Alice Morgan    Order#105  USB Hub    $45.00
+  Bob Chen        Order#103  Keyboard   $79.99
+  Bob Chen        Order#104  Monitor    $549.00
 
-```bash
-# Create zones with different storage and replication
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 sql \
-  "CREATE ZONE IF NOT EXISTS hot_zone WITH replicas=3, partitions=256, storage_profiles='default'"
-
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 sql \
-  "CREATE ZONE IF NOT EXISTS cold_zone WITH replicas=1, partitions=64, storage_profiles='default'"
-
-# Create tables in specific zones
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 sql \
-  "CREATE TABLE IF NOT EXISTS sessions (id INT PRIMARY KEY, data VARCHAR) WITH PRIMARY_ZONE='hot_zone'"
-
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 sql \
-  "CREATE TABLE IF NOT EXISTS audit_log (id INT PRIMARY KEY, event VARCHAR) WITH PRIMARY_ZONE='cold_zone'"
-
-# Colocation via COLOCATE BY
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 sql \
-  "CREATE TABLE IF NOT EXISTS customers (id INT PRIMARY KEY, name VARCHAR) WITH PRIMARY_ZONE='hot_zone'"
-
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 sql \
-  "CREATE TABLE IF NOT EXISTS orders (
-    orderId INT,
-    customerId INT,
-    amount DECIMAL,
-    PRIMARY KEY (orderId, customerId)
-  ) COLOCATE BY (customerId) WITH PRIMARY_ZONE='hot_zone'"
+--- Step 6: Per-customer totals ---
+  Alice Morgan     Orders: 3  Total: $1,074.98
+  Bob Chen         Orders: 2  Total: $628.99
 ```
 
-**Key Differences:**
-| Aspect | Ignite 2.16 | Ignite 3.x |
-|--------|-------------|------------|
-| Colocation | @AffinityKeyMapped annotation | COLOCATE BY clause in SQL |
-| Placement Control | Affinity function per cache | Distribution Zones |
-| Storage per Table | Same engine for all | Different per zone profile |
-| Replication Factor | Backups per cache | Replicas per zone |
+**Key Takeaway (vs 2.x):** In 2.x, colocation was achieved via `@AffinityKeyMapped` on a Java field and configured per cache. In 3.x, `COLOCATE BY (column)` in the DDL statement is declarative and language-agnostic. Any client in any language benefits from the same colocation.
 
 ---
 
-## Part 8: Monitoring Comparison (5 minutes)
+### Exercise 14: Inspecting Zones and Storage Profiles
 
-### Exercise 15: Ignite 2.16 Metrics
+**Objective:** Query system views to inspect zone configuration and verify colocation.
+
+Create `Ex14_InspectZones.java`:
 
 ```java
-// In your Ignite 2.x application:
-ClusterMetrics metrics = ignite.cluster().metrics();
-System.out.println("Total CPUs: " + metrics.getTotalCpus());
-System.out.println("Heap used: " + metrics.getHeapMemoryUsed());
-System.out.println("Total nodes: " + metrics.getTotalNodes());
+package com.example.ignite3;
 
-// Cache metrics
-CacheMetrics cm = cache.metrics();
-System.out.println("Cache hits: " + cm.getCacheHits());
-System.out.println("Cache misses: " + cm.getCacheMisses());
-System.out.println("Cache size: " + cm.getCacheSize());
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
 
-// JMX is the primary monitoring interface
-// Access via JConsole, VisualVM, or monitoring tools
+public class Ex14_InspectZones {
+
+    public static void main(String[] args) {
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
+
+            System.out.println("=== Exercise 14: Inspect Zones & Storage Profiles ===\n");
+
+            // List all distribution zones
+            System.out.println("--- Distribution Zones ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.ZONES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  Zone: %-20s  Replicas: %d  Partitions: %d%n",
+                        row.stringValue("NAME"),
+                        row.intValue("REPLICAS"),
+                        row.intValue("PARTITIONS"));
+                }
+            }
+
+            // List all tables and their zones
+            System.out.println("\n--- Tables and Zones ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.TABLES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  Table: %-20s  Schema: %s%n",
+                        row.stringValue("NAME"),
+                        row.stringValue("SCHEMA_NAME"));
+                }
+            }
+
+            // Discuss storage profiles
+            System.out.println("\n--- Storage Profiles ---");
+            System.out.println("Ignite 3.x supports multiple storage engines:");
+            System.out.println("  aimem     - Volatile in-memory (fastest, no persistence)");
+            System.out.println("  aipersist - Page memory + disk persistence (balanced)");
+            System.out.println("  rocksdb   - LSM-tree on disk (large datasets, write-optimised)");
+            System.out.println();
+            System.out.println("In 2.x, all caches used the same B+ tree page memory engine.");
+            System.out.println("In 3.x, you choose the engine per zone via storage_profiles.");
+
+            System.out.println("\nExercise 14 complete.");
+        }
+    }
+}
 ```
 
-### Exercise 16: Ignite 3.x Monitoring via REST and CLI
-
-```bash
-# Cluster status
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 cluster status
-
-# Node status
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 node status
-
-# REST API for metrics (built-in)
-curl http://localhost:10300/management/v1/cluster/state
-
-# View cluster topology
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 cluster topology physical
-```
-
-**Key Differences:**
-- 2.x: JMX-based, `cluster().metrics()`, requires JMX agents for remote monitoring
-- 3.x: REST API built-in, CLI commands, OpenMetrics/Prometheus-compatible format
+**Key Takeaway (vs 2.x):** In 2.x, all data used a single storage engine. In 3.x, distribution zones can reference different storage profiles, allowing hot data to use `aimem` (fast, volatile) while cold data uses `rocksdb` (disk-based, write-optimized) within the same cluster.
 
 ---
 
-## Part 9: Side-by-Side Comparison Summary (5 minutes)
+### Q&A -- Part 6
 
-### Exercise 17: Complete Comparison Chart
+**Q1:** What happens if two tables in the same zone use `COLOCATE BY` on the same column value?
 
-Review and discuss the comprehensive differences:
+**A1:** Rows from both tables with the same colocation key value will be stored on the same partition (and therefore the same node). This is exactly the point: JOINs between these tables on that column are local and avoid network shuffles.
 
-| Aspect | Ignite 2.16 | Ignite 3.x |
+**Q2:** Can you change a table's zone after creation?
+
+**A2:** No. The zone is set at table creation time. To move a table to a different zone, you would need to create a new table in the target zone and migrate the data. This is a design-time decision.
+
+**Q3:** How does COLOCATE BY relate to the PRIMARY KEY?
+
+**A3:** The colocation columns must be a prefix of or included in the primary key. This ensures the partitioning algorithm can compute the target partition from the key alone, which is required for efficient single-key lookups.
+
+---
+
+## Part 7: Monitoring (10 minutes)
+
+### Exercise 15: REST API and CLI Monitoring
+
+**Objective:** Monitor the Ignite 3.x cluster using the built-in REST API and CLI.
+
+**Step 1:** CLI monitoring commands.
+
+```bash
+# Cluster state
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster state
+
+# Physical topology (all nodes)
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster topology physical
+
+# Logical topology (cluster members)
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster topology logical
+
+# Node version
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 node version
+```
+
+**Step 2:** REST API endpoints.
+
+```bash
+# Cluster state
+curl -s http://localhost:10300/management/v1/cluster/state | python3 -m json.tool
+
+# Cluster configuration
+curl -s http://localhost:10300/management/v1/configuration/cluster | python3 -m json.tool
+
+# Node configuration
+curl -s http://localhost:10300/management/v1/configuration/node | python3 -m json.tool
+```
+
+**Step 3:** System views from Java.
+
+```java
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+
+public class Ex15_Monitoring {
+
+    public static void main(String[] args) {
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
+
+            System.out.println("=== Exercise 15: Monitoring ===\n");
+
+            // System views
+            System.out.println("--- SYSTEM.TABLES ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.TABLES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.println("  " + row.stringValue("NAME"));
+                }
+            }
+
+            System.out.println("\n--- SYSTEM.ZONES ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.ZONES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  %-20s replicas=%d partitions=%d%n",
+                        row.stringValue("NAME"),
+                        row.intValue("REPLICAS"),
+                        row.intValue("PARTITIONS"));
+                }
+            }
+
+            System.out.println("\n--- SYSTEM.NODES ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.NODES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.println("  Node: " + row.stringValue("NAME")
+                        + "  ID: " + row.stringValue("ID"));
+                }
+            }
+
+            System.out.println("\nExercise 15 complete.");
+        }
+    }
+}
+```
+
+**Key Takeaway (vs 2.x):** In 2.x, monitoring relied on JMX beans and programmatic `ClusterMetrics`. In 3.x, monitoring is available via REST API (port 10300), CLI commands, and SQL system views (`SYSTEM.TABLES`, `SYSTEM.ZONES`, `SYSTEM.NODES`).
+
+---
+
+### Exercise 16: OpenMetrics and Prometheus Integration
+
+**Objective:** Understand how Ignite 3.x exposes metrics in OpenMetrics format for Prometheus scraping.
+
+```bash
+# OpenMetrics endpoint (Prometheus-compatible)
+curl -s http://localhost:10300/management/v1/metric/node | head -50
+
+# If the endpoint returns metrics, you can configure Prometheus to scrape it:
+echo ""
+echo "=== Prometheus Configuration ==="
+echo "Add to prometheus.yml:"
+echo ""
+echo "scrape_configs:"
+echo "  - job_name: 'ignite3'"
+echo "    metrics_path: '/management/v1/metric/node'"
+echo "    static_configs:"
+echo "      - targets: ['localhost:10300']"
+echo ""
+echo "=== Key Metrics to Watch ==="
+echo "  ignite_sql_*       - SQL query stats"
+echo "  ignite_tx_*        - Transaction stats"
+echo "  ignite_compute_*   - Compute job stats"
+echo "  ignite_storage_*   - Storage engine stats"
+echo ""
+echo "=== vs Ignite 2.x ==="
+echo "2.x: JMX only (JConsole, VisualVM, JMX-to-Prometheus exporters)"
+echo "3.x: Native REST + OpenMetrics (Prometheus-ready out of the box)"
+```
+
+**Key Takeaway (vs 2.x):** Ignite 2.x required JMX exporters for Prometheus integration. Ignite 3.x has built-in REST endpoints that serve metrics in OpenMetrics format, making observability setup significantly simpler.
+
+---
+
+### Q&A -- Part 7
+
+**Q1:** Can you create custom metrics in Ignite 3.x?
+
+**A1:** Custom application metrics are not natively supported in the Ignite metrics framework. For application-level metrics, use standard libraries (Micrometer, Dropwizard Metrics) in your application and export alongside Ignite metrics.
+
+**Q2:** How do you monitor query performance in 3.x?
+
+**A2:** Use the SQL system views and REST metrics endpoint. You can also enable SQL query logging via the cluster configuration. In 2.x, you used `SqlFieldsQuery.setLazy()` and cache query metrics.
+
+---
+
+## Part 8: Complete Comparison Summary (10 minutes)
+
+### Exercise 17: Architecture, API, and Feature Matrix
+
+**Objective:** Build a comprehensive comparison chart and migration checklist.
+
+Review the following comparison matrix:
+
+| Aspect | Ignite 2.x | Ignite 3.x |
 |--------|-------------|------------|
-| **Philosophy** | Cache-first | Schema-first |
+| **Philosophy** | Cache-first | Schema-first (SQL DDL) |
 | **Java Version** | Java 8+ | Java 11+ |
-| **Configuration** | Spring XML / Java code | HOCON / CLI |
+| **Configuration** | Spring XML / Java code | HOCON / CLI / REST |
 | **Config Changes** | Requires restart | Dynamic (many settings) |
 | **Discovery** | Ring topology (TcpDiscoverySpi) | SWIM gossip protocol |
 | **Discovery Port** | 47500 | 3344 |
-| **Cluster Lifecycle** | Auto-forms on discovery | Explicit `cluster init` |
-| **Activation** | ACTIVE / INACTIVE states | Always active after init |
-| **Baseline Topology** | Manual management | Automatic (RAFT) |
-| **Primary API** | Cache API | Table API |
-| **Schema Definition** | Java annotations | SQL DDL |
-| **Schema Evolution** | Limited (add fields) | Full DDL (add/drop/alter) |
-| **SQL Support** | Layered on cache (H2/Calcite) | First-class (Calcite only) |
-| **SQL Transactions** | Limited | Full support |
-| **Transaction Model** | PESSIMISTIC/OPTIMISTIC | Strictly serializable |
-| **Client Model** | Thick vs Thin | Unified |
+| **Communication Port** | 47100 | 3344 (shared) |
+| **Client Port** | 10800 | 10800 |
+| **REST Port** | 8080 (Jetty) | 10300 |
+| **Cluster Formation** | Auto-forms on discovery | Explicit `cluster init` |
 | **Consensus** | Custom protocol | RAFT |
-| **Storage** | Single engine | Pluggable (aimem/aipersist/RocksDB) |
-| **Data Colocation** | @AffinityKeyMapped | COLOCATE BY in DDL |
+| **Activation** | ACTIVE / INACTIVE / READ_ONLY | Always active after init |
+| **Baseline Topology** | Manual management | Automatic (RAFT) |
+| **Primary API** | Cache API (`IgniteCache`) | Table API (`RecordView`, `KeyValueView`) |
+| **Schema Definition** | Java annotations (`@QuerySqlField`) | SQL DDL (`CREATE TABLE`) |
+| **Schema Evolution** | Limited | Full DDL (`ALTER TABLE ADD/DROP COLUMN`) |
+| **SQL Engine** | H2 (legacy) / Calcite | Calcite only |
+| **SQL Transactions** | Limited | Full support |
+| **SQL+KV in one TX** | No | Yes |
+| **Transaction Model** | PESSIMISTIC/OPTIMISTIC + isolation levels | Strictly serializable |
+| **Client Model** | Thick vs Thin | Unified thin client |
+| **Storage Engines** | Single (page memory) | Pluggable (aimem, aipersist, RocksDB) |
+| **Data Colocation** | `@AffinityKeyMapped` | `COLOCATE BY` in DDL |
 | **Data Placement** | Affinity function per cache | Distribution Zones |
-| **Compute Grid** | Full (MapReduce, services) | Basic (evolving) |
+| **Compute: Basic** | Yes (call, run, broadcast) | Yes (JobTarget, JobDescriptor) |
+| **Compute: MapReduce** | Yes (ComputeTask) | Not yet |
+| **Compute: Service Grid** | Yes | Not yet |
+| **Compute: Peer Class Loading** | Yes | No (deployment units instead) |
 | **Serialization** | BinaryMarshaller | Schema-based internal |
-| **Security** | Plugin-based (limited OSS) | Built-in auth/authz |
-| **Monitoring** | JMX primary | REST API + JMX |
-| **Async API** | IgniteFuture (custom) | CompletableFuture (standard) |
+| **Async API** | `IgniteFuture` (custom) | `CompletableFuture` (standard Java) |
+| **Monitoring** | JMX primary | REST API + CLI + OpenMetrics |
+| **System Views** | Limited SQL views | `SYSTEM.TABLES`, `SYSTEM.ZONES`, `SYSTEM.NODES` |
 | **Continuous Queries** | Yes | Not yet |
 | **Near Cache** | Yes | Not yet |
-| **Service Grid** | Yes | Not yet |
 | **Spring Data** | Yes | Not yet |
-| **Hibernate L2** | Yes | Not yet |
-| **Kafka Connector** | Yes | Not yet |
+| **Hibernate L2 Cache** | Yes | Not yet |
+
+### Migration Checklist
+
+If migrating from Ignite 2.x to 3.x, follow this checklist:
+
+1. **Schema**: Convert `@QuerySqlField` annotations and cache configs to `CREATE TABLE` / `CREATE ZONE` DDL statements.
+2. **Configuration**: Convert Spring XML / `IgniteConfiguration` Java code to HOCON files.
+3. **Client code**: Replace `Ignition.start()` with `IgniteClient.builder().addresses(...).build()`.
+4. **CRUD operations**: Replace `cache.put()/get()` with `RecordView.upsert()/get()` or `KeyValueView.put()/get()`.
+5. **SQL queries**: Replace `cache.query(new SqlFieldsQuery(...))` with `client.sql().execute(null, ...)`.
+6. **Transactions**: Remove `TransactionConcurrency`/`TransactionIsolation` parameters. Use `client.transactions().begin()`.
+7. **Colocation**: Replace `@AffinityKeyMapped` with `COLOCATE BY` in table DDL.
+8. **Compute**: Rewrite `ComputeTask` implementations. Use SQL aggregations where possible. Use `JobTarget`/`JobDescriptor` for remaining compute needs.
+9. **Monitoring**: Replace JMX tooling with REST API and Prometheus scraping.
+10. **Testing**: Verify transaction semantics (strictly serializable may surface concurrency bugs that 2.x hid).
+
+Create `Ex17_ComparisonSummary.java`:
+
+```java
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+
+public class Ex17_ComparisonSummary {
+
+    public static void main(String[] args) {
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
+
+            System.out.println("=== Exercise 17: Ignite 3.x Cluster Summary ===\n");
+
+            // Confirm connection
+            System.out.println("Connected to cluster.\n");
+
+            // Show all tables
+            System.out.println("--- All Tables ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.TABLES")) {
+                int count = 0;
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  %s.%s%n",
+                        row.stringValue("SCHEMA_NAME"),
+                        row.stringValue("NAME"));
+                    count++;
+                }
+                System.out.println("  Total: " + count + " tables\n");
+            }
+
+            // Show all zones
+            System.out.println("--- All Distribution Zones ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.ZONES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  %-20s  replicas=%d  partitions=%d%n",
+                        row.stringValue("NAME"),
+                        row.intValue("REPLICAS"),
+                        row.intValue("PARTITIONS"));
+                }
+            }
+
+            // Show all nodes
+            System.out.println("\n--- Cluster Nodes ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.NODES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.println("  " + row.stringValue("NAME")
+                        + "  " + row.stringValue("ID"));
+                }
+            }
+
+            System.out.println("\n=== Key Takeaways ===");
+            System.out.println("1. Ignite 3.x is a ground-up rewrite, not an incremental upgrade");
+            System.out.println("2. Schema-first design with SQL DDL makes it RDBMS-friendly");
+            System.out.println("3. RAFT consensus provides formally proven consistency");
+            System.out.println("4. Unified client model eliminates thick/thin confusion");
+            System.out.println("5. Distribution Zones decouple placement from table definitions");
+            System.out.println("6. Mixed SQL+KV transactions are a major new capability");
+            System.out.println("7. Some 2.x features (MapReduce, Service Grid, near cache) are not yet ported");
+            System.out.println("8. Migration requires a full rewrite -- no drop-in upgrade path");
+
+            System.out.println("\nExercise 17 complete.");
+        }
+    }
+}
+```
 
 ---
 
-## Verification Steps
+### Q&A -- Part 8
 
-### Checklist
-- [ ] Created separate project directories for 2.16 and 3.x
-- [ ] Successfully started Ignite 2.16 node
-- [ ] Successfully started Ignite 3.x via Docker
-- [ ] Explored discovery configuration differences (ring vs SWIM)
-- [ ] Compared cluster lifecycle (auto-form vs explicit init)
-- [ ] Ran programmatic configuration demo (2.16)
-- [ ] Explored HOCON configuration and dynamic updates (3.x)
-- [ ] Ran Cache API demo (2.16) with BinaryObject access
-- [ ] Ran Table API demo (3.x) with RecordView and KeyValueView
-- [ ] Compared transaction models (PESSIMISTIC vs strictly serializable)
-- [ ] Explored compute grid differences (full vs basic)
-- [ ] Compared data colocation (affinity keys vs distribution zones)
-- [ ] Explored monitoring differences (JMX vs REST)
-- [ ] Understood schema evolution capabilities
+**Q1:** Is there a direct migration tool from Ignite 2.x to 3.x?
 
-### Common Issues and Solutions
+**A1:** There is no automated migration tool. The APIs, configuration formats, and wire protocols are entirely different. Migration requires recreating schemas via DDL, rewriting application code, and migrating data via export/import or dual-write strategies.
 
-**Issue 1: Ignite 3 Docker container not starting**
-```bash
-# Check container logs
-docker logs ignite3-node
+**Q2:** When should a team stay on Ignite 2.x instead of moving to 3.x?
 
-# Restart container
-docker rm -f ignite3-node
-docker run -d --name ignite3-node -p 10300:10300 -p 10800:10800 apacheignite/ignite:3.0.0
-```
+**A2:** Stay on 2.x if your application critically depends on MapReduce compute, Service Grid, continuous queries, near caches, or Spring/Hibernate integrations. Also stay on 2.x if you need a mature, battle-tested platform with a large ecosystem. Choose 3.x for greenfield projects that are SQL-heavy, need strict serializability, or want pluggable storage engines.
 
-**Issue 2: Cannot connect to Ignite 3**
-```bash
-# Verify cluster is initialized
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 cluster status
+**Q3:** Will Ignite 2.x continue to receive updates?
 
-# Re-initialize if needed
-docker exec -it ignite3-node /opt/ignite/bin/ignite3 cluster init --name=myCluster --meta-storage-node=defaultNode
-```
-
-**Issue 3: Port conflicts**
-```
-# Use different ports
-docker run -d --name ignite3-node -p 10301:10300 -p 10801:10800 apacheignite/ignite:3.0.0
-# Update client connection: .addresses("localhost:10801")
-```
-
-**Issue 4: Java version issues**
-```bash
-# Ignite 3.x requires Java 11+
-java -version
-# If Java 8, upgrade or use SDKMAN:
-sdk install java 11.0.21-tem
-sdk use java 11.0.21-tem
-```
-
----
-
-## Lab Questions
-
-1. What is the fundamental philosophical difference between Ignite 2.x (cache-first) and 3.x (schema-first)? How does this affect application design?
-
-2. Why did Apache Ignite 3.x adopt the RAFT consensus algorithm instead of the 2.x custom replication protocol? What guarantees does RAFT provide?
-
-3. What are the three storage engine options in Ignite 3.x, and when would you use each? Why can't Ignite 2.x offer per-table engine selection?
-
-4. Explain the difference between Ignite 2.x discovery (ring topology) and 3.x discovery (SWIM gossip). Which is more scalable and why?
-
-5. Why does Ignite 3.x not have thick vs. thin clients? What advantage does the unified client model provide?
-
-6. What are Distribution Zones in Ignite 3.x? How do they compare to Ignite 2.x cache-level backup configuration?
-
-7. Why is Ignite 2.x's Compute Grid (MapReduce, Service Grid) not yet available in 3.x? What alternatives exist?
-
-8. Compare how transactions work in 2.x (PESSIMISTIC/OPTIMISTIC with isolation levels) vs. 3.x (strictly serializable). Which is simpler for developers?
-
-9. Can you migrate directly from Ignite 2.x to 3.x? What are the steps required?
-
-10. Given a new project that needs SQL-heavy workloads with strong consistency, which version would you choose and why? What if the project also needs MapReduce?
-
----
-
-## Answers
-
-1. **Cache-first (2.x):** Data is defined by Java classes and accessed via Cache API (put/get). SQL is an optional layer on top. Applications think in terms of caches and keys. **Schema-first (3.x):** Data structure is defined via SQL DDL before any data is stored. Applications can then access data via Table API, KeyValueView, or SQL equally. This makes 3.x more natural for teams coming from RDBMS backgrounds and enables language-agnostic schema management.
-
-2. **RAFT** provides formally proven consistency guarantees: leader election, log replication, and safety properties. It ensures linearizable reads and writes, automatic leader election on failure, and built-in split-brain protection. The 2.x custom protocol lacked these formal guarantees and was harder to reason about under network partitions. RAFT is also an industry-standard algorithm used by etcd, CockroachDB, and TiKV.
-
-3. **aimem:** Pure in-memory, volatile storage - lowest latency, no durability. Use for caching, sessions, temp data that fits in RAM. **aipersist:** Memory-first with disk persistence - balanced latency and durability. Use for general OLTP workloads. **RocksDB:** LSM-tree disk-based - handles datasets larger than RAM, write-optimized. Use for write-heavy workloads or large datasets. Ignite 2.x uses a single B+ tree page-based engine for all caches, so you cannot choose per-table.
-
-4. **Ring topology (2.x):** Each node knows its "next" neighbor. Messages travel around the ring sequentially. Failure detected by neighbor. Message propagation is O(n) - slow with many nodes. Ring must be rebuilt on topology changes. **SWIM gossip (3.x):** Randomized probing - each node periodically probes random peers. Failure detection converges in O(log n) time. More resilient to cascading failures. SWIM is more scalable because information spreads exponentially rather than linearly.
-
-5. In 2.x, **thick clients** join the cluster (full topology awareness, compute, peer class loading) but add cluster overhead. **Thin clients** are lightweight but lack compute, continuous queries, and initially transactions. Developers had to choose and accept trade-offs. In 3.x, the **unified client** provides all features via a single protocol. Clients never join the cluster (no overhead), and all languages get identical capabilities. This simplifies architecture and reduces operational complexity.
-
-6. **Distribution Zones** are Ignite 3.x's way of controlling data placement at a higher level. A zone defines replicas count, partition count, and which storage profile to use. Multiple tables can share a zone. This replaces Ignite 2.x's per-cache backup count and affinity function configuration. Zones also support tiered storage (hot/warm/cold) by assigning different zones to tables with different access patterns, and the COLOCATE BY clause replaces the @AffinityKeyMapped annotation.
-
-7. Ignite 3.x is a ground-up rewrite prioritizing core data management (storage, SQL, transactions, RAFT) first. Compute features are being added incrementally. Basic job execution and colocated compute exist, but full MapReduce (ComputeTask), Service Grid, peer class loading, and failover SPI are not yet available. **Alternatives:** Use SQL aggregations (SUM, AVG, GROUP BY) for data processing; use application-level parallelism with colocated compute for key-based processing; or stay on Ignite 2.x if compute is critical.
-
-8. **Ignite 2.x:** Developers must choose between PESSIMISTIC/OPTIMISTIC concurrency and READ_COMMITTED/REPEATABLE_READ/SERIALIZABLE isolation. Wrong choices can lead to deadlocks or inconsistencies. SQL and KV cannot easily mix in one transaction. **Ignite 3.x:** Always strictly serializable, no concurrency/isolation choice needed. SQL and KV operations can mix in the same transaction. This is much simpler and matches RDBMS behavior, reducing bugs from incorrect transaction configuration.
-
-9. **No direct migration path.** Steps: (1) Set up a new Ignite 3.x cluster alongside 2.x; (2) Recreate schema using SQL DDL; (3) Migrate data via export/import or dual-write; (4) Update all application code (Cache API -> Table API, Ignition.start -> IgniteClient.builder, SqlFieldsQuery -> client.sql()); (5) Replace integrations (Spring XML -> HOCON, check availability of Spring Data, Hibernate, Kafka connectors); (6) Test thoroughly (different behavior under failures, different transaction semantics); (7) Cut over when ready. Ignite 3.1+ provides migration tools (DDL generator, data export/import).
-
-10. For **SQL-heavy with strong consistency:** Ignite 3.x is the clear choice - SQL is first-class, transactions are strictly serializable by default, RAFT guarantees consistency, and schema is managed via DDL. However, if **MapReduce is also needed**, you face a trade-off: (a) Use 3.x and replace MapReduce with SQL aggregations or colocated compute where possible, or (b) Use 2.x if MapReduce is critical and SQL-first is nice-to-have. A third option: Run both - use 3.x for the SQL workload and 2.x for compute, with data synchronization between them.
+**A3:** Apache Ignite 2.x is in maintenance mode. It receives security fixes and critical bug patches, but new feature development is focused on the 3.x line. Plan for an eventual migration.
 
 ---
 
 ## Cleanup
 
 ```bash
-# Stop Ignite 3 Docker container
-docker stop ignite3-node
-docker rm ignite3-node
+# Drop tables (run from Java or CLI)
+# client.sql().execute(null, "DROP TABLE IF EXISTS CustomerOrder");
+# client.sql().execute(null, "DROP TABLE IF EXISTS Customer");
+# client.sql().execute(null, "DROP TABLE IF EXISTS Product");
+# client.sql().execute(null, "DROP TABLE IF EXISTS Sales");
+# client.sql().execute(null, "DROP TABLE IF EXISTS Account");
+# client.sql().execute(null, "DROP TABLE IF EXISTS AuditLog");
+# client.sql().execute(null, "DROP TABLE IF EXISTS Person");
 
-# Clean up project directories (optional)
-rm -rf version-comparison/
+# Stop and remove Docker container
+docker stop ignite3-node1
+docker rm ignite3-node1
 ```
 
 ---
 
-## Next Steps
+## Verification Checklist
 
-After completing this lab, you should:
-- Understand when to choose Ignite 2.x vs 3.x for new projects
-- Be able to evaluate migration effort for existing 2.x deployments
-- Know the key API, configuration, and architecture differences
-- Understand the compute grid and integration ecosystem gaps in 3.x
-- Be prepared to make informed version selection decisions
+- [ ] Started Ignite 3.x cluster via Docker and initialised it
+- [ ] Connected via `IgniteClient` thin client (Exercise 2)
+- [ ] Explored SWIM discovery and RAFT via CLI and REST (Exercise 1)
+- [ ] Viewed and updated dynamic configuration via CLI (Exercises 3-4)
+- [ ] Created distribution zones (Exercise 5)
+- [ ] Used `RecordView<Tuple>` for CRUD (Exercise 6)
+- [ ] Used `RecordView<POJO>` for typed access (Exercise 7)
+- [ ] Used `KeyValueView` and SQL queries (Exercise 8)
+- [ ] Executed manual transactions with commit/rollback (Exercise 9)
+- [ ] Mixed SQL and KV in a single transaction (Exercise 10)
+- [ ] Explored compute API and deployment units (Exercise 11)
+- [ ] Used SQL aggregations as compute replacement (Exercise 12)
+- [ ] Created colocated tables with `COLOCATE BY` (Exercise 13)
+- [ ] Inspected zones and storage profiles via system views (Exercise 14)
+- [ ] Monitored cluster via REST, CLI, and system views (Exercises 15-16)
+- [ ] Reviewed complete comparison matrix and migration checklist (Exercise 17)
+
+---
 
 ## Additional Resources
 
-- [Apache Ignite 3.0 Documentation](https://ignite.apache.org/docs/ignite3/latest/)
-- [What's New in Apache Ignite 3.0](https://ignite.apache.org/blog/whats-new-in-apache-ignite-3-0.html)
-- [Ignite 2.16 Release Notes](https://ignite.apache.org/releases/2.16.0/release_notes.html)
-- [Getting to Know Apache Ignite 3](https://ignite.apache.org/blog/getting-to-know-apache-ignite-3.html)
+- [Apache Ignite 3.x Documentation](https://ignite.apache.org/docs/ignite3/latest/)
+- [Ignite 3 Table API Guide](https://ignite.apache.org/docs/ignite3/latest/developers-guide/table-api)
+- [Ignite 3 SQL Reference](https://ignite.apache.org/docs/ignite3/latest/sql-reference/ddl)
+- [Ignite 3 Distribution Zones](https://ignite.apache.org/docs/ignite3/latest/administrators-guide/distribution-zones)
 - [RAFT Consensus Algorithm](https://raft.github.io/)
 - [SWIM Protocol Paper](https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf)
-
-## Completion
-
-Once you can successfully:
-- Set up and run both Ignite 2.16 and 3.x
-- Explain discovery, lifecycle, and configuration differences
-- Use both Cache API (2.x) and Table API (3.x)
-- Understand transaction model and compute grid differences
-- Compare data colocation, security, and monitoring approaches
-- Make informed decisions about which version to use
-
-You have completed Lab 13: Version Differences!
+- [Apache Ignite GitHub Repository](https://github.com/apache/ignite-3)
