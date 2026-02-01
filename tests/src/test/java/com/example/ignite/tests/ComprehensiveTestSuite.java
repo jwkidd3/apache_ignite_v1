@@ -5,30 +5,29 @@ import org.junit.platform.suite.api.Suite;
 import org.junit.platform.suite.api.SuiteDisplayName;
 
 /**
- * Comprehensive Test Suite for All 13 Apache Ignite Labs
+ * Comprehensive Test Suite for All 12 Apache Ignite Labs
  *
  * This suite runs all tests covering 100% of lab operations:
  *
  * Day 1 (Labs 1-4):
- * - Lab01: Environment Setup (16 tests)
- * - Lab02: Multi-Node Cluster (14 tests)
- * - Lab03: Basic Cache Operations (23 tests)
- * - Lab04: Configuration and Deployment (20 tests)
+ * - Lab01: Environment Setup
+ * - Lab02: Multi-Node Cluster
+ * - Lab03: Basic Cache Operations
+ * - Lab04: Configuration and Deployment
  *
  * Day 2 (Labs 5-8):
- * - Lab05: Data Modeling and Persistence (8 tests)
- * - Lab06: SQL and Indexing (covered in SQL tests)
- * - Lab07: Transactions and ACID (covered in transaction tests)
- * - Lab08: Advanced Caching Patterns (covered in advanced tests)
+ * - Lab05: Data Modeling and Persistence
+ * - Lab06: SQL and Indexing
+ * - Lab07: Transactions and ACID
+ * - Lab08: Advanced Caching Patterns
  *
- * Day 3 (Labs 9-13):
+ * Day 3 (Labs 9-12):
  * - Lab09: Compute Grid Fundamentals
  * - Lab10: Integration and Connectivity
  * - Lab11: Performance Tuning and Monitoring
- * - Lab12: Production Deployment
- * - Lab13: Version Differences (2.x vs 3.x) (31 tests)
+ * - Lab12: Version Differences (2.x vs 3.x)
  *
- * Total Coverage: 300+ tests covering all operations
+ * Total Coverage: 273 tests covering all operations
  * Expected Pass Rate: 100%
  */
 @Suite

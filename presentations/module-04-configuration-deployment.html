@@ -22,7 +22,7 @@
         .reveal h2 { font-size: 1.4em; }
         .reveal h3 { font-size: 1.1em; }
         .reveal pre { width: 100%; font-size: 0.55em; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .reveal pre code { max-height: 380px; padding: 15px; }
+        .reveal pre code { max-height: 380px; padding: 1em; background: #f6f8fa; color: #24292e; }
         .reveal ul, .reveal ol { font-size: 0.75em; }
         .reveal li { margin-bottom: 0.4em; }
         .reveal table { font-size: 0.65em; }
@@ -977,6 +977,7 @@ cfg.setPluginConfigurations(new SecurityPluginConfiguration());
         Reveal.initialize({
             hash: true, width: 1100, height: 900, margin: 0.04, minScale: 0.5, maxScale: 1.5,
             slideNumber: 'c/t',
+            center: false,
             plugins: [ RevealHighlight, RevealNotes ]
         });
     </script>
