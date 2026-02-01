@@ -9,8 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <style>
-        .reveal .slides section { overflow: hidden; }
-        .reveal section { max-height: 100%; }
+        .reveal .slides section { overflow-y: auto !important; }
+        
         :root {
             --r-heading-color: #2c3e50;
             --r-main-color: #333;
@@ -1332,7 +1332,7 @@ Yes       No
             transition: 'slide',
             transitionSpeed: 'default',
             backgroundTransition: 'fade',
-            center: false, width: 1100, height: 750, margin: 0.05, minScale: 0.5, maxScale: 1.5,
+            center: false, width: 1100, height: 900, margin: 0.04, minScale: 0.5, maxScale: 1.5,
             plugins: [ RevealHighlight, RevealNotes ]
         });
     </script>

@@ -9,8 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <style>
-        .reveal .slides section { overflow: hidden; }
-        .reveal section { max-height: 100%; }
+        .reveal .slides section { overflow-y: auto !important; }
+        
         :root {
             --r-heading-color: #2c3e50;
             --r-link-color: #e67e22;
@@ -104,7 +104,7 @@
             border-radius: 10px;
             padding: 10px;
             margin: 10px 0;
-            overflow: hidden;
+            overflow-y: auto !important;
         }
         .reveal .architecture-diagram pre {
             margin: 0;
@@ -1345,13 +1345,13 @@ ignite.compute(targetNodes).broadcast(() -> {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/zoom/zoom.min.js"></script>
     <script>
         Reveal.initialize({
-            hash: true, width: 1100, height: 750, margin: 0.05, minScale: 0.5, maxScale: 1.5,
+            hash: true, width: 1100, height: 900, margin: 0.04, minScale: 0.5, maxScale: 1.5,
             slideNumber: 'c/t',
             showSlideNumber: 'all',
             transition: 'slide',
             transitionSpeed: 'default',
             backgroundTransition: 'fade',
-            center: true,
+            center: false,
             progress: true,
             controls: true,
             controlsTutorial: true,
