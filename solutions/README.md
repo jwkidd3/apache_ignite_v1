@@ -19,8 +19,7 @@ solutions/
 ├── lab09_compute_grid/             # 7 files - Compute Grid
 ├── lab10_integration_connectivity/ # 4 files - Integration and Connectivity
 ├── lab11_performance_tuning/       # 6 files - Performance Tuning
-├── lab12_production_deployment/    # 8 files - Production Deployment
-├── lab13_bonus_cdc_integration/    # 6 files - BONUS: CDC with Kafka/Debezium
+├── lab12_version_differences/      # 8 files - Version Differences (Ignite 3.x)
 └── README.md                       # This file
 ```
 
@@ -29,7 +28,7 @@ solutions/
 - Java 11 or higher
 - Maven 3.6+
 - Apache Ignite 2.16.0 (handled by Maven)
-- Docker & Docker Compose (for Lab 13 bonus only)
+- Docker (for Lab 12 Ignite 3.x exercises)
 
 ---
 
@@ -421,61 +420,32 @@ mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab11.Lab11Benchmar
 mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab11.Lab11AntiPatterns"
 ```
 
-### Lab 12: Production Deployment (8 files)
+### Lab 12: Version Differences - Ignite 3.x (8 files)
 ```
 com.example.ignite.solutions.lab12
-├── Lab12SecurityOverview.java     # Security configuration
-├── Lab12ClusterSetup.java         # Production cluster setup
-├── Lab12SSLConfiguration.java     # SSL/TLS setup
-├── Lab12Authentication.java       # Authentication/authorization
-├── Lab12BackupRecovery.java       # Backup and recovery
-├── Lab12RollingUpdate.java        # Zero-downtime updates
-├── Lab12HealthChecker.java        # Health checking
-└── Lab12DeploymentValidator.java  # Deployment validation
+├── Lab12Discovery.java           # SWIM gossip, RAFT consensus, topology
+├── Lab12Configuration.java       # HOCON config, distribution zones
+├── Lab12CacheAPI.java            # Table API (RecordView, KeyValueView)
+├── Lab12Transactions.java        # Strictly serializable transactions
+├── Lab12Compute.java             # Colocated compute jobs
+├── Lab12DataColocation.java      # Distribution zones, storage profiles
+├── Lab12Monitoring.java          # REST API, CLI monitoring
+└── Lab12ComparisonSummary.java   # Comparison table 2.x vs 3.x
 ```
+
+**Prerequisites:** Docker (for Ignite 3.x instance)
 
 **Run commands:**
 ```bash
-cd lab12_production_deployment
-mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12SecurityOverview"
-mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12ClusterSetup"
-mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12SSLConfiguration"
-mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12Authentication"
-mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12BackupRecovery"
-mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12RollingUpdate"
-mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12HealthChecker"
-mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12DeploymentValidator"
-```
-
-### Lab 13: Bonus - CDC Integration (6 files)
-```
-com.example.ignite.solutions.lab13
-├── Lab13CDCIntegration.java    # Client mode (Docker Ignite)
-├── Lab13CDCStandalone.java     # Standalone mode (embedded)
-├── cdc/
-│   ├── CDCEvent.java           # Debezium event model
-│   └── IgniteCDCConsumer.java  # Kafka consumer
-└── model/
-    ├── Customer.java           # Customer entity
-    ├── Product.java            # Product entity
-    ├── Order.java              # Order entity
-    └── OrderItem.java          # Order item entity
-```
-
-**Prerequisites:** Docker & Docker Compose
-
-**Run commands:**
-```bash
-cd lab13_bonus_cdc_integration
-
-# Start Docker environment
-cd docker && ./start.sh && ./register-connector.sh && cd ..
-
-# Run standalone mode
-mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab13.Lab13CDCStandalone"
-
-# Or run client mode (with Docker Ignite)
-mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab13.Lab13CDCIntegration"
+cd lab12_version_differences
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12Discovery"
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12Configuration"
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12CacheAPI"
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12Transactions"
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12Compute"
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12DataColocation"
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12Monitoring"
+mvn exec:java -Dexec.mainClass="com.example.ignite.solutions.lab12.Lab12ComparisonSummary"
 ```
 
 ---

@@ -134,8 +134,7 @@ apache_ignite_v1/
 │   ├── lab09_compute_grid.md
 │   ├── lab10_integration_connectivity.md
 │   ├── lab11_performance_tuning.md
-│   ├── lab12_production_deployment.md
-│   └── lab13_version_differences.md
+│   └── lab12_version_differences.md
 ├── presentations/               # reveal.js presentations
 │   ├── module-01-intro-inmemory-computing.html
 │   ├── module-02-architecture-deep-dive.html
@@ -148,8 +147,7 @@ apache_ignite_v1/
 │   ├── module-09-compute-grid.html
 │   ├── module-10-integration-connectivity.html
 │   ├── module-11-performance-tuning.html
-│   ├── module-12-production-deployment.html
-│   └── module-13-version-differences.html
+│   └── module-12-version-differences.html
 ├── examples/                    # Example projects
 └── tests/                       # JUnit test suite
     ├── pom.xml
@@ -167,7 +165,7 @@ apache_ignite_v1/
         ├── Lab09ComputeGridTest.java
         ├── Lab10IntegrationConnectivityTest.java
         ├── Lab11PerformanceTuningTest.java
-        └── Lab12ProductionDeploymentTest.java
+        └── Lab12VersionDifferencesTest.java
 ```
 
 ## Getting Started
