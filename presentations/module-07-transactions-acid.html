@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/intellij-light.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <style>
         .reveal .slides section { overflow: hidden; }
         .reveal section { max-height: 100%; }
@@ -30,6 +30,7 @@
         .reveal h3 { font-size: 1.1em; margin-bottom: 0.2em; }
         .reveal pre {
             width: 100%;
+            font-size: 0.55em;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             border-radius: 8px;
         }
@@ -188,6 +189,7 @@
                 <div class="highlight-box" style="display: inline-block; margin-top: 30px;">
                     <span style="font-size: 0.75em; line-height: 1.3;">Duration: 45 minutes</span>
                 </div>
+                <aside class="notes">Welcome to Module 07 on Transactions and ACID. This module teaches how to maintain data consistency in a distributed cache. Students from RDBMS backgrounds will find familiar concepts, but the distributed nature of Ignite adds complexity around concurrency modes and deadlock handling. The lab exercise implements a classic bank transfer scenario.</aside>
             </section>
 
             <!-- Module Overview -->
@@ -217,6 +219,7 @@
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">Review the topics and learning objectives. The key skills students will gain are implementing transactions, choosing the right isolation level and concurrency mode, and handling deadlocks. Emphasize that transaction design decisions significantly impact both correctness and performance. The deadlock detection section is especially important for production systems.</aside>
             </section>
 
             <!-- ACID Properties Section -->
@@ -224,6 +227,7 @@
                 <section class="center">
                     <h1>ACID Properties</h1>
                     <h3 class="accent">Foundation of Data Consistency</h3>
+                    <aside class="notes">This section reviews the ACID properties that most students already know from relational databases. The key difference in Ignite is that these guarantees must be maintained across multiple nodes in a distributed cluster, which makes the implementation significantly more complex than a single-server database.</aside>
                 </section>
 
                 <section>
@@ -252,6 +256,7 @@
                             <p style="font-size: 0.8em;">Committed data survives failures</p>
                         </div>
                     </div>
+                    <aside class="notes">Walk through each ACID property. Atomicity ensures a bank transfer either completes fully or not at all. Consistency means business rules like non-negative balances are always maintained. Isolation means concurrent transactions do not see each other's partial work. Durability means committed transactions survive crashes. Ask students which property they think is hardest to guarantee in a distributed system.</aside>
                 </section>
 
                 <section>
@@ -277,6 +282,7 @@
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">The comparison between traditional RDBMS and Ignite highlights the distributed challenge. In a single-machine database, locks are just in-memory data structures. In Ignite, locks must be coordinated across the network. The Two-Phase Commit protocol is how Ignite ensures atomicity across nodes. This adds latency but guarantees correctness. Students often ask about CAP theorem implications here.</aside>
                 </section>
 
                 <section>
@@ -296,6 +302,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                     <div class="warning-box">
                         <p><strong>Note:</strong> ATOMIC mode (default) does not support transactions but offers better performance for single-key operations</p>
                     </div>
+                    <aside class="notes">This is a critical configuration step. The TRANSACTIONAL atomicity mode must be set on the cache before any transactions can be used. The default is ATOMIC which provides better performance for single-key operations but does not support multi-key transactions. A common mistake is trying to use transactions on an ATOMIC cache which silently ignores the transaction boundaries. Always verify this setting in your cache configuration.</aside>
                 </section>
             </section>
 
@@ -304,6 +311,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                 <section class="center">
                     <h1>Transaction API</h1>
                     <h3 class="accent">Working with Ignite Transactions</h3>
+                    <aside class="notes">This section covers the practical Transaction API that students will use in the lab. The patterns shown here are the building blocks for all transactional operations in Ignite. Pay special attention to the try-with-resources pattern which ensures transactions are always properly closed.</aside>
                 </section>
 
                 <section>
@@ -327,6 +335,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                     <div class="success-box">
                         <p><strong>Key Pattern:</strong> Use try-with-resources for automatic cleanup</p>
                     </div>
+                    <aside class="notes">This is the fundamental transaction pattern students will use throughout the lab. The bank transfer example reads two balances, performs the transfer, and commits atomically. The try-with-resources ensures the transaction is closed even if an exception occurs. Highlight that if commit() is not called, the transaction is automatically rolled back when the try block exits. This is a safety net against forgotten commits.</aside>
                 </section>
 
                 <section>
@@ -348,6 +357,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                             <strong>close()</strong> - Clean up resources
                         </div>
                     </div>
+                    <aside class="notes">The transaction lifecycle follows a simple flow: start, operate, then commit or rollback. The close step is handled automatically by try-with-resources. If an exception occurs between txStart and commit, the transaction is rolled back automatically on close. This matches the lifecycle pattern of database transactions that students are familiar with from JDBC.</aside>
                 </section>
 
                 <section>
@@ -372,6 +382,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
     // Transaction auto-rolls back on exception
     System.out.println("Transaction rolled back: " + e.getMessage());
 }</code></pre>
+                    <aside class="notes">This example shows two rollback scenarios: explicit rollback on business validation failure (insufficient funds) and automatic rollback on exception. The explicit rollback with return pattern is clean and readable. The catch block handles unexpected exceptions. Emphasize that after rollback, all changes made within the transaction are discarded as if they never happened.</aside>
                 </section>
 
                 <section>
@@ -406,6 +417,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                             <td>Clean up (auto-rollback if not committed)</td>
                         </tr>
                     </table>
+                    <aside class="notes">This reference table shows all available transaction methods. The three overloads of txStart provide increasing levels of control. The full form with timeout and size is recommended for production use. The close method is the safety net that ensures cleanup. Note that close auto-rolls back an uncommitted transaction, which is why try-with-resources works so well.</aside>
                 </section>
             </section>
 
@@ -414,6 +426,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                 <section class="center">
                     <h1>Isolation Levels</h1>
                     <h3 class="accent">READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE</h3>
+                    <aside class="notes">Isolation levels determine what concurrent transactions can see of each other's changes. This is one of the most misunderstood areas of database systems. Take time on each level to ensure students understand the practical implications. The recommended default is REPEATABLE_READ which provides a good balance of consistency and performance.</aside>
                 </section>
 
                 <section>
@@ -448,6 +461,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                             <td><span class="tag tag-pessimistic">Slowest</span></td>
                         </tr>
                     </table>
+                    <aside class="notes">This table summarizes the three isolation levels and what anomalies each prevents. Dirty reads (seeing uncommitted data) are prevented by all levels. Non-repeatable reads (same query returning different values) are prevented by REPEATABLE_READ and SERIALIZABLE. Phantom reads (new rows appearing between queries) are only prevented by SERIALIZABLE. Higher isolation means lower performance due to more locking.</aside>
                 </section>
 
                 <section>
@@ -468,6 +482,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                     <div class="info-box">
                         <p><strong>Use Case:</strong> When you need performance and can tolerate reading different values within the same transaction</p>
                     </div>
+                    <aside class="notes">The READ_COMMITTED example illustrates the non-repeatable read anomaly: reading the same key twice returns different values because another transaction committed between the reads. This is acceptable for reporting queries where absolute consistency is not required. It offers the best performance because read locks are released immediately after each read operation.</aside>
                 </section>
 
                 <section>
@@ -488,6 +503,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                     <div class="success-box">
                         <p><strong>Recommended:</strong> Best balance of consistency and performance for most applications</p>
                     </div>
+                    <aside class="notes">REPEATABLE_READ guarantees that if you read a key, reading it again in the same transaction returns the same value. This is the recommended default for business operations like bank transfers and inventory management. The read lock is held for the duration of the transaction, preventing other transactions from modifying the data you have read. This is the level students will use in most lab exercises.</aside>
                 </section>
 
                 <section>
@@ -511,6 +527,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                     <div class="warning-box">
                         <p><strong>Note:</strong> SERIALIZABLE with OPTIMISTIC requires handling potential commit failures</p>
                     </div>
+                    <aside class="notes">SERIALIZABLE provides the strongest isolation but with OPTIMISTIC concurrency it requires handling TransactionOptimisticException. The validation at commit time checks that no other transaction modified the data you read. If a conflict is detected, the transaction must be retried. This is the recommended approach for counter updates and scenarios where you need compare-and-swap semantics. The retry pattern is essential and students must implement it in the lab.</aside>
                 </section>
 
                 <section>
@@ -539,6 +556,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                             <li>Audit logs | Compliance-critical operations | Counter updates</li>
                         </ul>
                     </div>
+                    <aside class="notes">This decision guide helps students choose the right isolation level. READ_COMMITTED for read-heavy, non-critical scenarios. REPEATABLE_READ for most business operations where you need consistent reads within a transaction. SERIALIZABLE for strict requirements like audit logs and counter updates. Most students should default to REPEATABLE_READ and only use the others for specific requirements.</aside>
                 </section>
             </section>
 
@@ -547,6 +565,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                 <section class="center">
                     <h1>Concurrency Modes</h1>
                     <h3 class="accent">PESSIMISTIC vs OPTIMISTIC</h3>
+                    <aside class="notes">Concurrency modes determine WHEN locks are acquired. This is independent of isolation levels and the two settings are orthogonal. PESSIMISTIC locks on first access which prevents conflicts but reduces concurrency. OPTIMISTIC defers locking to commit time which allows more concurrency but may require retries. This is one of the most important design decisions for transactional applications.</aside>
                 </section>
 
                 <section>
@@ -583,6 +602,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                             <td>Read-heavy workloads</td>
                         </tr>
                     </table>
+                    <aside class="notes">Walk through each row of the comparison table. Lock acquisition timing is the fundamental difference. PESSIMISTIC prevents conflicts by blocking, which is simpler but limits concurrency. OPTIMISTIC allows conflicts and detects them at commit, which requires retry logic. For most production systems, PESSIMISTIC with REPEATABLE_READ is the safest starting point. Only move to OPTIMISTIC if you have measured the performance benefit.</aside>
                 </section>
 
                 <section>
@@ -605,6 +625,7 @@ IgniteCache&lt;Integer, Integer&gt; cache =
                     <div class="info-box">
                         <p><strong>Behavior:</strong> Locks acquired immediately prevent other transactions from accessing the same data</p>
                     </div>
+                    <aside class="notes">In PESSIMISTIC mode, the lock is acquired on the get() call. This means other transactions trying to read or write the same key will block until this transaction commits or rolls back. The Thread.sleep simulates processing time during which the lock is held. Emphasize that longer transactions mean longer lock hold times, which is why keeping transactions short is critical for PESSIMISTIC mode.</aside>
                 </section>
 
                 <section>
@@ -629,6 +650,7 @@ for (int retry = 0; retry < maxRetries; retry++) {
         // Retry the transaction
     }
 }</code></pre>
+                    <aside class="notes">The OPTIMISTIC retry pattern is essential to understand. Since validation happens at commit time, the commit may fail with TransactionOptimisticException if another transaction modified the same data. The retry loop with maxRetries handles this gracefully. Note that OPTIMISTIC with SERIALIZABLE is the only valid combination for optimistic conflict detection. Students must implement this retry pattern in the lab exercise.</aside>
                 </section>
 
                 <section>
@@ -659,6 +681,7 @@ for (int retry = 0; retry < maxRetries; retry++) {
                             </div>
                         </div>
                     </div>
+                    <aside class="notes">This side-by-side visualization makes the locking difference clear. In PESSIMISTIC, the red LOCK happens at get() time and the green UNLOCK at commit(). In OPTIMISTIC, there are no locks during operations, but commit does both LOCK and VALIDATE atomically. Draw this on a whiteboard with a timeline to show how two concurrent transactions interleave under each mode.</aside>
                 </section>
 
                 <section>
@@ -687,6 +710,7 @@ for (int retry = 0; retry < maxRetries; retry++) {
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">This decision guide summarizes when to use each mode. The rule of thumb is: if conflicts are likely (write-heavy, high contention), use PESSIMISTIC to avoid wasted work from retries. If conflicts are unlikely (read-heavy, low contention), OPTIMISTIC gives better throughput. For long-running transactions, always use PESSIMISTIC because an optimistic failure after significant processing wastes all that work.</aside>
                 </section>
             </section>
 
@@ -695,6 +719,7 @@ for (int retry = 0; retry < maxRetries; retry++) {
                 <section class="center">
                     <h1>Deadlock Detection</h1>
                     <h3 class="accent">Prevention and Resolution</h3>
+                    <aside class="notes">Deadlocks are a critical topic for any system using pessimistic locking. In a distributed system, deadlocks are harder to detect because the lock waits span multiple nodes. Ignite has built-in deadlock detection but prevention through consistent lock ordering is always preferable. Students will create a deadlock scenario in the lab to see the detection in action.</aside>
                 </section>
 
                 <section>
@@ -717,6 +742,7 @@ for (int retry = 0; retry < maxRetries; retry++) {
                     <div class="warning-box" style="margin-top: 20px;">
                         <p>Deadlocks occur with PESSIMISTIC transactions when locks are acquired in different orders</p>
                     </div>
+                    <aside class="notes">The classic deadlock: Transaction 1 holds Lock A and waits for Lock B, while Transaction 2 holds Lock B and waits for Lock A. Neither can proceed. In a distributed system this can happen across nodes, making it even harder to diagnose manually. Ignite detects this situation and automatically rolls back one of the transactions (the victim) to break the cycle.</aside>
                 </section>
 
                 <section>
@@ -731,6 +757,7 @@ cache.get("resource1");  // Wait for A - BLOCKED!</code></pre>
                     <div class="info-box">
                         <strong>Solution:</strong> Always lock resources in consistent order
                     </div>
+                    <aside class="notes">This concrete code example shows exactly how a deadlock happens. Thread 1 locks resource1 then tries to lock resource2, while Thread 2 does the opposite. The solution is simple: both threads should lock in the same order. This is easy to say but hard to enforce in large codebases. In the lab, students will reproduce this deadlock and then fix it with consistent ordering.</aside>
                 </section>
 
                 <section>
@@ -744,6 +771,7 @@ cache.get("resource1");  // Wait for A - BLOCKED!</code></pre>
                     <div class="info-box">
                         <strong>Resolution:</strong> Ignite detects deadlocks and rolls back victim transaction
                     </div>
+                    <aside class="notes">Ignite's built-in deadlock detection automatically identifies cycles in the lock wait graph. When detected, one transaction is chosen as the victim and rolled back with TransactionDeadlockException. The application should catch this exception and retry the transaction. The detection has a timeout delay so it is not instantaneous. This is why prevention through ordering is always better than detection.</aside>
                 </section>
 
                 <section>
@@ -767,6 +795,7 @@ Runnable safeTransaction = () -> {
 };
 
 // Both threads use the same lock order - no deadlock!</code></pre>
+                    <aside class="notes">The key prevention strategy is consistent lock ordering. Both transactions always lock resource1 first, then resource2. This eliminates the circular dependency that causes deadlocks. In production, establish a convention like always locking in alphabetical key order or by primary key value. This is the same pattern used in database systems like PostgreSQL's advisory locks.</aside>
                 </section>
 
                 <section>
@@ -791,6 +820,7 @@ Runnable safeTransaction = () -> {
 Collections.sort(keys);  // Consistent order
 for (String key : keys) cache.get(key);</code></pre>
                     </div>
+                    <aside class="notes">Three prevention strategies: lock ordering eliminates circular dependencies, timeouts break deadlocks by aborting after a period, and OPTIMISTIC mode eliminates lock-based deadlocks entirely since locks are only held during the commit phase. The sorting tip at the bottom is practical -- sort your keys before accessing them to guarantee consistent order regardless of the order they were passed to your method.</aside>
                 </section>
             </section>
 
@@ -799,6 +829,7 @@ for (String key : keys) cache.get(key);</code></pre>
                 <section class="center">
                     <h1>Transaction Timeout</h1>
                     <h3 class="accent">Managing Long-Running Transactions</h3>
+                    <aside class="notes">Transaction timeouts are a safety mechanism against runaway transactions that hold locks indefinitely. Without timeouts, a stuck transaction can block other transactions and eventually cause cascading failures. Always set timeouts in production. This section covers per-transaction and default timeout configuration.</aside>
                 </section>
 
                 <section>
@@ -816,6 +847,7 @@ try (Transaction tx = ignite.transactions().txStart(
 } catch (TransactionTimeoutException e) {
     System.out.println("Transaction exceeded timeout!");
 }</code></pre>
+                    <aside class="notes">The per-transaction timeout is set as the third parameter to txStart. The value 10000 means 10 seconds. If the transaction has not committed within this time, it is automatically rolled back with TransactionTimeoutException. The fourth parameter 0 means unlimited transaction size in terms of number of entries. Students should always handle TransactionTimeoutException in their catch blocks.</aside>
                 </section>
 
                 <section>
@@ -836,6 +868,7 @@ try (Transaction tx = ignite.transactions().txStart()) {
     // Uses 30 second timeout automatically
     tx.commit();
 }</code></pre>
+                    <aside class="notes">Setting default transaction configuration avoids repeating settings on every txStart call. The defaults apply to all transactions started with the no-argument txStart(). This is the recommended approach for production applications. Individual transactions can still override these defaults. Mention that the default timeout of 0 (unlimited) is dangerous in production and should always be overridden.</aside>
                 </section>
 
                 <section>
@@ -865,6 +898,7 @@ try (Transaction tx = ignite.transactions().txStart()) {
                     <div class="warning-box" style="margin-top: 20px;">
                         <p><strong>Warning:</strong> Never use unlimited timeout (0) in production - it can cause resource exhaustion</p>
                     </div>
+                    <aside class="notes">These timeout recommendations come from production experience. Simple CRUD should complete in under 10 seconds. Batch processing may need up to 60 seconds for large batches. The warning about unlimited timeouts is critical -- in production, a stuck transaction with no timeout will hold locks forever, blocking other transactions and potentially causing cascading failures across the cluster.</aside>
                 </section>
 
                 <section>
@@ -876,6 +910,7 @@ try (Transaction tx = ignite.transactions().txStart()) {
     // Retry with exponential backoff
     Thread.sleep(100 * (long)Math.pow(2, attempt));
 }</code></pre>
+                    <aside class="notes">The exponential backoff retry pattern prevents thundering herd problems when many transactions time out simultaneously. Each retry waits longer: 100ms, 200ms, 400ms, and so on. This gives the system time to recover from whatever caused the timeout. In production, add jitter to the backoff to prevent synchronized retries from multiple clients.</aside>
                 </section>
             </section>
 
@@ -884,6 +919,7 @@ try (Transaction tx = ignite.transactions().txStart()) {
                 <section class="center">
                     <h1>Cross-Cache Transactions</h1>
                     <h3 class="accent">Atomic Operations Across Multiple Caches</h3>
+                    <aside class="notes">Cross-cache transactions are a powerful feature that allows atomic operations spanning multiple caches. The classic example is a bank transfer with an audit log: both the balance update and the audit record must succeed or fail together. This is implemented using the Two-Phase Commit protocol across nodes.</aside>
                 </section>
 
                 <section>
@@ -899,6 +935,7 @@ auditCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
 
 IgniteCache&lt;Integer, Double&gt; accounts = ignite.getOrCreateCache(accountCfg);
 IgniteCache&lt;Integer, String&gt; auditLog = ignite.getOrCreateCache(auditCfg);</code></pre>
+                    <aside class="notes">Both caches must be configured with TRANSACTIONAL atomicity mode. This is a prerequisite for cross-cache transactions. If either cache is ATOMIC, the transaction will not work correctly. In the lab, students will create similar dual-cache configurations for the bank transfer exercise. Remind students to verify the atomicity mode setting on all caches involved in a transaction.</aside>
                 </section>
 
                 <section>
@@ -926,6 +963,7 @@ IgniteCache&lt;Integer, String&gt; auditLog = ignite.getOrCreateCache(auditCfg);
 
     tx.commit();  // All three operations commit atomically
 }</code></pre>
+                    <aside class="notes">This is a complete cross-cache transaction example. Three operations happen atomically: debit from one account, credit to another, and write an audit log entry. If any operation fails or the commit fails, all three are rolled back. The business validation (insufficient funds check) with explicit rollback is a best practice pattern. Students will implement this exact pattern in the lab.</aside>
                 </section>
 
                 <section>
@@ -946,6 +984,7 @@ IgniteCache&lt;Integer, String&gt; auditLog = ignite.getOrCreateCache(auditCfg);
                             <li>Performance overhead increases with more caches</li>
                         </ul>
                     </div>
+                    <aside class="notes">These requirements and limitations are important to understand. All caches must be TRANSACTIONAL -- mixing ATOMIC and TRANSACTIONAL caches in a transaction is not supported and will cause undefined behavior. Cross-cluster transactions are not supported. Performance overhead increases with more caches because more nodes must participate in the Two-Phase Commit protocol.</aside>
                 </section>
 
                 <section>
@@ -967,6 +1006,7 @@ IgniteCache&lt;Integer, String&gt; auditLog = ignite.getOrCreateCache(auditCfg);
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">The Two-Phase Commit protocol is how Ignite ensures atomicity across nodes. In Phase 1 (Prepare), the coordinator asks all participating nodes if they can commit. Each node acquires locks and votes. In Phase 2, if all nodes voted COMMIT, the coordinator tells them to apply the changes. If any voted ABORT, all nodes roll back. This protocol adds network round-trips which is why cross-node transactions are slower than local ones.</aside>
                 </section>
             </section>
 
@@ -975,6 +1015,7 @@ IgniteCache&lt;Integer, String&gt; auditLog = ignite.getOrCreateCache(auditCfg);
                 <section class="center">
                     <h1>Transaction Best Practices</h1>
                     <h3 class="accent">Writing Efficient and Safe Transactions</h3>
+                    <aside class="notes">This best practices section pulls together the practical lessons from the entire module. Each practice is numbered for easy reference. These recommendations come from real production experience and common mistakes. Students should bookmark this section and refer back to it when implementing transactions in their projects.</aside>
                 </section>
 
                 <section>
@@ -1003,6 +1044,7 @@ try (Transaction tx = ...) {
                     <div class="success-box" style="margin-top: 20px;">
                         <p><strong>Principle:</strong> Do heavy work outside, only data operations inside</p>
                     </div>
+                    <aside class="notes">This is the most impactful best practice. Compute results before starting the transaction, then only do cache operations inside the transaction. The bad example shows heavy computation inside the transaction holding locks. The good example computes first, then opens a short transaction for just the put operation. This minimizes lock hold time and dramatically improves concurrency under load.</aside>
                 </section>
 
                 <section>
@@ -1025,6 +1067,7 @@ try (Transaction tx = ...) {
 
     tx.commit();
 }</code></pre>
+                    <aside class="notes">Batch operations like putAll reduce the number of network round-trips within a transaction. Instead of three separate put calls each requiring a network message, putAll sends all three in a single message. This is especially important in distributed transactions where network latency accumulates. The same principle applies to getAll for reading multiple keys. Students should use this pattern whenever they need to read or write multiple keys.</aside>
                 </section>
 
                 <section>
@@ -1053,6 +1096,7 @@ try (Transaction tx = ...) {
         }
     }
 }</code></pre>
+                    <aside class="notes">This shows the comprehensive exception handling pattern for production code. Note the specific catch blocks for TransactionOptimisticException and TransactionDeadlockException before the general Exception catch. The finally block ensures the transaction is always closed. In production, each exception type should have appropriate handling: retry for optimistic conflicts and deadlocks, alert for unexpected exceptions.</aside>
                 </section>
 
                 <section>
@@ -1075,6 +1119,7 @@ try (Transaction tx1 = ignite.transactions().txStart()) {
                     <div class="info-box" style="margin-top: 15px;">
                         <p><strong>Solution:</strong> Complete all operations in a single transaction or use separate sequential transactions</p>
                     </div>
+                    <aside class="notes">Ignite does not support nested transactions, which surprises students coming from Spring's @Transactional where nested transactions are common. If you try to start a transaction while another is active on the same thread, Ignite throws an exception. The solution is to combine all operations into a single transaction or use separate sequential transactions. Design your service layer to avoid nesting.</aside>
                 </section>
 
                 <section>
@@ -1106,6 +1151,7 @@ try (Transaction tx1 = ignite.transactions().txStart()) {
                             <td>Avoids late failures</td>
                         </tr>
                     </table>
+                    <aside class="notes">This decision table summarizes the concurrency mode recommendation based on workload type. The key insight is that PESSIMISTIC is the safe default for most scenarios. OPTIMISTIC only makes sense for read-heavy, low-contention workloads where the retry overhead is acceptable. For mixed or unclear workloads, always start with PESSIMISTIC and only switch to OPTIMISTIC after measuring the performance benefit.</aside>
                 </section>
 
                 <section>
@@ -1127,6 +1173,7 @@ System.out.println("Rolled back transactions: " + metrics.txRollbacks());
                     <div class="info-box">
                         <p><strong>Tip:</strong> Set up alerts for high rollback rates or long commit times</p>
                     </div>
+                    <aside class="notes">Transaction metrics are essential for production monitoring. The txCommits and txRollbacks counters show the success rate. A high rollback rate indicates contention problems or frequent conflicts. JMX monitoring allows integration with tools like Prometheus, Grafana, or Datadog. Set up alerts on rollback rate exceeding a threshold and on average commit time exceeding expected latency.</aside>
                 </section>
 
                 <section>
@@ -1145,6 +1192,7 @@ System.out.println("Rolled back transactions: " + metrics.txRollbacks());
                             <li>Test deadlock scenarios before deployment</li>
                         </ul>
                     </div>
+                    <aside class="notes">This is the master checklist for transaction best practices. Go through each item and ask students to identify which ones they have seen demonstrated in the slides. All ten practices should be followed in production code. The first three (short transactions, batch operations, try-with-resources) have the most impact on performance. The deadlock prevention and timeout practices are critical for reliability.</aside>
                 </section>
             </section>
 
@@ -1152,6 +1200,7 @@ System.out.println("Rolled back transactions: " + metrics.txRollbacks());
             <section>
                 <section class="center">
                     <h1>Module Summary</h1>
+                    <aside class="notes">Transition to the module summary. This is a good time to ask students what concepts were new to them or which ones they want to revisit. The module covered a lot of ground from ACID fundamentals through practical transaction patterns and production best practices.</aside>
                 </section>
 
                 <section>
@@ -1186,6 +1235,7 @@ System.out.println("Rolled back transactions: " + metrics.txRollbacks());
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">This two-column summary covers the four main topics: ACID compliance with 2PC, isolation levels from fastest to strictest, concurrency modes for different workloads, and practical best practices. The key message is that Ignite provides full ACID transactions in a distributed system, but the developer must choose the right settings for their workload. REPEATABLE_READ with PESSIMISTIC is the safe default.</aside>
                 </section>
 
                 <section>
@@ -1222,6 +1272,7 @@ System.out.println("Rolled back transactions: " + metrics.txRollbacks());
                             <td>SERIALIZABLE</td>
                         </tr>
                     </table>
+                    <aside class="notes">This decision matrix is a practical reference for choosing concurrency and isolation for specific use cases. Banking transfers use PESSIMISTIC REPEATABLE_READ for guaranteed consistency. Read-mostly analytics use OPTIMISTIC READ_COMMITTED for throughput. Counter increments use OPTIMISTIC SERIALIZABLE for compare-and-swap semantics. Students should consult this table when designing their transactional operations.</aside>
                 </section>
 
                 <section class="center">
@@ -1236,6 +1287,7 @@ System.out.println("Rolled back transactions: " + metrics.txRollbacks());
                             <li>Apply transaction best practices</li>
                         </ul>
                     </div>
+                    <aside class="notes">Preview the lab exercise. Students will implement a bank transfer with transaction support, compare PESSIMISTIC versus OPTIMISTIC concurrency under contention, and handle deadlock scenarios. The 30-minute duration is tight so students should focus on getting the basic transfer working first, then move to the comparison and deadlock exercises. Circulate to help with common issues like missing TRANSACTIONAL mode.</aside>
                 </section>
 
                 <section class="center">
@@ -1244,6 +1296,7 @@ System.out.println("Rolled back transactions: " + metrics.txRollbacks());
                         <p style="font-size: 1.1em;">Next Module: Advanced Caching Patterns</p>
                         <p>Near Caches, Expiry Policies, Entry Processors</p>
                     </div>
+                    <aside class="notes">Open the floor for questions. Common questions include: How does Ignite handle network partitions during 2PC? What happens if the coordinator node fails mid-transaction? Can transactions span client and server nodes? If no questions, preview Module 08 on Advanced Caching Patterns which covers near caches, expiry policies, and entry processors that complement the transaction patterns learned here.</aside>
                 </section>
             </section>
         </div>

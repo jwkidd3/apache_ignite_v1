@@ -209,6 +209,32 @@ public class Lab05AffinityKeys {
 }
 ```
 
+**Expected Output (single node):**
+
+```
+=== Affinity Keys and Colocation Lab ===
+
+=== Affinity Verification ===
+Customer 1 on node: a1b2c3d4...
+Order 101 on node: a1b2c3d4...
+Order 102 on node: a1b2c3d4...
+
+Colocated (Customer 1 with Orders): true
+
+Customer 2 on node: a1b2c3d4...
+Order 103 on node: a1b2c3d4...
+Colocated (Customer 2 with Order): true
+
+=== Benefits of Colocation ===
+- Reduced network hops for joins
+- Better performance for related data access
+- Efficient co-located processing
+
+Press Enter to exit...
+```
+
+Note: On a single node, all data is colocated by default. On a multi-node cluster, colocation is true because the Order's `@AffinityKeyMapped customerId` maps orders to the same node as their parent customer.
+
 ## Part 2: Native Persistence (15 minutes)
 
 ### Exercise 3: Configure Native Persistence
@@ -308,6 +334,48 @@ public class Lab05Persistence {
 }
 ```
 
+**Expected Output (first run):**
+
+```
+=== Native Persistence Lab ===
+
+Activating cluster...
+Cluster state: ACTIVE
+
+No existing data. Creating new data...
+Added 100 entries to persistent cache
+
+Restart the application to see data recovery!
+
+=== Persistence Features ===
+- Data survives node restarts
+- Write-Ahead Logging (WAL) for durability
+- Checkpointing for crash recovery
+- Native disk storage (faster than database)
+
+Press Enter to exit...
+```
+
+**Expected Output (second run - data recovered from disk):**
+
+```
+=== Native Persistence Lab ===
+
+Cluster state: ACTIVE
+
+Data recovered from disk!
+Cache size: 100
+Sample data: Persistent-Value-1
+
+=== Persistence Features ===
+- Data survives node restarts
+- Write-Ahead Logging (WAL) for durability
+- Checkpointing for crash recovery
+- Native disk storage (faster than database)
+
+Press Enter to exit...
+```
+
 ## Part 3: Cache Store Integration (15 minutes)
 
 ### Exercise 4: Implement Read-Through/Write-Through Cache Store
@@ -401,6 +469,32 @@ public class Lab05CacheStore {
         }
     }
 }
+```
+
+**Expected Output:**
+
+```
+=== Cache Store Integration Lab ===
+
+=== Write-Through Test ===
+  [DB] Writing: 1 = Value 1
+  [DB] Writing: 2 = Value 2
+  [DB] Writing: 3 = Value 3
+Data written to cache and database
+
+Cache cleared (data still in database)
+
+=== Read-Through Test ===
+  [DB] Loading key: 1
+Read value: Value 1
+Data loaded from database to cache
+
+=== Cache Store Pattern ===
+Read-Through: Load from DB on cache miss
+Write-Through: Write to DB immediately
+Write-Behind: Batch write to DB asynchronously
+
+Press Enter to exit...
 ```
 
 ### Exercise 5: Write-Behind Cache Store
@@ -502,6 +596,34 @@ public class Lab05WriteBehind {
     }
 }
 ```
+
+**Expected Output:**
+
+```
+=== Write-Behind Cache Store Lab ===
+
+Writing 20 entries to cache...
+Cache writes completed in: 12 ms
+
+Waiting for write-behind to flush to database...
+  [DB Write #1] 1 = Value-1
+  [DB Write #2] 2 = Value-2
+  [DB Write #3] 3 = Value-3
+  [DB Write #4] 4 = Value-4
+  [DB Write #5] 5 = Value-5
+  ...
+  [DB Write #20] 20 = Value-20
+
+=== Write-Behind Benefits ===
+- Non-blocking cache writes
+- Batch database updates
+- Better performance for write-heavy workloads
+- Configurable flush frequency and size
+
+Press Enter to exit...
+```
+
+Note: The cache writes complete almost instantly (12 ms) while the database writes happen asynchronously in the background after the flush interval. The DB write numbers appear in batches as configured by `writeBehindBatchSize`.
 
 ## Verification Steps
 

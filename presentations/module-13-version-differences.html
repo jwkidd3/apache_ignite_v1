@@ -63,7 +63,7 @@
 
         .reveal pre {
             width: 100%;
-            font-size: 0.45em;
+            font-size: 0.55em;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
@@ -75,8 +75,8 @@
         }
 
         .reveal pre code {
-            background: #2d2d2d;
-            color: #f8f8f2;
+            background: #f6f8fa;
+            color: #24292e;
             padding: 1em;
         }
 
@@ -129,12 +129,12 @@
         .reveal .warning { color: var(--warning-color); }
 
         .reveal .architecture-box {
-            background: #2d2d2d;
-            color: #f8f8f2;
+            background: #f6f8fa;
+            color: #24292e;
             padding: 0.8em;
             border-radius: 8px;
             font-family: 'Courier New', monospace;
-            font-size: 0.45em;
+            font-size: 0.5em;
             white-space: pre-wrap;
             word-wrap: break-word;
             text-align: left;
@@ -208,6 +208,9 @@
                     Module 13 | Apache Ignite Training<br>
                     <em>A ground-up rewrite for modern distributed computing</em>
                 </p>
+                <aside class="notes">
+Welcome to Module 13. Ignite 3.x is a complete ground-up rewrite -- not an upgrade. The APIs, configuration, and architecture are fundamentally different from 2.x. Today we'll explore what changed, why, and how to work with the new APIs. Students will need Docker running for the lab exercises.
+                </aside>
             </section>
 
             <!-- Slide 2: What's New in Ignite 3.x -->
@@ -224,6 +227,9 @@
                     <li><strong>HOCON configuration</strong> -- human-friendly config replaces XML/Spring</li>
                     <li><strong>Strictly serializable transactions</strong> -- stronger consistency guarantees</li>
                 </ul>
+                <aside class="notes">
+Walk through each bullet point. Emphasize that this is NOT a version bump -- it's a new product. The 3.x codebase shares almost no code with 2.x. Key philosophical shift: 2.x was cache-first (define a cache, optionally query it), 3.x is schema-first (define a table via DDL, access it through multiple views). RAFT provides formally proven consensus vs 2.x's custom primary-backup protocol. SWIM discovery scales to thousands of nodes where 2.x ring topology had O(n) failure detection.
+                </aside>
             </section>
 
             <!-- Slide 3: Architecture -->
@@ -257,6 +263,9 @@
                     <li><strong>RAFT</strong> -- each partition has a RAFT group for leader election and log replication</li>
                     <li><strong>Storage</strong> -- pluggable per distribution zone (volatile or persistent)</li>
                 </ul>
+                <aside class="notes">
+Walk through the diagram top to bottom. Client connects via TCP 10800 -- always a thin client, never joins the cluster. SWIM handles membership and failure detection using gossip -- each node periodically pings random peers and propagates membership changes. RAFT runs per partition group -- every data partition has a RAFT leader that handles writes and replicates to followers. Storage is pluggable per distribution zone -- aimem for pure in-memory volatile, aipersist for durable page memory, rocksdb for write-heavy persistent workloads. Ask: "Has anyone worked with RAFT before? etcd, CockroachDB, TiKV all use it."
+                </aside>
             </section>
 
             <!-- Slide 4: Schema-First Philosophy -->
@@ -286,6 +295,9 @@ CREATE TABLE persons (
                 <div class="highlight-box" style="margin-top: 0.5em;">
                     <strong>Key shift:</strong> Tables are the primary abstraction. No more <code>CacheConfiguration</code> or <code>@QuerySqlField</code> annotations.
                 </div>
+                <aside class="notes">
+Show the side-by-side comparison. In 2.x, you had to create a CacheConfiguration, set indexed types, and configure affinity -- all in Java. In 3.x, a single CREATE TABLE statement handles everything. The schema is the source of truth. This means any client in any language can create tables -- not just Java. Ask students: "Which approach do you think is easier to maintain?" Point out that @QuerySqlField annotations in 2.x meant your domain model was coupled to the cache engine.
+                </aside>
             </section>
 
             <!-- Slide 5: Client Connection -->
@@ -304,13 +316,16 @@ CREATE TABLE persons (
                     <pre style="margin:0.3em 0 0 0;"><code class="language-xml">&lt;dependency&gt;
     &lt;groupId&gt;org.apache.ignite&lt;/groupId&gt;
     &lt;artifactId&gt;ignite-client&lt;/artifactId&gt;
-    &lt;version&gt;3.0.0&lt;/version&gt;
+    &lt;version&gt;3.1.0&lt;/version&gt;
 &lt;/dependency&gt;</code></pre>
                 </div>
                 <ul>
                     <li><strong>All applications are thin clients</strong> -- server nodes run independently via CLI or ignite3db</li>
                     <li>Automatic reconnect and retry policies built in</li>
                 </ul>
+                <aside class="notes">
+Key difference: In 2.x you chose between thick client (Ignition.start() with client mode) and thin client (Ignition.startClient()). In 3.x there's only IgniteClient -- always a thin client. The builder pattern is fluent and familiar. RetryPolicy handles transient connection failures. Note the Maven dependency uses ignite-client artifact (not ignite-core). Port 10800 is the standard client port, same as 2.x thin client.
+                </aside>
             </section>
 
             <!-- Slide 6: Table API Overview -->
@@ -346,6 +361,9 @@ RecordView&lt;Tuple&gt;          tupleView = table.recordView();
 RecordView&lt;Person&gt;         pojoView  = table.recordView(Person.class);
 KeyValueView&lt;Tuple, Tuple&gt; kvTuple   = table.keyValueView();
 KeyValueView&lt;Long, Person&gt; kvPojo    = table.keyValueView(Long.class, Person.class);</code></pre>
+                <aside class="notes">
+This is the core API students need to understand. One table, three views. RecordView<Tuple> is the most flexible -- no Java class needed, great for dynamic schemas. RecordView<POJO> maps directly to a Java class by field name -- no annotations required, just matching field names. KeyValueView separates key and value -- closest to 2.x IgniteCache.get/put semantics. All views see the same data. You can insert via RecordView and read via SQL -- they're just different lenses on the same table.
+                </aside>
             </section>
 
             <!-- Slide 7: RecordView with Tuples -->
@@ -373,6 +391,9 @@ view.delete(null, key);</code></pre>
                     <li>First argument is the <strong>transaction</strong> (<code>null</code> = auto-commit)</li>
                     <li>Tuple columns must match the DDL schema</li>
                 </ul>
+                <aside class="notes">
+Walk through the code. Tuple.create().set() is the builder pattern for creating records. The first argument to upsert/get/delete is always the transaction -- null means auto-commit. For reads, you only need to set the key columns in the Tuple. The API returns null if the key doesn't exist (check for null!). Batch operations available via getAll(), upsertAll(), deleteAll(). Compare with 2.x: cache.put(key, value) vs view.upsert(null, tuple) -- conceptually similar but tuple-based rather than key-value.
+                </aside>
             </section>
 
             <!-- Slide 8: RecordView with POJOs -->
@@ -406,6 +427,9 @@ System.out.println(result.name);  // "Alice"</code></pre>
                     <li>No annotations required -- mapping is by field name</li>
                     <li>For reads, only the key fields need to be populated in the lookup object</li>
                 </ul>
+                <aside class="notes">
+Show how simple POJO mapping is. Field names must match column names (case-insensitive). No @QuerySqlField, no Serializable, no special annotations. Default constructor is required for deserialization. For reads, create a key object with just the PK field set. Compare with 2.x where POJOs needed @QuerySqlField(index=true) for indexed fields and had to implement Serializable. Much cleaner in 3.x.
+                </aside>
             </section>
 
             <!-- Slide 9: KeyValueView -->
@@ -433,6 +457,9 @@ kvView.remove(null, 1L);</code></pre>
                 <div class="highlight-box">
                     <strong>When to use:</strong> KeyValueView is ideal when you think of data as key-value pairs and want the simplest possible API. RecordView is better when the key is part of the record.
                 </div>
+                <aside class="notes">
+KeyValueView is for teams that think in key-value terms. Separate key type and value type -- closest to 2.x IgniteCache semantics. put/get/contains/remove are the core operations. Note: the value object does NOT include the key fields (unlike RecordView where the record contains everything). When migrating from 2.x, KeyValueView is often the easiest path since the mental model is the same.
+                </aside>
             </section>
 
             <!-- Slide 10: SQL in Ignite 3.x -->
@@ -464,6 +491,9 @@ try (ResultSet&lt;SqlRow&gt; rs = client.sql().execute(null,
                     <li><code>execute()</code> returns <code>ResultSet&lt;SqlRow&gt;</code> -- implements <code>AutoCloseable</code></li>
                     <li>First argument is transaction (null = auto-commit)</li>
                 </ul>
+                <aside class="notes">
+SQL is a first-class citizen in 3.x, not an overlay on the cache. executeScript() handles DDL and multi-statement batches. execute() is for DML and queries -- returns ResultSet<SqlRow> which is AutoCloseable. Always use try-with-resources! Parameters use ? placeholders (positional). The first argument is the transaction. Compare with 2.x: cache.query(new SqlFieldsQuery("...")) returned List<List<?>>. In 3.x, client.sql().execute() returns typed SqlRow objects with named column access.
+                </aside>
             </section>
 
             <!-- Slide 11: Configuration -->
@@ -510,6 +540,9 @@ ignite3 node status</code></pre>
                 <div class="highlight-box">
                     <strong>No more XML:</strong> Ignite 3.x uses HOCON for static config and CLI/REST for runtime changes.
                 </div>
+                <aside class="notes">
+Two key differences from 2.x: format and dynamism. HOCON (Human-Optimized Config Notation) replaces Spring XML -- more concise, supports comments, variable substitution. Configuration has two tiers: cluster-level (replicated via RAFT, changed via 'cluster config update') and node-level (local, changed via 'node config update'). Many settings can be changed at runtime without restart -- this was a major pain point in 2.x. The CLI and REST API are the primary config tools -- no more editing XML files and restarting.
+                </aside>
             </section>
 
             <!-- Slide 12: Distribution Zones -->
@@ -537,6 +570,9 @@ CREATE TABLE orders (
                 <div class="highlight-box">
                     <strong>2.x equivalent:</strong> Replaces <code>CacheConfiguration.setBackups()</code>, <code>setAffinity()</code>, and data region config -- all in one SQL statement.
                 </div>
+                <aside class="notes">
+Distribution Zones are one of the biggest architectural improvements. In 2.x, each cache independently configured its backups, partitions, and affinity function. In 3.x, a zone groups these settings and multiple tables can share a zone. Replicas maps to RAFT group size. Storage profiles let you choose the engine per zone -- rocksdb for write-heavy persistent data, aimem for pure speed. ALTER ZONE lets you change replicas dynamically -- in 2.x this required cache recreation. This is a key concept for the lab exercises.
+                </aside>
             </section>
 
             <!-- Slide 13: COLOCATE BY -->
@@ -563,6 +599,9 @@ CREATE TABLE orders (
                     <li>Enables efficient distributed JOINs without network shuffles</li>
                     <li><strong>2.x equivalent:</strong> Replaces <code>@AffinityKeyMapped</code> annotation and <code>AffinityKey</code> class</li>
                 </ul>
+                <aside class="notes">
+COLOCATE BY is the 3.x replacement for @AffinityKeyMapped. It ensures related data is partitioned together so JOINs are local. The colocation column must be part of the primary key. In 2.x, you had to create a custom key class with @AffinityKeyMapped -- Java-only and error-prone. In 3.x, it's a single clause in the DDL -- language-agnostic, any client benefits. Ask: "Why is data colocation important for distributed JOINs?" Answer: without colocation, the query engine must shuffle data across the network to match rows.
+                </aside>
             </section>
 
             <!-- Slide 14: Transaction Model -->
@@ -596,6 +635,9 @@ try {
                     <li>Read-write transactions are <strong>strictly serializable</strong> (strongest isolation)</li>
                     <li>Read-only transactions provide snapshot isolation</li>
                 </ul>
+                <aside class="notes">
+Big simplification from 2.x. In 2.x you had to choose PESSIMISTIC or OPTIMISTIC concurrency AND READ_COMMITTED, REPEATABLE_READ, or SERIALIZABLE isolation -- 6 combinations with subtle behavioral differences. In 3.x, all read-write transactions are strictly serializable (the strongest possible isolation). No choices, no confusion. RAFT ensures the ordering. Read-only transactions provide snapshot isolation for better read performance. Walk through the transfer example -- note the explicit tx.commit() and tx.rollback() in the catch block.
+                </aside>
             </section>
 
             <!-- Slide 15: runInTransaction -->
@@ -625,6 +667,9 @@ try {
                         <li>Cleaner code -- no manual try/catch/rollback</li>
                     </ul>
                 </div>
+                <aside class="notes">
+This is the RECOMMENDED pattern -- prefer this over manual begin/commit/rollback. Three advantages: automatic commit on success, automatic rollback on exception, and automatic retry on transient conflicts (like RAFT leader changes or lock timeouts). The lambda receives the Transaction object. No need for try/catch/finally. In the lab, students will use both patterns -- manual for understanding, runInTransaction for production-style code.
+                </aside>
             </section>
 
             <!-- Slide 16: Mixed SQL+KV Transactions -->
@@ -651,6 +696,9 @@ try {
                 <div class="highlight-box">
                     <strong>2.x limitation:</strong> In 2.x, SQL DML and cache operations used different transaction mechanisms and could not be mixed safely. Ignite 3.x unifies them.
                 </div>
+                <aside class="notes">
+This is a MAJOR new capability. In 2.x, SQL DML and cache operations used different transaction mechanisms internally, so mixing them could lead to inconsistencies. In 3.x, both go through the same RAFT-based transaction engine. The example shows: KV read, SQL insert, KV update -- all in one atomic transaction. This enables patterns like: update data via KV for speed, log the change via SQL for auditability, all atomically. Ask: "Can you think of use cases where mixing SQL and KV in one transaction would be valuable?"
+                </aside>
             </section>
 
             <!-- Slide 17: Compute Grid -->
@@ -681,9 +729,50 @@ Map&lt;ClusterNode, CompletableFuture&lt;Integer&gt;&gt; results =
                     <li><strong>JobTarget</strong> -- control where jobs execute (specific node, any node, colocated)</li>
                     <li>Jobs implement <code>ComputeJob&lt;I, O&gt;</code> interface</li>
                 </ul>
+                <aside class="notes">
+Compute in 3.x works differently from 2.x. No more peer class loading -- jobs must be packaged as JARs and deployed as deployment units via the CLI before execution. This is more operational overhead but prevents class-loader leaks that plagued 2.x. JobTarget controls WHERE the job runs: anyNode (load-balanced), node (specific), or colocated (on the node holding specific data). JobDescriptor specifies WHAT to run (class name + deployment unit). The async API returns CompletableFuture instead of 2.x's custom IgniteFuture. In the lab, students will explore the API but note that actual job execution requires server-side deployment.
+                </aside>
             </section>
 
-            <!-- Slide 18: Feature Gaps vs 2.x -->
+            <!-- Slide 18: Compute -- Deployment Units and Colocated Jobs -->
+            <section>
+                <h2>Compute: Deployment & Colocation</h2>
+                <h3>Server-side code requires explicit deployment</h3>
+                <div class="two-column">
+                    <div>
+                        <h3>Deployment Workflow</h3>
+                        <pre><code class="language-bash"># 1. Package job code as JAR
+mvn package -f jobs/pom.xml
+
+# 2. Deploy to cluster
+ignite3 cluster unit deploy \
+  --path=jobs/target/jobs.jar \
+  --version=1.0 --id=my-jobs
+
+# 3. List deployed units
+ignite3 cluster unit list</code></pre>
+                    </div>
+                    <div>
+                        <h3>Colocated Compute</h3>
+                        <pre><code class="language-java">// Run job on node holding key
+JobTarget target = JobTarget.colocated(
+    "orders",
+    Tuple.create().set("order_id", 42));
+
+client.compute().execute(
+    target, descriptor, args);</code></pre>
+                        <p style="font-size:0.65em;">Job runs where the data lives -- no data transfer needed</p>
+                    </div>
+                </div>
+                <div class="highlight-box">
+                    <strong>2.x had peer class loading</strong> (automatic bytecode transfer). 3.x replaces this with explicit deployment units -- more operational overhead but prevents class-loader leaks and versioning issues.
+                </div>
+                <aside class="notes">
+This slide explains the operational side of compute. In 2.x, you just wrote a Callable and called compute().call() -- peer class loading transferred the bytecode automatically. Convenient but caused class-loader leaks, version conflicts, and was a security concern. In 3.x, you must: 1) package your job classes as a JAR, 2) deploy the JAR to the cluster via CLI, 3) reference the deployment unit in your JobDescriptor. Colocated compute is powerful -- the job runs on the node that owns the data, so no data needs to travel across the network. This is the 3.x way to do what affinityCall() did in 2.x. For the lab, students will explore the API but won't deploy actual units (requires server-side setup). SQL aggregations serve as a practical alternative for many compute patterns.
+                </aside>
+            </section>
+
+            <!-- Slide 19: Feature Gaps vs 2.x -->
             <section>
                 <h2>Feature Gaps: What's Missing vs 2.x</h2>
                 <table>
@@ -731,9 +820,12 @@ Map&lt;ClusterNode, CompletableFuture&lt;Integer&gt;&gt; results =
                 <div class="highlight-box">
                     <strong>Evaluate before migrating:</strong> If your application depends on these features, plan alternatives or remain on 2.x until parity is reached.
                 </div>
+                <aside class="notes">
+Be honest about what's missing. These are features that many 2.x users depend on and have no direct replacement in 3.x yet. MapReduce can be partially replaced by broadcast compute + client-side aggregation, or by SQL aggregations. Service Grid has no replacement -- use external service mesh or compute jobs. Continuous Queries are planned but not yet available. Near Cache is gone -- implement client-side caching if needed. This is the primary reason teams may need to stay on 2.x. The decision should be based on feature requirements, not just "new is better."
+                </aside>
             </section>
 
-            <!-- Slide 19: Monitoring -->
+            <!-- Slide 20: Monitoring -->
             <section>
                 <h2>Monitoring & Observability</h2>
                 <h3>REST API, CLI, and Metrics</h3>
@@ -769,9 +861,52 @@ curl http://localhost:10300/management/v1/
                     <li><strong>JMX removed</strong> -- replaced by REST-based metrics endpoints</li>
                     <li>REST API available on port 10300 by default</li>
                 </ul>
+                <aside class="notes">
+Monitoring shifted from JMX to REST/CLI. Port 10300 is the management REST API -- cluster state, topology, configuration, and metrics all available via HTTP. OpenMetrics format means direct Prometheus scraping without a JMX exporter sidecar. Metric sources can be enabled/disabled at runtime via CLI. System views (SYSTEM.TABLES, SYSTEM.ZONES, SYSTEM.NODES) provide SQL-queryable metadata. In the lab, students will fetch real metrics from the REST API and query system views. Ask: "Who uses Prometheus/Grafana in their current environment?" This integration is much simpler in 3.x.
+                </aside>
             </section>
 
-            <!-- Slide 20: Migration Checklist -->
+            <!-- Slide 21: System Views and Prometheus -->
+            <section>
+                <h2>System Views & Prometheus</h2>
+                <h3>SQL-queryable metadata and native metrics export</h3>
+                <div class="two-column">
+                    <div>
+                        <h3>System Views (SQL)</h3>
+                        <pre><code class="language-sql">-- List all tables
+SELECT * FROM SYSTEM.TABLES;
+
+-- List distribution zones
+SELECT * FROM SYSTEM.ZONES;
+
+-- List cluster nodes
+SELECT * FROM SYSTEM.NODES;
+
+-- List indexes
+SELECT * FROM SYSTEM.INDEXES;</code></pre>
+                    </div>
+                    <div>
+                        <h3>Prometheus Config</h3>
+                        <pre><code class="language-yaml">scrape_configs:
+  - job_name: 'ignite3'
+    metrics_path: >
+      /management/v1/metric/node
+    static_configs:
+      - targets:
+          - 'node1:10300'
+          - 'node2:10300'</code></pre>
+                        <p style="font-size:0.65em;">Direct scraping -- no JMX exporter needed</p>
+                    </div>
+                </div>
+                <div class="highlight-box">
+                    <strong>Available metric groups:</strong> <code>jvm</code> (memory, GC, threads), <code>client.handler</code> (connections, requests), <code>sql</code> (queries), <code>compute</code> (jobs), <code>raft</code> (consensus). Enable via: <code>ignite3 node metric source enable &lt;name&gt;</code>
+                </div>
+                <aside class="notes">
+System views are queryable via standard SQL from any client. SYSTEM.TABLES shows all user tables, SYSTEM.ZONES shows distribution zone configuration, SYSTEM.NODES shows cluster membership. This replaces the programmatic APIs in 2.x (cluster().metrics(), cache.metrics()). For Prometheus, Ignite 3.x serves metrics in OpenMetrics format on the management port (10300). No sidecar JMX exporter needed -- Prometheus scrapes directly. Metric sources must be enabled first via CLI. Key groups: jvm for JVM stats, client.handler for connection metrics, sql for query metrics, raft for consensus metrics. In the lab, students will query system views and fetch metrics via HTTP.
+                </aside>
+            </section>
+
+            <!-- Slide 22: Migration Checklist -->
             <section>
                 <h2>Migration Checklist: 2.x to 3.x</h2>
                 <ol>
@@ -786,9 +921,12 @@ curl http://localhost:10300/management/v1/
                     <li><strong>Replace AffinityKey</strong> -- use <code>COLOCATE BY</code> in DDL</li>
                     <li><strong>Update monitoring</strong> -- switch from JMX to REST/OpenMetrics</li>
                 </ol>
+                <aside class="notes">
+Walk through each item. This is a FULL rewrite -- no incremental migration path. Emphasize item 1: audit feature usage FIRST. If you depend on Service Grid or Continuous Queries, stop and evaluate alternatives before proceeding. The most labor-intensive steps are typically 2 (cache configs to DDL) and 5 (data access code rewrite). Transaction changes (item 7) may surface concurrency bugs that 2.x's weaker isolation hid. Plan for thorough testing. Real-world migrations typically take weeks to months depending on codebase size.
+                </aside>
             </section>
 
-            <!-- Slide 21: Feature Comparison Matrix -->
+            <!-- Slide 23: Feature Comparison Matrix -->
             <section>
                 <h2>Feature Comparison Matrix</h2>
                 <table>
@@ -808,9 +946,12 @@ curl http://localhost:10300/management/v1/
                         <tr><td>Monitoring</td><td>JMX, SQL views</td><td>REST, CLI, OpenMetrics</td></tr>
                     </tbody>
                 </table>
+                <aside class="notes">
+Reference this table during the lab wrap-up. Key rows to highlight: Client Modes (thick+thin vs thin-only), Transactions (complex choices vs strictly serializable), SQL+KV in same TX (no vs yes). This table is also in the lab document for students to reference. Note: this is the current state as of Ignite 3.1.0 -- future releases will close some gaps.
+                </aside>
             </section>
 
-            <!-- Slide 22: Architecture Comparison -->
+            <!-- Slide 24: Architecture Comparison -->
             <section>
                 <h2>Architecture Comparison</h2>
                 <table>
@@ -828,9 +969,12 @@ curl http://localhost:10300/management/v1/
                         <tr><td>Codebase</td><td>Evolved from GridGain, monolithic</td><td>Ground-up rewrite, modular</td></tr>
                     </tbody>
                 </table>
+                <aside class="notes">
+Deeper technical comparison. Emphasize: SWIM vs ring topology (O(log n) vs O(n) failure detection), RAFT vs custom consensus (formally proven vs ad-hoc), pluggable storage (choose per workload) vs single engine. The "ground-up rewrite" row is important -- this is not evolved code, it's a new codebase. That's both a risk (less battle-tested) and an opportunity (no legacy baggage).
+                </aside>
             </section>
 
-            <!-- Slide 23: Decision Matrix -->
+            <!-- Slide 25: Decision Matrix -->
             <section>
                 <h2>When to Use 2.x vs 3.x</h2>
                 <div class="two-column">
@@ -857,26 +1001,50 @@ curl http://localhost:10300/management/v1/
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">
+This is the practical takeaway for architects. Left column: reasons to stay on 2.x. Right column: reasons to choose 3.x. For most greenfield projects, 3.x is the right choice. For existing 2.x deployments, the decision depends on feature dependencies. Ask students to think about their own projects and which column applies. Emphasize: 2.x is in maintenance mode but still receives security patches.
+                </aside>
             </section>
 
-            <!-- Slide 24: Lab Exercises -->
+            <!-- Slide 26: Lab Exercises -->
             <section>
                 <h2>Lab Exercises</h2>
-                <h3>Module 13: Hands-On with Ignite 3.x Concepts</h3>
-                <div class="highlight-box">
-                    <ol>
-                        <li><strong>Ignite 3.x Client Connection</strong> -- connect using <code>IgniteClient.builder()</code>, explore cluster topology</li>
-                        <li><strong>Schema-First Table Creation</strong> -- create tables and distribution zones via SQL DDL</li>
-                        <li><strong>Table API CRUD</strong> -- use RecordView (Tuple and POJO) and KeyValueView for data operations</li>
-                        <li><strong>SQL Queries</strong> -- execute parameterized queries with <code>client.sql().execute()</code></li>
-                        <li><strong>Transactions</strong> -- implement a transfer using <code>runInTransaction()</code> with mixed SQL+KV</li>
-                        <li><strong>Data Colocation</strong> -- use <code>COLOCATE BY</code> and verify colocated joins</li>
-                        <li><strong>Compute Jobs</strong> -- deploy and execute a compute job with deployment units</li>
-                    </ol>
+                <h3>Module 13: Hands-On with Ignite 3.x (17 exercises)</h3>
+                <div class="two-column">
+                    <div>
+                        <h3>Part 1-4</h3>
+                        <ol style="font-size:0.65em;">
+                            <li><strong>Discovery Explorer</strong> -- SWIM, RAFT, system views</li>
+                            <li><strong>Client Connection</strong> -- IgniteClient, cluster metadata</li>
+                            <li><strong>HOCON Configuration</strong> -- CLI config show/update</li>
+                            <li><strong>Config Explorer</strong> -- cluster vs node config, REST API</li>
+                            <li><strong>Distribution Zones</strong> -- CREATE ZONE via CLI and Java</li>
+                            <li><strong>RecordView Tuples</strong> -- full CRUD with Tuple API</li>
+                            <li><strong>RecordView POJOs</strong> -- typed Java object mapping</li>
+                            <li><strong>KeyValueView &amp; SQL</strong> -- KV API + parameterized queries</li>
+                            <li><strong>Manual Transactions</strong> -- begin/commit/rollback</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <h3>Part 5-8</h3>
+                        <ol start="10" style="font-size:0.65em;">
+                            <li><strong>Mixed SQL+KV Transaction</strong> -- SQL and KV in one TX</li>
+                            <li><strong>Compute Grid</strong> -- JobTarget, JobDescriptor, deployment</li>
+                            <li><strong>SQL as Compute</strong> -- distributed aggregations</li>
+                            <li><strong>Colocated Tables</strong> -- COLOCATE BY, efficient JOINs</li>
+                            <li><strong>Zone Inspection</strong> -- ALTER ZONE, system views</li>
+                            <li><strong>REST &amp; CLI Monitoring</strong> -- cluster state, topology</li>
+                            <li><strong>OpenMetrics</strong> -- Prometheus, client metrics</li>
+                            <li><strong>Comparison Summary</strong> -- full 2.x vs 3.x matrix</li>
+                        </ol>
+                    </div>
                 </div>
+                <aside class="notes">
+Preview the lab. Students will work through 17 exercises organized in 8 parts, covering all the topics we discussed. Docker is required -- they'll start an Ignite 3.x node and connect via thin client. Each exercise has a complete Java program to write and run. Solutions are available in the solutions/lab13_version_differences module. Budget about 2 hours for the full lab.
+                </aside>
             </section>
 
-            <!-- Slide 25: Summary & Q&A -->
+            <!-- Slide 27: Summary & Q&A -->
             <section class="title-slide" data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
                 <h1 style="color: white;">Summary</h1>
                 <div style="color: #f0f0f0; font-size: 0.8em;">
@@ -890,6 +1058,9 @@ curl http://localhost:10300/management/v1/
                     </ul>
                 </div>
                 <h2 style="color: #f0f0f0; margin-top: 1em;">Questions?</h2>
+                <aside class="notes">
+Recap the key points. Ignite 3.x is a modern rewrite designed for schema-first, SQL-heavy workloads with strong consistency. It's not a drop-in replacement for 2.x -- it's a new platform. The Table API, Distribution Zones, and mixed SQL+KV transactions are the headline features. Monitor your cluster via REST and Prometheus instead of JMX. Evaluate the feature gap table before committing to migration. Questions from the group?
+                </aside>
             </section>
 
         </div>

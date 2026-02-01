@@ -110,6 +110,56 @@ public class Lab10RestAPI {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab10RestAPI"
+```
+
+**Expected Output:**
+
+```
+=== REST API Lab ===
+
+Ignite node started with REST API enabled
+REST endpoint: http://localhost:8080/ignite
+
+Sample data added to cache
+
+=== REST API Endpoints ===
+
+1. Get Version:
+   curl http://localhost:8080/ignite?cmd=version
+
+2. Get Cache Value:
+   curl "http://localhost:8080/ignite?cmd=get&cacheName=restCache&key=key1"
+
+3. Put Cache Value:
+   curl "http://localhost:8080/ignite?cmd=put&cacheName=restCache&key=key3&val=value3"
+
+4. Get All Keys:
+   curl "http://localhost:8080/ignite?cmd=getall&cacheName=restCache&k1=key1&k2=key2"
+
+5. Execute SQL Query:
+   curl "http://localhost:8080/ignite?cmd=qryfldexe&pageSize=10&cacheName=restCache&qry=SELECT+*+FROM+String"
+
+6. Get Cluster Topology:
+   curl http://localhost:8080/ignite?cmd=top
+
+7. Cache Size:
+   curl "http://localhost:8080/ignite?cmd=size&cacheName=restCache"
+
+=== Testing REST API ===
+Try the curl commands above in another terminal
+
+=== REST API Use Cases ===
+- Multi-language client access
+- Web applications
+- Monitoring and management
+- Quick prototyping
+- Integration with non-Java systems
+```
+
 ## Part 2: Spring Framework Integration (20 minutes)
 
 ### Exercise 2: Spring Boot Integration
@@ -430,6 +480,40 @@ public class Lab10HibernateL2Cache {
         }
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab10HibernateL2Cache"
+```
+
+**Expected Output:**
+
+```
+=== Hibernate L2 Cache Lab ===
+
+=== Inserting Products ===
+Products inserted
+
+=== First Query (Database) ===
+Retrieved: Product{id=1, name='Laptop', price=1200.0}
+
+=== Second Query (L2 Cache) ===
+Retrieved: Product{id=1, name='Laptop', price=1200.0}
+
+=== Cache Statistics ===
+Entity fetch count: 1
+Second level cache hit count: 1
+Second level cache miss count: 1
+Second level cache put count: 3
+
+=== Hibernate L2 Cache Benefits ===
+- Reduced database load
+- Better application performance
+- Distributed caching
+- Cluster-wide cache
+- Automatic cache synchronization
 ```
 
 ---
@@ -813,6 +897,12 @@ public class Lab10RestAPIDeepDive {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab10RestAPIDeepDive"
+```
+
 ### REST API Quick Reference
 
 ```bash
@@ -1118,6 +1208,12 @@ public class Lab10ThinClient {
         System.out.println("- Long-running applications with stable connections");
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab10ThinClient"
 ```
 
 ### Thin Client Quick Reference
@@ -1517,6 +1613,12 @@ public class Lab10SpringDataIgnite {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab10SpringDataIgnite"
+```
+
 ### Spring Data Ignite Quick Reference
 
 ```java
@@ -1910,6 +2012,12 @@ public class Lab10KafkaIntegration {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab10KafkaIntegration"
+```
+
 ### Kafka Integration Quick Reference
 
 ```java
@@ -2142,6 +2250,12 @@ public class RestCacheAdminTool {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.challenge.RestCacheAdminTool"
+```
+
 ### Challenge 2: Event Streaming to External System
 
 Implement a continuous query that streams cache changes to an external system.
@@ -2298,6 +2412,12 @@ public class EventStreamingChallenge {
         }
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.challenge.EventStreamingChallenge"
 ```
 
 ### Challenge 3: Multi-Protocol Gateway
@@ -2490,5 +2610,11 @@ public class MultiProtocolGateway {
         System.out.println("  +------------+------------------+------------------+");
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.challenge.MultiProtocolGateway"
 ```
 

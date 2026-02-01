@@ -133,6 +133,23 @@ public class Lab04XmlConfig {
 }
 ```
 
+**Expected Output:**
+
+```
+=== XML Configuration Lab ===
+
+Node started with XML configuration
+Node name: xml-configured-node
+
+=== Available Caches ===
+  - xmlPartitionedCache
+  - xmlReplicatedCache
+
+Test value: XML Configured Value
+
+Press Enter to exit...
+```
+
 ## Part 2: Programmatic Configuration (15 minutes)
 
 ### Exercise 3: Advanced Programmatic Configuration
@@ -297,6 +314,31 @@ public class Lab04ProgrammaticConfig {
         });
     }
 }
+```
+
+**Expected Output:**
+
+```
+=== Programmatic Configuration Lab ===
+
+Node started with programmatic configuration
+
+=== Node Configuration ===
+Instance name: programmatic-node
+Cluster nodes: 1
+
+=== Configured Caches ===
+  - programmaticPartitioned
+  - programmaticReplicated
+  - transactionalCache
+
+=== Data Regions ===
+  Region: Default_Region
+    Total allocated: 0 MB
+  Region: Persistent_Region
+    Total allocated: 0 MB
+
+Press Enter to exit...
 ```
 
 ## Part 3: Spring Boot Integration (20 minutes)
@@ -499,6 +541,43 @@ public class CacheController {
 }
 ```
 
+**Expected Output (Spring Boot startup):**
+
+```
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::               (v2.7.14)
+
+...
+[INFO] Ignite node started OK (id=xxxxxxxx, instance name=springboot-node)
+Topology snapshot [ver=1, locNode=xxxxxxxx, servers=1, clients=0, ...]
+
+=== Spring Boot Ignite Integration ===
+Ignite node: springboot-node
+Cluster size: 1
+Cached value: Spring Boot Value
+
+Application running. Press Ctrl+C to stop.
+```
+
+**Expected Output (REST API test):**
+
+```
+$ curl -X POST http://localhost:8080/api/cache/mykey \
+    -H "Content-Type: text/plain" -d "myvalue"
+{"status":"success","key":"mykey","value":"myvalue"}
+
+$ curl http://localhost:8080/api/cache/mykey
+{"key":"mykey","value":"myvalue"}
+
+$ curl http://localhost:8080/api/cache/size
+{"size":1}
+```
+
 ## Part 4: Monitoring and Logging (10 minutes)
 
 ### Exercise 5: Configure Logging
@@ -593,6 +672,31 @@ public class Lab04Monitoring {
     }
 }
 ```
+
+**Expected Output:**
+
+```
+=== Monitoring and Metrics Lab ===
+
+=== Cache Metrics ===
+Cache gets: 50
+Cache puts: 100
+Cache hits: 50
+Cache misses: 0
+Hit percentage: 100.00%
+Average get time: 0.012 ms
+Average put time: 0.025 ms
+
+=== Cluster Metrics ===
+Total CPUs: 8
+Current CPU load: 12.45%
+Heap memory used: 256 MB
+Heap memory max: 4096 MB
+
+Press Enter to exit...
+```
+
+Note: Metric values will vary based on your system. Cache hit percentage may differ depending on whether statistics were enabled before operations were performed.
 
 ## Verification Steps
 

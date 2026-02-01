@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/idea.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <style>
         .reveal .slides section { overflow: hidden; }
         .reveal section { max-height: 100%; }
@@ -34,12 +34,12 @@
         }
         .reveal pre {
             width: 100%;
-            font-size: 0.48em;
+            font-size: 0.55em;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         .reveal pre code {
             max-height: 500px;
-            padding: 15px;
+            background: #f6f8fa; color: #24292e; padding: 1em;
         }
         .reveal ul, .reveal ol {
             display: block;
@@ -169,6 +169,7 @@
                 <h2 style="color: #e67e22;">Integration and Connectivity</h2>
                 <p style="color: #666; margin-top: 40px;">Apache Ignite Training Course</p>
                 <p style="font-size: 0.55em; color: #999;">Duration: 60 minutes</p>
+                <aside class="notes">This module covers the many ways applications can connect to and integrate with Apache Ignite. The goal is for students to understand which integration approach fits their use case. We cover REST, Spring, Kafka, Hibernate, JDBC, and thin clients. Budget about 60 minutes for the lecture portion.</aside>
             </section>
 
             <!-- Objectives -->
@@ -182,6 +183,7 @@
                     <li class="fragment">Use JDBC/ODBC drivers for SQL connectivity</li>
                     <li class="fragment">Understand client vs server node configurations</li>
                 </ul>
+                <aside class="notes">Review each objective with the class. Most students will use at least two or three of these integration methods in production. Spring and JDBC are the most commonly used. Kafka streaming is increasingly popular for real-time data pipelines. Ask students which integration points are most relevant to their projects.</aside>
             </section>
 
             <!-- Integration Overview -->
@@ -213,6 +215,7 @@
                         <p>Lightweight access</p>
                     </div>
                 </div>
+                <aside class="notes">This grid shows the breadth of Ignite's integration ecosystem. Each of these represents a different way to connect to Ignite, and they serve different use cases. REST is for language-agnostic access, Spring is for Java enterprise apps, Kafka is for streaming pipelines, Hibernate is for ORM-based apps, JDBC/ODBC for SQL tools, and thin clients for lightweight connectivity.</aside>
             </section>
 
             <!-- REST API Section -->
@@ -223,6 +226,7 @@
                     <div class="info-box">
                         <strong>15 minutes</strong> - Language-agnostic access via HTTP endpoints
                     </div>
+                    <aside class="notes">The REST API is the simplest way to interact with Ignite from any language or tool. It requires the ignite-rest-http module and exposes cache operations, SQL queries, and cluster management via HTTP. This is great for prototyping, monitoring dashboards, and polyglot environments.</aside>
                 </section>
 
                 <section>
@@ -249,6 +253,7 @@
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">The REST API supports all fundamental operations. On the left, note the use cases: it is particularly valuable when you have Python, Node.js, or other non-Java services that need to access Ignite data. On the right, the features cover cache CRUD, SQL execution, topology inspection, and even remote compute task invocation.</aside>
                 </section>
 
                 <section>
@@ -259,6 +264,7 @@
     &lt;artifactId&gt;ignite-rest-http&lt;/artifactId&gt;
     &lt;version&gt;2.16.0&lt;/version&gt;
 &lt;/dependency&gt;</code></pre>
+                    <aside class="notes">This single Maven dependency is all you need to enable REST support. The module bundles an embedded Jetty server that exposes the REST endpoints. Make sure this dependency is on the classpath of the node that will serve REST requests. Not every node needs it -- typically you enable it on one or two nodes behind a load balancer.</aside>
                 </section>
 
                 <section>
@@ -279,6 +285,7 @@ Ignite ignite = Ignition.start(cfg);</code></pre>
                     <p class="fragment" style="font-size: 0.8em; color: #666;">
                         REST endpoint available at: <code style="color: #e67e22;">http://localhost:8080/ignite</code>
                     </p>
+                    <aside class="notes">The ConnectorConfiguration class controls the REST endpoint settings. Port 8080 is a common choice but can be changed. The REST API is available at /ignite on the configured port. In production, you should put this behind a reverse proxy or API gateway for security, rate limiting, and SSL termination.</aside>
                 </section>
 
                 <section>
@@ -315,6 +322,7 @@ Ignite ignite = Ignition.start(cfg);</code></pre>
                             <td><code>?cmd=size&amp;cacheName=X</code></td>
                         </tr>
                     </table>
+                    <aside class="notes">These are the most commonly used REST commands. The cmd parameter specifies the operation, and additional parameters provide context like cache name and key. The topology command is useful for monitoring. Note that all operations go through the node hosting the REST endpoint, which then routes to the appropriate data node internally.</aside>
                 </section>
 
                 <section>
@@ -336,6 +344,7 @@ curl http://localhost:8080/ignite?cmd=top
 
 # Execute SQL query
 curl "http://localhost:8080/ignite?cmd=qryfldexe&pageSize=10&cacheName=myCache&qry=SELECT+*+FROM+Person"</code></pre>
+                    <aside class="notes">Walk through each curl example. The put and get commands work with string keys and values by default. The getall command retrieves multiple keys at once. The SQL query command (qryfldexe) allows executing arbitrary SQL. Note that URL encoding is needed for special characters in queries. Students can test these directly in their browser or with curl.</aside>
                 </section>
 
                 <section>
@@ -362,6 +371,7 @@ curl "http://localhost:8080/ignite?cmd=qryfldexe&pageSize=10&cacheName=myCache&q
     }
   ]
 }</code></pre>
+                    <aside class="notes">All REST responses follow this standard JSON format. A successStatus of 0 means success; non-zero indicates an error. The response field contains the actual data, which varies by command. The topology response shows detailed node information including whether it is a client node and what caches it hosts. This is very useful for building monitoring tools.</aside>
                 </section>
             </section>
 
@@ -373,6 +383,7 @@ curl "http://localhost:8080/ignite?cmd=qryfldexe&pageSize=10&cacheName=myCache&q
                     <div class="info-box">
                         <strong>10 minutes</strong> - Spring beans, caching annotations, and configuration
                     </div>
+                    <aside class="notes">Spring is the most popular Java enterprise framework, and Ignite integrates deeply with it. This section covers two main integration points: Spring Cache abstraction (using @Cacheable annotations) and Spring Data (using repository interfaces). Both dramatically reduce boilerplate code.</aside>
                 </section>
 
                 <section>
@@ -397,6 +408,7 @@ curl "http://localhost:8080/ignite?cmd=qryfldexe&pageSize=10&cacheName=myCache&q
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">Spring Core integration lets you configure Ignite nodes as Spring beans and use the standard caching annotations. Spring Data integration provides the familiar repository pattern where you define interfaces and Spring auto-generates the implementation. Both can be used together in the same application.</aside>
                 </section>
 
                 <section>
@@ -414,6 +426,7 @@ curl "http://localhost:8080/ignite?cmd=qryfldexe&pageSize=10&cacheName=myCache&q
     &lt;artifactId&gt;ignite-spring-data-ext&lt;/artifactId&gt;
     &lt;version&gt;2.0.0&lt;/version&gt;
 &lt;/dependency&gt;</code></pre>
+                    <aside class="notes">The ignite-spring module provides the core Spring integration including the SpringCacheManager. The ignite-spring-data-ext module adds Spring Data repository support. Note the different version numbers -- the ext modules follow their own versioning scheme separate from Ignite core. Check the compatibility matrix in the documentation.</aside>
                 </section>
 
                 <section>
@@ -438,6 +451,7 @@ curl "http://localhost:8080/ignite?cmd=qryfldexe&pageSize=10&cacheName=myCache&q
     &lt;/bean&gt;
 &lt;/beans&gt;</code></pre>
                     </div>
+                    <aside class="notes">XML configuration is the traditional Spring approach. The bean ID "ignite.cfg" is important because Ignite's Spring integration looks for it by convention. You can define all cache configurations, discovery settings, and other properties as nested beans. Many teams prefer this approach because it separates configuration from code.</aside>
                 </section>
 
                 <section>
@@ -464,6 +478,7 @@ public class UserService {
         userRepository.deleteById(userId);
     }
 }</code></pre>
+                    <aside class="notes">This is one of the most powerful integrations. The @Cacheable annotation automatically caches method results in Ignite. On the first call, the method executes and the result is stored. Subsequent calls with the same key return the cached value without executing the method. @CachePut updates the cache, and @CacheEvict removes entries. The application code has no Ignite-specific imports at all.</aside>
                 </section>
 
                 <section>
@@ -489,6 +504,7 @@ public class CacheConfig {
         return mgr;
     }
 }</code></pre>
+                    <aside class="notes">The @EnableCaching annotation activates Spring's cache infrastructure. The SpringCacheManager bean connects Spring's caching abstraction to Ignite. You can point it to an XML configuration file or set the IgniteConfiguration programmatically. Once this is configured, all @Cacheable annotations in the application will use Ignite as the cache provider.</aside>
                 </section>
             </section>
 
@@ -500,6 +516,7 @@ public class CacheConfig {
                     <div class="info-box">
                         <strong>10 minutes</strong> - Production-ready Spring Boot integration
                     </div>
+                    <aside class="notes">Spring Boot takes the Spring integration further with auto-configuration. The ignite-spring-boot-autoconfigure module automatically sets up Ignite based on application properties, reducing boilerplate even more. This is the recommended approach for new Spring Boot projects.</aside>
                 </section>
 
                 <section>
@@ -521,6 +538,7 @@ public class CacheConfig {
     &lt;artifactId&gt;ignite-core&lt;/artifactId&gt;
     &lt;version&gt;2.16.0&lt;/version&gt;
 &lt;/dependency&gt;</code></pre>
+                    <aside class="notes">Three dependencies are needed: the Spring Boot web starter, the Ignite auto-configuration module, and Ignite core. The auto-configure module detects Ignite on the classpath and sets up an Ignite instance automatically. You can override the default configuration with a custom IgniteConfiguration bean or through application properties.</aside>
                 </section>
 
                 <section>
@@ -544,6 +562,7 @@ public class IgniteConfig {
         return Ignition.start(cfg);
     }
 }</code></pre>
+                    <aside class="notes">This configuration bean creates and starts an Ignite instance as a Spring-managed bean. The @Bean annotation ensures Spring manages the lifecycle. Setting indexed types enables SQL queries on the cache. Note that setClientMode(false) makes this a server node. In a microservices architecture, you might set this to true for application nodes and have dedicated server nodes for data storage.</aside>
                 </section>
 
                 <section>
@@ -573,6 +592,7 @@ public class IgniteUserService {
         return cache != null ? cache.get(key) : null;
     }
 }</code></pre>
+                    <aside class="notes">This service demonstrates two approaches side by side. The getUserName method uses Spring's @Cacheable annotation for transparent caching. The putToCache and getFromCache methods use the Ignite API directly for more control. The @Autowired Ignite instance gives you full access to the Ignite API when annotations are not sufficient. The first call to getUserName will take 1 second; subsequent calls return instantly from cache.</aside>
                 </section>
 
                 <section>
@@ -599,6 +619,7 @@ public class UserController {
         return response;
     }
 }</code></pre>
+                    <aside class="notes">This controller shows how the caching is completely transparent to the REST layer. The response includes timing information so you can demonstrate the cache effect: the first request takes about 1 second (simulated DB call), while subsequent requests for the same user ID return in under a millisecond. The "cached" flag in the response makes this visible to the client.</aside>
                 </section>
 
                 <section>
@@ -619,6 +640,7 @@ ignite.discovery.multicast-group=228.10.10.157
 
 # Logging
 logging.level.org.apache.ignite=INFO</code></pre>
+                    <aside class="notes">Application properties provide an alternative to Java configuration for simple settings. These properties are picked up by the Ignite auto-configuration module. Peer class loading should be enabled during development but disabled in production for security. The discovery settings configure how nodes find each other. In production, use static IP discovery instead of multicast.</aside>
                 </section>
             </section>
 
@@ -630,6 +652,7 @@ logging.level.org.apache.ignite=INFO</code></pre>
                     <div class="info-box">
                         <strong>10 minutes</strong> - Stream data from Kafka into Ignite caches
                     </div>
+                    <aside class="notes">Kafka integration is critical for real-time data pipelines. The Ignite Kafka streamer consumes messages from Kafka topics and loads them directly into Ignite caches using the high-performance DataStreamer. This enables real-time analytics on streaming data with sub-millisecond query latency.</aside>
                 </section>
 
                 <section>
@@ -651,6 +674,7 @@ logging.level.org.apache.ignite=INFO</code></pre>
         |     Real-time        |
         +----> Ingestion  -----+
                     </div>
+                    <aside class="notes">This architecture shows the data flow: Kafka topics on the left produce events, the KafkaStreamer in the middle consumes and transforms them into cache entries, and applications on the right query the data using SQL, cache operations, or compute tasks. The key benefit is that data is queryable in Ignite within milliseconds of being produced to Kafka.</aside>
                 </section>
 
                 <section>
@@ -666,6 +690,7 @@ logging.level.org.apache.ignite=INFO</code></pre>
     &lt;artifactId&gt;kafka-clients&lt;/artifactId&gt;
     &lt;version&gt;3.4.0&lt;/version&gt;
 &lt;/dependency&gt;</code></pre>
+                    <aside class="notes">You need both the Ignite Kafka module and the Kafka clients library. Make sure the Kafka client version is compatible with your Kafka broker version. The ignite-kafka module provides the KafkaStreamer class that bridges Kafka consumers with Ignite's DataStreamer for high-throughput ingestion.</aside>
                 </section>
 
                 <section>
@@ -685,6 +710,7 @@ kafkaProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
     StringDeserializer.class.getName());
 kafkaProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
     "earliest");</code></pre>
+                    <aside class="notes">The Kafka consumer properties are standard Kafka configuration. The bootstrap servers point to your Kafka brokers. The group ID identifies this consumer group for offset management. Setting auto.offset.reset to "earliest" ensures you process all existing messages when starting fresh. In production, you may want "latest" to skip historical data.</aside>
                 </section>
 
                 <section>
@@ -713,6 +739,7 @@ kafkaStreamer.setSingleTupleExtractor(msg -&gt; {
 kafkaStreamer.start();
 System.out.println("Streaming from Kafka topic: ignite-topic");</code></pre>
                     </div>
+                    <aside class="notes">The KafkaStreamer brings together the Ignite instance, a DataStreamer for the target cache, and the Kafka consumer configuration. The tuple extractor is the transformation function that converts each Kafka message into a cache key-value entry. Setting 4 threads allows parallel consumption. The DataStreamer automatically batches entries for optimal throughput.</aside>
                 </section>
 
                 <section>
@@ -741,6 +768,7 @@ kafkaStreamer.setSingleTupleExtractor(
         }
     }
 });</code></pre>
+                    <aside class="notes">This example shows a more realistic transformation that parses JSON messages from Kafka into domain objects. The ObjectMapper deserializes the JSON, and the extract method creates an Order object from the fields. Returning null skips malformed messages gracefully. In production, you should log skipped messages and monitor the skip rate to detect data quality issues.</aside>
                 </section>
 
                 <section>
@@ -765,6 +793,7 @@ kafkaStreamer.setSingleTupleExtractor(
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">The combination of Kafka for ingestion and Ignite for querying creates a powerful real-time analytics platform. Data flows from producers through Kafka into Ignite caches, where it is immediately queryable via SQL. This pattern is common in fraud detection, real-time dashboards, and IoT data processing. At-least-once delivery means you may see duplicates, so design your cache keys to handle idempotent updates.</aside>
                 </section>
             </section>
 
@@ -776,6 +805,7 @@ kafkaStreamer.setSingleTupleExtractor(
                     <div class="info-box">
                         <strong>The Production Pattern:</strong> Write to OLTP, Read from Ignite
                     </div>
+                    <aside class="notes">CDC is an increasingly popular pattern for keeping Ignite caches synchronized with a primary database. Instead of the application writing to both the database and the cache (dual write, which is error-prone), CDC captures changes from the database's write-ahead log and streams them into the cache. This gives you the reliability of an OLTP database with the speed of in-memory reads.</aside>
                 </section>
 
                 <section>
@@ -792,6 +822,7 @@ kafkaStreamer.setSingleTupleExtractor(
                     <div class="info-box">
                         <strong>Pattern:</strong> Write to OLTP, read from Ignite. CDC syncs automatically.
                     </div>
+                    <aside class="notes">Walk through this diagram from left to right. PostgreSQL captures all changes in its WAL (write-ahead log). Debezium reads the WAL and publishes change events to Kafka topics. A consumer application reads from Kafka and updates the Ignite cache. The application writes to the database normally and reads from Ignite for fast access. The cache stays synchronized automatically without any dual-write logic in the application.</aside>
                 </section>
 
                 <section>
@@ -818,6 +849,7 @@ kafkaStreamer.setSingleTupleExtractor(
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">The key advantage is separation of concerns. The database handles the hard problem of durable, ACID writes. Ignite handles the hard problem of fast, scalable reads. CDC bridges them automatically. "No application code changes" is a major selling point -- existing applications that write to the database continue to work unchanged, and you add Ignite reads where you need performance.</aside>
                 </section>
 
                 <section>
@@ -849,6 +881,7 @@ kafkaStreamer.setSingleTupleExtractor(
                             <td>cache.put(key, value)</td>
                         </tr>
                     </table>
+                    <aside class="notes">Each database operation generates a corresponding CDC event type. The consumer maps these events to cache operations. INSERT and UPDATE both translate to cache.put, DELETE translates to cache.remove. The Snapshot/READ event occurs during initial snapshot capture when Debezium first connects and reads all existing data. This ensures the cache starts fully populated.</aside>
                 </section>
 
                 <section>
@@ -883,6 +916,7 @@ kafkaStreamer.setSingleTupleExtractor(
                     <div class="info-box">
                         <strong>Recommendation:</strong> CDC for read-heavy workloads. See Lab 13 (Bonus)!
                     </div>
+                    <aside class="notes">This comparison is important for students to understand the trade-offs. Dual write is dangerous because if either write fails, you get inconsistency. CDC avoids this by having a single write path. Read-through loads data lazily on cache misses, which can cause latency spikes. Write-through provides strong consistency but makes Ignite the write path, which may not fit all architectures. CDC is best for read-heavy workloads with existing databases.</aside>
                 </section>
 
                 <section>
@@ -908,6 +942,7 @@ kafkaStreamer.setSingleTupleExtractor(
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">CDC adds infrastructure complexity (Debezium, Kafka, consumer service), so it is best justified when you have a clear need. Legacy system integration is a particularly strong use case because you do not need to modify the existing application. If you need strong consistency or have a simple architecture, write-through or read-through may be better fits with less operational overhead.</aside>
                 </section>
             </section>
 
@@ -919,6 +954,7 @@ kafkaStreamer.setSingleTupleExtractor(
                     <div class="info-box">
                         <strong>10 minutes</strong> - Use Ignite as Hibernate second-level cache
                     </div>
+                    <aside class="notes">Hibernate's second-level cache is a session-factory-scoped cache that stores entity data across sessions. By default it uses in-process caching, but Ignite makes it distributed. This means entity data cached on one application server is available to all servers, dramatically reducing database load in clustered deployments.</aside>
                 </section>
 
                 <section>
@@ -948,6 +984,7 @@ kafkaStreamer.setSingleTupleExtractor(
 |                      Database                             |
 +----------------------------------------------------------+
                     </div>
+                    <aside class="notes">The L1 cache is per-session and always active. The L2 cache sits between the session and the database, shared by all sessions in the SessionFactory. Without Ignite, L2 caching is local to each JVM. With Ignite, the L2 cache is distributed across the cluster, so an entity loaded by one app server is available to all others without hitting the database again.</aside>
                 </section>
 
                 <section>
@@ -966,6 +1003,7 @@ kafkaStreamer.setSingleTupleExtractor(
                     <div class="warning-box fragment">
                         <strong>Note:</strong> Use the matching ignite-hibernate version for your Hibernate version (5.1, 5.3, etc.)
                     </div>
+                    <aside class="notes">The ignite-hibernate artifact has version-specific variants. Make sure to match your Hibernate version: ignite-hibernate_5.1 for Hibernate 5.1.x, ignite-hibernate_5.3 for Hibernate 5.3+. Using the wrong version will cause classloading errors. Check the Ignite documentation for the exact compatibility matrix.</aside>
                 </section>
 
                 <section>
@@ -996,6 +1034,7 @@ kafkaStreamer.setSingleTupleExtractor(
     &lt;/session-factory&gt;
 &lt;/hibernate-configuration&gt;</code></pre>
                     </div>
+                    <aside class="notes">Three key Hibernate properties enable the integration: use_second_level_cache turns on L2 caching, use_query_cache enables caching of query results, and cache.region.factory_class points to Ignite's implementation. The ignite_instance_name must match a running Ignite instance. The default_access_type sets the concurrency strategy for all entities unless overridden per-entity.</aside>
                 </section>
 
                 <section>
@@ -1019,6 +1058,7 @@ public class Product {
 
     // Constructors, getters, setters...
 }</code></pre>
+                    <aside class="notes">Each entity that should be cached needs two annotations: @Cacheable from JPA and @Cache from Hibernate with the concurrency strategy. READ_WRITE is the most commonly used strategy as it provides a good balance between performance and consistency. Without these annotations, the entity will not participate in L2 caching even though the cache provider is configured.</aside>
                 </section>
 
                 <section>
@@ -1050,6 +1090,7 @@ public class Product {
                             <td>Strict</td>
                         </tr>
                     </table>
+                    <aside class="notes">Choose the strategy based on your data's update frequency and staleness tolerance. READ_ONLY is the fastest but only works for immutable data like country codes or product categories. READ_WRITE uses soft locks to maintain consistency during updates. NONSTRICT_READ_WRITE has no locking and may serve stale data briefly after updates. TRANSACTIONAL provides full ACID but requires a JTA transaction manager and has the highest overhead.</aside>
                 </section>
 
                 <section>
@@ -1072,6 +1113,7 @@ Statistics stats = sessionFactory.getStatistics();
 System.out.println("L2 Cache Hits: " + stats.getSecondLevelCacheHitCount());
 System.out.println("L2 Cache Misses: " + stats.getSecondLevelCacheMissCount());
 System.out.println("L2 Cache Puts: " + stats.getSecondLevelCachePutCount());</code></pre>
+                    <aside class="notes">Hibernate statistics are essential for verifying that L2 caching is working. The first session.get causes a cache miss and a database query, then puts the result into L2 cache. The second session.get (in a different session) hits the L2 cache and avoids the database entirely. Monitor the hit ratio in production. A healthy L2 cache should have a hit ratio above 80% for read-heavy workloads.</aside>
                 </section>
 
                 <section>
@@ -1085,6 +1127,7 @@ System.out.println("L2 Cache Puts: " + stats.getSecondLevelCachePutCount());</co
                             <li>Transparent to application code</li>
                         </ul>
                     </div>
+                    <aside class="notes">The transparency is the key advantage. Existing Hibernate code works unchanged -- you just add annotations and configure the cache provider. The distributed nature means cache entries are shared across all application servers, unlike local L2 cache implementations like Ehcache (non-distributed mode). This eliminates redundant database queries from different servers for the same entity.</aside>
                 </section>
             </section>
 
@@ -1096,6 +1139,7 @@ System.out.println("L2 Cache Puts: " + stats.getSecondLevelCachePutCount());</co
                     <div class="info-box">
                         <strong>5 minutes</strong> - Connect using standard database drivers
                     </div>
+                    <aside class="notes">Ignite provides standard JDBC and ODBC drivers, making it accessible from any tool or language that supports these protocols. This is particularly valuable for BI tools, reporting systems, and existing database-oriented applications that need to query Ignite data using familiar SQL interfaces.</aside>
                 </section>
 
                 <section>
@@ -1121,6 +1165,7 @@ try (Connection conn = DriverManager.getConnection(jdbcUrl)) {
             ": " + rs.getInt("age"));
     }
 }</code></pre>
+                    <aside class="notes">The JDBC thin client connects to Ignite's client connector port (10800 by default). The connection URL format is straightforward. You can optionally specify a schema after the port. Standard JDBC operations like Statement, PreparedStatement, and ResultSet all work as expected. The thin JDBC driver is lightweight and does not require an Ignite node to be started in the client process.</aside>
                 </section>
 
                 <section>
@@ -1148,6 +1193,7 @@ try (Connection conn = dataSource.getConnection()) {
     ps.setInt(3, 30);
     ps.executeUpdate();
 }</code></pre>
+                    <aside class="notes">In production, always use connection pooling. HikariCP is the recommended pool for Ignite JDBC connections. Each connection maintains a TCP socket to the Ignite cluster, so pooling avoids the overhead of repeatedly opening and closing connections. Set the pool size based on your application's concurrency needs. Ten connections is a good starting point for most applications.</aside>
                 </section>
 
                 <section>
@@ -1171,6 +1217,7 @@ Schema=PUBLIC</code></pre>
                     <p class="fragment" style="margin-top: 20px; font-size: 0.8em;">
                         Use ODBC for Excel, Power BI, Tableau, and other BI tools
                     </p>
+                    <aside class="notes">ODBC allows non-Java tools to connect to Ignite using the standard ODBC interface. On Windows, you configure a DSN through the ODBC Data Source Administrator. On Linux, you edit the odbc.ini file. Once configured, tools like Excel, Power BI, and Tableau can connect to Ignite and query data using SQL, treating it like any other database.</aside>
                 </section>
 
                 <section>
@@ -1195,6 +1242,7 @@ Schema=PUBLIC</code></pre>
                     <div class="info-box fragment">
                         <strong>Recommendation:</strong> Use thin client JDBC for most applications - simpler setup and lower resource usage.
                     </div>
+                    <aside class="notes">There are two JDBC driver types. The thin client driver connects via TCP and has minimal resource requirements. The client node driver actually starts an Ignite client node in the JVM, giving you full cluster participation including compute capabilities, but at higher resource cost. For most SQL-only use cases, the thin client driver is sufficient and much simpler to set up.</aside>
                 </section>
             </section>
 
@@ -1206,6 +1254,7 @@ Schema=PUBLIC</code></pre>
                     <div class="info-box">
                         <strong>5 minutes</strong> - Understanding node topology roles
                     </div>
+                    <aside class="notes">Understanding node types is critical for designing a proper Ignite topology. Server nodes store data and execute compute tasks. Client nodes connect to the cluster without storing data. Thin clients are even lighter, using only a TCP connection. Each has its place depending on performance requirements and resource constraints.</aside>
                 </section>
 
                 <section>
@@ -1229,6 +1278,7 @@ Schema=PUBLIC</code></pre>
 |   Primary/Backup   |          |   Web Tier         |
 +--------------------+          +--------------------+
                     </div>
+                    <aside class="notes">Server nodes are the backbone of the cluster. They hold data partitions, execute compute tasks, and participate in the discovery protocol. Client nodes are lighter: they do not store data but are full cluster members that can submit compute tasks and use near caches. The choice between them depends on whether your application needs to store data locally and how much memory you can dedicate to Ignite.</aside>
                 </section>
 
                 <section>
@@ -1250,6 +1300,7 @@ cfg.setDataStorageConfiguration(
 // Start server node
 Ignite ignite = Ignition.start(cfg);
 System.out.println("Server node started: " + ignite.cluster().localNode().id());</code></pre>
+                    <aside class="notes">Server mode is the default, so setClientMode(false) is optional but explicit. The DataStorageConfiguration sets memory limits. Here we allocate 2GB for the default data region. In production, size this based on your data volume plus overhead for indexes and metadata. Server nodes should run on dedicated machines or containers with sufficient memory and CPU.</aside>
                 </section>
 
                 <section>
@@ -1275,6 +1326,7 @@ cfg.setDiscoverySpi(disco);
 
 // Start client node
 Ignite client = Ignition.start(cfg);</code></pre>
+                    <aside class="notes">Client mode is enabled with setClientMode(true). The client joins the cluster topology but does not store data partitions. The failure detection timeout controls how long before a disconnected client is removed from the topology. The IP finder must list at least some server nodes for the client to discover the cluster. Client nodes are ideal for application servers that need full Ignite API access without data storage overhead.</aside>
                 </section>
 
                 <section>
@@ -1306,6 +1358,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
         }
     }
 }</code></pre>
+                    <aside class="notes">Thin clients are the lightest option. They use a simple TCP connection to port 10800 and do not join the cluster topology at all. This means zero discovery overhead and minimal memory usage. The trade-off is reduced functionality: no compute task submission, no continuous queries, and no near cache. For simple CRUD and SQL operations, thin clients are ideal. The try-with-resources pattern ensures proper cleanup.</aside>
                 </section>
 
                 <section>
@@ -1332,6 +1385,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                             <td>Low (connection only)</td>
                         </tr>
                     </table>
+                    <aside class="notes">This decision table helps students choose the right node type. Server nodes for the data tier, client nodes for application servers that need full API access, and thin clients for lightweight microservices or tools. A common architecture uses 3-5 dedicated server nodes with multiple client or thin client connections from application pods.</aside>
                 </section>
 
                 <section>
@@ -1357,6 +1411,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">Client nodes provide the richest feature set of all client options. Near cache support is especially valuable: it stores frequently accessed data locally on the client node for even faster reads. However, each client node adds to the cluster topology, and too many client nodes (hundreds) can strain the discovery protocol. For large-scale deployments with many application instances, thin clients may be more appropriate.</aside>
                 </section>
             </section>
 
@@ -1382,6 +1437,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                             <p>Async writes to database</p>
                         </div>
                     </div>
+                    <aside class="notes">These four patterns represent the fundamental approaches to integrating a cache with a database. Cache-aside gives the application full control. Read-through and write-through automate the cache-database synchronization. Write-behind adds asynchronous writes for better performance at the cost of durability risk. Understanding these patterns is essential for choosing the right architecture.</aside>
                 </section>
 
                 <section>
@@ -1416,6 +1472,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                             <td>Client or Server node</td>
                         </tr>
                     </table>
+                    <aside class="notes">This is the key decision matrix for the module. Have students identify which row matches their use case. Many production deployments use multiple integration methods simultaneously. For example, a Spring Boot application might use Spring Cache for its own operations, expose data via JDBC for BI tools, and ingest data via Kafka. The approaches are complementary, not mutually exclusive.</aside>
                 </section>
             </section>
 
@@ -1444,6 +1501,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">Review each best practice. Connection pooling is critical for JDBC performance. SSL is mandatory for any production deployment handling sensitive data. Too many client nodes (more than about 100) can overload the discovery protocol. Kafka consumers should have bounded thread pools and backpressure handling. Every integration point should have proper error handling and monitoring dashboards.</aside>
             </section>
 
             <!-- Common Issues -->
@@ -1481,6 +1539,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                         <td>Configure IP finder properly</td>
                     </tr>
                 </table>
+                <aside class="notes">This troubleshooting table covers the most common integration issues students will encounter. REST not responding is usually a missing or misconfigured ConnectorConfiguration. L2 cache issues often come down to missing annotations on entities. Kafka problems typically stem from broker connectivity or topic configuration. JDBC timeouts suggest either connection exhaustion or slow queries. Client disconnects are usually discovery-related -- check firewall rules and IP finder configuration.</aside>
             </section>
 
             <!-- Lab Preview -->
@@ -1495,6 +1554,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                         <li><strong>Exercise 4:</strong> Configure Hibernate L2 cache (10 min)</li>
                     </ul>
                 </div>
+                <aside class="notes">The lab exercises mirror the lecture topics. Exercise 1 is straightforward REST API usage with curl. Exercise 2 builds a Spring Boot application with Ignite caching. Exercise 3 requires a running Kafka instance, so make sure the lab environment has Kafka available. Exercise 4 sets up Hibernate with Ignite L2 cache. Students can work at their own pace and skip exercises for technologies not relevant to their projects.</aside>
             </section>
 
             <!-- Key Takeaways -->
@@ -1508,6 +1568,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                     <li class="fragment"><strong>JDBC/ODBC</strong> - Standard SQL connectivity</li>
                     <li class="fragment"><strong>Node Types</strong> - Server, Client, and Thin Client options</li>
                 </ul>
+                <aside class="notes">Recap the six main integration methods. Each serves a different use case and they can be combined. The most important takeaway is that Ignite is not an isolated system -- it integrates deeply with the entire Java ecosystem and beyond through standard protocols like REST, JDBC, and ODBC. Encourage students to pick the integration method that best fits their existing technology stack.</aside>
             </section>
 
             <!-- Q&A -->
@@ -1521,6 +1582,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                 <p style="margin-top: 40px; color: #666;">
                     Module 11: Performance Tuning and Monitoring
                 </p>
+                <aside class="notes">Open the floor for questions. Common topics include which integration to use for specific projects, performance comparisons between node types, and how to handle connection failures gracefully. If time permits, discuss real-world architecture patterns that combine multiple integration methods.</aside>
             </section>
 
             <!-- Resources -->
@@ -1533,6 +1595,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                     <li><a href="https://ignite.apache.org/docs/latest/extensions-and-integrations/hibernate-l2-cache" target="_blank">Hibernate L2 Cache Setup</a></li>
                     <li><a href="https://ignite.apache.org/docs/latest/SQL/JDBC/jdbc-driver" target="_blank">JDBC Driver Documentation</a></li>
                 </ul>
+                <aside class="notes">These are the official Ignite documentation links for each integration topic. Encourage students to bookmark these for reference during the lab and in their future projects. The documentation includes additional configuration options and troubleshooting guides beyond what we covered in the slides.</aside>
             </section>
 
         </div>

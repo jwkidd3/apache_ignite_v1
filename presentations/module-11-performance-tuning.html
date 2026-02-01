@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/vs.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <style>
         .reveal .slides section { overflow: hidden; }
         .reveal section { max-height: 100%; }
@@ -74,7 +74,7 @@
         }
         .reveal pre code {
             max-height: 500px;
-            padding: 15px;
+            background: #f6f8fa; color: #24292e; padding: 1em;
         }
         .reveal ul, .reveal ol {
             display: block;
@@ -207,6 +207,7 @@
                 <div class="meta">
                     <p>Duration: 45 minutes</p>
                 </div>
+                <aside class="notes">This module is critical for anyone deploying Ignite in production. Performance tuning can make the difference between a system that handles your load comfortably and one that struggles. We cover JVM settings, memory management, metrics, benchmarking, and common anti-patterns. Budget 45 minutes for lecture plus lab time.</aside>
             </section>
 
             <!-- Agenda -->
@@ -222,6 +223,7 @@
                 <div class="info-box">
                     <strong>Goal:</strong> Learn to optimize, monitor, and troubleshoot Apache Ignite performance
                 </div>
+                <aside class="notes">The module flows from low-level JVM tuning up through application-level patterns. Section 1 covers JVM settings that most developers do not think about but which have huge performance impact. Section 2 explains Ignite's unique memory architecture. Section 3 shows how to measure performance. Sections 4 and 5 cover benchmarking and common mistakes.</aside>
             </section>
 
             <!-- Section 1: JVM Tuning -->
@@ -229,6 +231,7 @@
                 <section class="section-title">
                     <h2>Section 1: JVM Tuning</h2>
                     <p>Optimizing the Java Virtual Machine for Ignite Workloads</p>
+                    <aside class="notes">JVM tuning is the foundation of Ignite performance. Even perfectly written application code will perform poorly with bad JVM settings. The key areas are heap sizing, garbage collector selection, and off-heap memory configuration. Ask students about their current JVM configurations to gauge their familiarity.</aside>
                 </section>
 
                 <section>
@@ -242,6 +245,7 @@
                         <li><strong>Off-Heap Memory</strong> - Native memory for data storage</li>
                         <li><strong>Thread Pools</strong> - Concurrent processing capacity</li>
                     </ul>
+                    <aside class="notes">These four areas interact with each other. Heap size affects GC behavior. Off-heap reduces GC pressure but needs its own sizing. Thread pools determine how many operations can execute concurrently. Getting any one of these wrong can bottleneck the entire system. We will address each in detail.</aside>
                 </section>
 
                 <section>
@@ -269,6 +273,7 @@ HEAP_SIZE="-Xms4g -Xmx4g"
 # - Reduces GC overhead</code></pre>
                         </div>
                     </div>
+                    <aside class="notes">Setting Xms equal to Xmx is one of the most important JVM tuning tips. Without this, the JVM dynamically resizes the heap, which triggers full GC cycles. The 60-70% rule leaves room for off-heap data storage and the OS page cache. In the 32GB example, the split gives good balance. Adjust ratios based on your data volume and whether persistence is enabled.</aside>
                 </section>
 
                 <section>
@@ -299,6 +304,7 @@ GC_SETTINGS="-XX:+UseG1GC \
                             <td>16-64MB</td>
                         </tr>
                     </table>
+                    <aside class="notes">G1GC divides the heap into equal-sized regions and collects the regions with the most garbage first, hence the name. MaxGCPauseMillis is a target, not a guarantee, but G1 tries to meet it. InitiatingHeapOccupancyPercent controls when G1 starts concurrent marking. Setting it to 45% means GC starts early, preventing full GC pauses. ParallelRefProcEnabled speeds up reference processing.</aside>
                 </section>
 
                 <section>
@@ -330,6 +336,7 @@ GC_SETTINGS="-XX:+UseG1GC \
                             <td>Deprecated - Avoid</td>
                         </tr>
                     </table>
+                    <aside class="notes">G1GC is the safe default for most Ignite deployments. ZGC is worth trying if you are on Java 15+ and need sub-millisecond GC pauses, for example in financial trading systems. Shenandoah provides similar benefits to ZGC and is available on some OpenJDK builds. CMS is deprecated since Java 9 and removed in Java 14 -- never use it for new deployments.</aside>
                 </section>
 
                 <section>
@@ -358,6 +365,7 @@ filecount=10,filesize=100M"</code></pre>
                         <strong>Always enable GC logging in production!</strong><br>
                         Essential for diagnosing performance issues
                     </div>
+                    <aside class="notes">GC logging has virtually zero performance overhead and provides invaluable diagnostic data. The Java 8 and Java 11+ syntaxes are completely different, so make sure to use the right one. Log rotation prevents disk space issues. In production, analyze GC logs with tools like GCViewer or GCEasy to identify problematic GC patterns like frequent full GCs or long pause times.</aside>
                 </section>
 
                 <section>
@@ -391,6 +399,7 @@ DIAGNOSTIC="-XX:+HeapDumpOnOutOfMemoryError \
                             <td>Ignore System.gc() calls</td>
                         </tr>
                     </table>
+                    <aside class="notes">AlwaysPreTouch forces the OS to commit all heap pages at startup. This avoids page faults during runtime but increases startup time. UseStringDeduplication is a G1GC feature that eliminates duplicate strings in the heap. DisableExplicitGC prevents third-party libraries from calling System.gc() and triggering unnecessary full GC pauses. HeapDumpOnOutOfMemoryError automatically creates a heap dump when the JVM runs out of memory, which is essential for post-mortem analysis.</aside>
                 </section>
 
                 <section>
@@ -406,6 +415,7 @@ GC="-XX:+UseG1GC -XX:MaxGCPauseMillis=200"
 OFF_HEAP="-XX:MaxDirectMemorySize=8g"
 
 export JVM_OPTS="$HEAP $GC $OFF_HEAP"</code></pre>
+                    <aside class="notes">This is the minimal production-ready JVM configuration. Copy this as a starting point and adjust the sizes based on your hardware. The 4GB heap with 8GB off-heap is suitable for a medium-sized deployment. For larger clusters, scale proportionally. Always test configuration changes with realistic load before deploying to production.</aside>
                 </section>
             </section>
 
@@ -414,6 +424,7 @@ export JVM_OPTS="$HEAP $GC $OFF_HEAP"</code></pre>
                 <section class="section-title">
                     <h2>Section 2: Memory Management</h2>
                     <p>Heap vs Off-Heap and Data Region Configuration</p>
+                    <aside class="notes">Ignite's memory architecture is different from most Java applications. It uses off-heap memory for data storage, which eliminates GC pressure from large datasets. Understanding the heap vs off-heap distinction is essential for proper configuration. This section covers how Ignite manages memory and how to configure it optimally.</aside>
                 </section>
 
                 <section>
@@ -444,6 +455,7 @@ export JVM_OPTS="$HEAP $GC $OFF_HEAP"</code></pre>
                             </div>
                         </div>
                     </div>
+                    <aside class="notes">The key insight is that Ignite stores your actual cache data in off-heap memory, not on the Java heap. This means even if you have 100GB of data, the GC only sees the heap objects (metadata, indexes, query results). Off-heap data is stored in Ignite's own binary format, which is more compact than Java objects. This separation is what allows Ignite to handle large data volumes without GC problems.</aside>
                 </section>
 
                 <section>
@@ -478,6 +490,7 @@ export JVM_OPTS="$HEAP $GC $OFF_HEAP"</code></pre>
                             <td>Slightly slower (deserialization)</td>
                         </tr>
                     </table>
+                    <aside class="notes">This table is the core comparison. Off-heap wins on GC impact and memory limits but has a slight access speed disadvantage due to deserialization. In practice, the GC benefit far outweighs the deserialization cost, especially as data volumes grow. With 10 million entries on-heap, GC pauses can reach seconds. The same data off-heap has near-zero GC impact.</aside>
                 </section>
 
                 <section>
@@ -495,6 +508,7 @@ defaultRegion.setMetricsEnabled(true);
 
 storageCfg.setDefaultDataRegionConfiguration(defaultRegion);
 cfg.setDataStorageConfiguration(storageCfg);</code></pre>
+                    <aside class="notes">Data regions are Ignite's memory management units. Each region is a contiguous block of off-heap memory with its own size limits and eviction policies. The initial size is allocated at startup; the region grows to maxSize on demand. RANDOM_2_LRU eviction randomly samples two pages and evicts the less recently used one, which approximates true LRU with much lower overhead. Always enable metrics for production monitoring.</aside>
                 </section>
 
                 <section>
@@ -531,6 +545,7 @@ cfg.setDataStorageConfiguration(storageCfg);</code></pre>
                             <td>true (essential for monitoring)</td>
                         </tr>
                     </table>
+                    <aside class="notes">Walk through each parameter. Initial size determines startup memory allocation. If set too low, frequent region expansion causes overhead. If set too high, you waste memory at startup. The max size is a hard limit -- once reached, eviction kicks in or operations fail. The eviction threshold of 0.9 means eviction starts when the region is 90% full, giving a 10% buffer to avoid OOM situations.</aside>
                 </section>
 
                 <section>
@@ -555,6 +570,7 @@ storageCfg.setDataRegionConfigurations(hotRegion, coldRegion);</code></pre>
                     <div class="info-box">
                         Use multiple regions to separate hot and cold data with different policies
                     </div>
+                    <aside class="notes">Multiple data regions let you apply different policies to different data types. Hot data that changes frequently stays in a pure in-memory region for maximum speed. Cold or archival data goes to a persistent region that can survive restarts. You assign caches to regions in the CacheConfiguration using setDataRegionName(). This pattern is common in production for balancing performance and durability.</aside>
                 </section>
 
                 <section>
@@ -592,6 +608,7 @@ storageCfg.setCheckpointFrequency(180000);  // 3 minutes</code></pre>
                             <td>No durability</td>
                         </tr>
                     </table>
+                    <aside class="notes">WAL is only relevant when persistence is enabled. LOG_ONLY is the recommended mode for most production deployments. It writes to the WAL file but does not force an fsync on every write, relying on the OS to flush periodically. FSYNC forces a disk sync on every write for maximum durability but at significant performance cost. NONE disables WAL entirely -- use only for disposable data. Checkpoint frequency controls how often dirty pages are flushed to disk.</aside>
                 </section>
 
                 <section>
@@ -613,6 +630,7 @@ cfg.setDataStreamerThreadPoolSize(Runtime.getRuntime().availableProcessors());</
                     <div class="warning-box">
                         Default pool sizes may cause thread starvation under high load
                     </div>
+                    <aside class="notes">Thread pools control the parallelism of different operation types. The public pool handles user-submitted tasks like compute jobs and cache operations. The system pool handles internal operations like discovery and rebalancing. The query pool handles SQL query execution. Size each pool based on your workload profile. If you run heavy SQL queries alongside compute tasks, make sure both pools are adequately sized to avoid starvation.</aside>
                 </section>
             </section>
 
@@ -621,6 +639,7 @@ cfg.setDataStreamerThreadPoolSize(Runtime.getRuntime().availableProcessors());</
                 <section class="section-title">
                     <h2>Section 3: Performance Metrics</h2>
                     <p>Monitoring Cache, Cluster, and Data Region Metrics</p>
+                    <aside class="notes">You cannot optimize what you do not measure. Ignite provides comprehensive metrics at the cache, cluster, and data region levels. This section covers how to enable metrics, what to monitor, and what the numbers mean. Metrics are disabled by default, so the first step is always enabling them.</aside>
                 </section>
 
                 <section>
@@ -638,6 +657,7 @@ regionCfg.setMetricsEnabled(true);</code></pre>
                     <div class="warning-box">
                         Statistics are <strong>disabled by default</strong>. You must explicitly enable them!
                     </div>
+                    <aside class="notes">This is the most common oversight in Ignite deployments. Statistics are off by default because they add a small overhead (typically less than 5%). In production, the monitoring benefit far outweighs this cost. Enable statistics on every cache and data region. You can also enable them at runtime via JMX without restarting the cluster.</aside>
                 </section>
 
                 <section>
@@ -659,6 +679,7 @@ System.out.println("Avg Get Time: " +
     String.format("%.3f ms", metrics.getAverageGetTime()));
 System.out.println("Avg Put Time: " +
     String.format("%.3f ms", metrics.getAveragePutTime()));</code></pre>
+                    <aside class="notes">Cache metrics give you direct visibility into cache behavior. The hit rate is the single most important metric: if it is below 90%, you are likely hitting the backing store too often, which means your cache is too small or your access pattern does not benefit from caching. Average get and put times should be sub-millisecond for local operations. If they are significantly higher, investigate network issues or GC pauses.</aside>
                 </section>
 
                 <section>
@@ -685,6 +706,7 @@ System.out.println("Avg Put Time: " +
                             <p><strong>Check:</strong> Memory distribution</p>
                         </div>
                     </div>
+                    <aside class="notes">These four metrics should be on your primary monitoring dashboard. Hit ratio below 90% indicates the cache is not effective -- either it is too small, the data is not cacheable, or the access pattern is not reusing data. Latency above 1ms for local operations suggests GC pauses or resource contention. Throughput trends reveal capacity limits before they become critical. Entry count helps verify data distribution across heap and off-heap.</aside>
                 </section>
 
                 <section>
@@ -708,6 +730,7 @@ System.out.println("Heap Memory Max: " +
 // Jobs
 System.out.println("Active Jobs: " + clusterMetrics.getCurrentActiveJobs());
 System.out.println("Total Executed Jobs: " + clusterMetrics.getTotalExecutedJobs());</code></pre>
+                    <aside class="notes">Cluster metrics provide a global view of the entire cluster. CPU load above 70% sustained indicates you may need to add nodes. Heap usage approaching the maximum suggests a need to either increase heap or optimize memory usage. Active jobs count helps identify if the compute grid is overloaded. These metrics are aggregated across all nodes, giving you a single pane of glass for cluster health.</aside>
                 </section>
 
                 <section>
@@ -730,6 +753,7 @@ System.out.println("Total Executed Jobs: " + clusterMetrics.getTotalExecutedJobs
     System.out.println("  Allocation Rate: " +
         String.format("%.2f", metrics.getAllocationRate()) + " pages/sec");
 });</code></pre>
+                    <aside class="notes">Data region metrics reveal off-heap memory usage patterns. Total allocated size shows how much memory the region has claimed. Physical memory size is the actual RAM usage. Pages replaced indicates eviction activity -- if this number is high, your region is too small. Allocation rate shows how fast new data is being written. A sudden spike in allocation rate could indicate a data loading operation or a memory leak in application logic.</aside>
                 </section>
 
                 <section>
@@ -764,6 +788,7 @@ System.out.println("Total Executed Jobs: " + clusterMetrics.getTotalExecutedJobs
                     <div class="info-box">
                         All Ignite metrics are exposed via JMX for integration with monitoring systems
                     </div>
+                    <aside class="notes">For development, JConsole or VisualVM give quick access to JMX metrics without any setup. For production, Prometheus with Grafana is the most popular open-source monitoring stack. Ignite exposes all metrics via JMX, and the Prometheus JMX exporter can scrape them automatically. GridGain Control Center is the commercial option with purpose-built Ignite dashboards and alerting.</aside>
                 </section>
 
                 <section>
@@ -791,6 +816,7 @@ System.out.println("Total Executed Jobs: " + clusterMetrics.getTotalExecutedJobs
                     <div class="highlight-box">
                         "You can't optimize what you don't measure"
                     </div>
+                    <aside class="notes">This slide summarizes the essential metrics for any Ignite production dashboard. On the performance side, hit ratio and latency tell you if the cache is effective. On the resource side, CPU and memory tell you if the hardware is sufficient. Set alerts for: hit ratio below 80%, CPU above 80%, heap above 85%, and GC pauses above 500ms. These thresholds give you early warning before issues impact users.</aside>
                 </section>
             </section>
 
@@ -799,6 +825,7 @@ System.out.println("Total Executed Jobs: " + clusterMetrics.getTotalExecutedJobs
                 <section class="section-title">
                     <h2>Section 4: Benchmarking</h2>
                     <p>Load Testing and Performance Measurement Strategies</p>
+                    <aside class="notes">Benchmarking is how you validate your tuning decisions. Without benchmarks, you are just guessing. This section covers best practices for writing meaningful benchmarks and interpreting results. The key is to test with realistic workloads and measure the right things.</aside>
                 </section>
 
                 <section>
@@ -813,6 +840,7 @@ System.out.println("Total Executed Jobs: " + clusterMetrics.getTotalExecutedJobs
                     <pre><code class="language-java">private static final int WARMUP_ITERATIONS = 1000;
 private static final int TEST_ITERATIONS = 10000;
 private static final int THREAD_COUNT = 10;</code></pre>
+                    <aside class="notes">The warmup phase is critical because the JIT compiler optimizes hot code paths during the first few thousand executions. Measuring before warmup gives artificially slow results. Use at least 1000 warmup iterations. Run the actual benchmark multiple times and report averages and percentiles. P99 latency is more meaningful than average for production planning because it shows the worst-case experience for 1% of requests.</aside>
                 </section>
 
                 <section>
@@ -831,6 +859,7 @@ txCfg.setBackups(1);</code></pre>
                     <div class="info-box">
                         Atomic operations are typically 2-10x faster than transactional
                     </div>
+                    <aside class="notes">This benchmark compares the two atomicity modes. Atomic mode provides single-operation atomicity and is faster because it avoids the overhead of transaction coordination. Transactional mode provides multi-operation ACID guarantees with pessimistic or optimistic locking. The 2-10x performance difference depends on the operation mix and contention level. Use atomic mode unless you specifically need multi-key transactions.</aside>
                 </section>
 
                 <section>
@@ -856,6 +885,7 @@ for (int i = 0; i < TEST_ITERATIONS; i++) {
 long batchTime = System.currentTimeMillis() - startTime;
 
 System.out.println("Speedup: " + (float)individualTime / batchTime + "x");</code></pre>
+                    <aside class="notes">This is one of the most impactful benchmarks students will run. Each individual put requires a network round trip to the primary node and potentially to backup nodes. With 10000 operations, that is 10000 round trips. The batch version sends 500 entries at once, reducing network round trips by 500x. The batch size of 500 is a good default; larger batches save more round trips but use more memory for the batch map.</aside>
                 </section>
 
                 <section>
@@ -886,6 +916,7 @@ System.out.println("Speedup: " + (float)individualTime / batchTime + "x");</code
                     <div class="success-box">
                         <strong>Key Insight:</strong> Reduce network round trips with batch APIs
                     </div>
+                    <aside class="notes">These numbers are representative of a local cluster. In a production cluster with network latency, the speedup can be even greater. The fundamental principle is reducing network round trips. Every individual operation requires at least one network hop. Batch operations amortize that cost across hundreds of entries. This is the single most impactful optimization most developers can make.</aside>
                 </section>
 
                 <section>
@@ -917,6 +948,7 @@ executor.awaitTermination(1, TimeUnit.MINUTES);
 
 long elapsed = System.currentTimeMillis() - startTime;
 System.out.println("Throughput: " + (operations.get() * 1000 / elapsed) + " ops/sec");</code></pre>
+                    <aside class="notes">This benchmark tests concurrent access with a 2:1 read-to-write ratio, which is typical for many applications. Using 10 threads simulates realistic concurrency. The random key distribution ensures operations are spread across partitions. Monitor the throughput as you increase thread count to find the saturation point. Also watch CPU utilization -- if throughput stops increasing but CPU is below 80%, you may have a lock contention issue.</aside>
                 </section>
 
                 <section>
@@ -941,6 +973,7 @@ Threads: 10
 Total operations: 10000
 Time: 156 ms
 Throughput: 64,102 ops/sec</code></pre>
+                    <aside class="notes">Walk through the output to highlight the key findings. Atomic is 4x faster than transactional for puts. Gets are faster than puts because they often only need to read from the primary node. Batch operations show an 11x speedup. Concurrent throughput of 64K ops/sec with 10 threads shows good scaling. Students will generate similar output in the lab and can compare their numbers against these baselines.</aside>
                 </section>
             </section>
 
@@ -949,6 +982,7 @@ Throughput: 64,102 ops/sec</code></pre>
                 <section class="section-title">
                     <h2>Section 5: Common Anti-Patterns</h2>
                     <p>Performance Mistakes to Avoid</p>
+                    <aside class="notes">This section covers the most common performance mistakes we see in production Ignite deployments. Each anti-pattern shows the wrong approach alongside the correct one. These are lessons learned from real-world production issues, and avoiding them can save significant debugging time.</aside>
                 </section>
 
                 <section>
@@ -970,6 +1004,7 @@ with 10GB off-heap</code></pre>
                     <div class="info-box">
                         <strong>Rule:</strong> Heap should be at least 20-30% of off-heap size
                     </div>
+                    <aside class="notes">Even though data is stored off-heap, Ignite still needs heap memory for metadata, index structures, query processing, and internal bookkeeping. With 10GB of off-heap data and only 1GB of heap, the heap fills up with metadata and triggers constant GC cycles. The 20-30% rule is a good starting point. Monitor heap usage and adjust if needed. For query-heavy workloads, you may need even more heap for intermediate query results.</aside>
                 </section>
 
                 <section>
@@ -991,6 +1026,7 @@ with 10GB off-heap</code></pre>
                     <div class="warning-box">
                         Each backup multiplies memory usage and network traffic
                     </div>
+                    <aside class="notes">With 3 backups in a 4-node cluster, every node stores a copy of every entry -- you get no partition benefit at all. Each backup copy doubles the write overhead because every put must be replicated. One backup is sufficient for most use cases: it survives a single node failure. Two backups for critical data that must survive two simultaneous failures. Three backups is almost never justified.</aside>
                 </section>
 
                 <section>
@@ -1015,6 +1051,7 @@ tx.commit();</code></pre>
 }</code></pre>
                         </div>
                     </div>
+                    <aside class="notes">Large transactions hold locks on many keys simultaneously, blocking other operations and consuming memory for the transaction log. A 10000-entry transaction can hold thousands of locks across multiple nodes. Breaking it into smaller batches of 100 entries reduces lock contention dramatically. Each small transaction commits quickly, freeing locks for other operations. Combine with putAll for even better performance.</aside>
                 </section>
 
                 <section>
@@ -1040,6 +1077,7 @@ cache.putAll(data);
                     <div class="success-box">
                         Use <code>putAll()</code>, <code>getAll()</code>, <code>invokeAll()</code> for batch operations
                     </div>
+                    <aside class="notes">This is the single most common performance anti-pattern. It appears in nearly every first-time Ignite deployment. Each cache.put in the loop is a synchronous network call. With 1000 keys, you get 1000 round trips. Using putAll sends all entries in one network message. The performance difference is dramatic -- typically 10-100x faster. Review all loops over cache operations in your codebase and convert them to batch equivalents.</aside>
                 </section>
 
                 <section>
@@ -1064,6 +1102,7 @@ cache.putAll(data);
                     <div class="info-box">
                         Distributed joins are 10-100x slower than colocated joins
                     </div>
+                    <aside class="notes">Without affinity keys, related data like customers and their orders end up on different nodes. Joining them requires sending data across the network. With @AffinityKeyMapped, orders are stored on the same node as their customer, making joins local and fast. Design your data model for colocation from the start. Retrofitting affinity keys later requires data migration. This is one of the most impactful design decisions you can make.</aside>
                 </section>
 
                 <section>
@@ -1088,6 +1127,7 @@ WHERE name = 'John'
                     <div class="warning-box">
                         Use <code>EXPLAIN</code> to verify query plans use indexes
                     </div>
+                    <aside class="notes">SQL queries without indexes perform full table scans, which means reading every entry in the cache. With millions of entries, this is extremely slow. Always create indexes for columns used in WHERE clauses, JOIN conditions, and ORDER BY clauses. Use EXPLAIN to verify the query planner is using your indexes. Be selective with indexes though -- each index consumes memory and slows down writes.</aside>
                 </section>
 
                 <section>
@@ -1108,6 +1148,7 @@ SqlFieldsQuery query = new SqlFieldsQuery(
 // Consider data denormalization</code></pre>
                         </div>
                     </div>
+                    <aside class="notes">Distributed joins send data between nodes to perform the join operation. This is expensive in terms of network bandwidth and latency. The correct approach is to design your data model so that related data is colocated using affinity keys, making joins local. Only enable distributed joins as a last resort when colocation is not possible. Also consider denormalization -- storing redundant data to avoid joins entirely.</aside>
                 </section>
 
                 <section>
@@ -1139,6 +1180,7 @@ SqlFieldsQuery query = new SqlFieldsQuery(
                             <td>Optimize object size</td>
                         </tr>
                     </table>
+                    <aside class="notes">These additional anti-patterns are less dramatic individually but compound over time. No GC monitoring means you cannot diagnose the most common cause of latency spikes. Default thread pools work for demos but not production loads. Ignoring metrics means flying blind. Large objects (megabytes per entry) cause slow serialization and increased network traffic. Keep cache entries small and focused -- ideally under 10KB each.</aside>
                 </section>
             </section>
 
@@ -1167,6 +1209,7 @@ SqlFieldsQuery query = new SqlFieldsQuery(
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">Use this checklist before going to production. Every unchecked item represents a potential performance issue. The left column covers infrastructure concerns that operations teams handle. The right column covers application design concerns that developers handle. Both sides must be addressed for optimal performance. Print this slide and tape it to your monitor during your production readiness review.</aside>
             </section>
 
             <!-- Troubleshooting -->
@@ -1204,6 +1247,7 @@ SqlFieldsQuery query = new SqlFieldsQuery(
                         <td>Reduce backup count</td>
                     </tr>
                 </table>
+                <aside class="notes">This troubleshooting guide covers the top five performance issues. For high GC overhead, check GC logs for full GC frequency and pause duration. For poor hit ratio, look at eviction metrics to see if data is being evicted too aggressively. For slow queries, always run EXPLAIN first. For high latency, profile your application to find synchronous loops. For memory pressure, calculate your actual memory needs: data size times (1 + backup count).</aside>
             </section>
 
             <!-- Summary -->
@@ -1231,6 +1275,7 @@ SqlFieldsQuery query = new SqlFieldsQuery(
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">Recap the module highlights. JVM tuning sets the foundation. Memory management separates data from GC. Metrics enable visibility. Benchmarking validates decisions. Anti-patterns are the common pitfalls to avoid. The five critical metrics on the right should be on every production dashboard. If students remember nothing else, remember to use batch operations and enable metrics.</aside>
             </section>
 
             <!-- Lab Exercise -->
@@ -1247,6 +1292,7 @@ SqlFieldsQuery query = new SqlFieldsQuery(
                     <li>Identify and fix anti-patterns in sample code</li>
                 </ol>
                 <p><strong>See:</strong> <code>labs/lab11_performance_tuning.md</code></p>
+                <aside class="notes">The lab has five exercises that mirror the five module sections. Exercise 1 asks students to write a JVM configuration script. Exercise 2 sets up data regions with different policies. Exercise 3 builds a monitoring dashboard using the metrics API. Exercise 4 runs the benchmarks we discussed. Exercise 5 provides sample code with anti-patterns that students must identify and fix. Allow about 45 minutes for the full lab.</aside>
             </section>
 
             <!-- Questions -->
@@ -1261,6 +1307,7 @@ SqlFieldsQuery query = new SqlFieldsQuery(
                     <li>What metrics are most important to monitor?</li>
                     <li>What is the most common performance anti-pattern?</li>
                 </ul>
+                <aside class="notes">Use these discussion questions to check understanding. The answers are: G1GC (or ZGC for ultra-low latency), 60-70% of RAM with Xms equal to Xmx, cache hit ratio and GC pause times, and synchronous loops without batch operations. If students can answer all four, they have grasped the core concepts. Discuss any real-world performance challenges students have encountered.</aside>
             </section>
 
             <!-- Next Module -->
@@ -1276,6 +1323,7 @@ SqlFieldsQuery query = new SqlFieldsQuery(
                     <li>Rolling Updates</li>
                     <li>Docker and Kubernetes Deployment</li>
                 </ul>
+                <aside class="notes">The next module takes everything we have learned and applies it to production deployment. Performance tuning from this module feeds directly into production configuration. Security, backup strategies, rolling updates, and container deployment are the remaining topics before students have the complete picture for running Ignite in production.</aside>
             </section>
 
         </div>

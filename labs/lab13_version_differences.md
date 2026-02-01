@@ -20,11 +20,12 @@
 - **Maven 3.6+**
 - **Docker** and **Docker Compose** installed and running
 - **curl** (for REST API exercises)
+- **python3** (for JSON formatting in CLI exercises, or use `jq` as alternative)
 - Internet connection for pulling Docker images and Maven dependencies
 
 ### Start the Ignite 3.x Cluster
 
-Pull and start a three-node Ignite 3.x cluster:
+Pull and start an Ignite 3.x node:
 
 ```bash
 # Pull the image
@@ -152,24 +153,115 @@ curl -s http://localhost:10300/management/v1/cluster/state | python3 -m json.too
 }
 ```
 
-**Step 3:** Examine how SWIM differs from the Ignite 2.x ring topology.
+**Step 3:** Verify the discovery and network configuration by querying both the REST API and the CLI, then compare what you see.
 
 ```bash
-echo "=== Ignite 3.x Discovery Summary ==="
-echo "Protocol:            SWIM gossip (Scalable Weakly-consistent Infection-style Membership)"
-echo "Inter-node port:     3344 (single port for discovery AND communication)"
-echo "Client port:         10800"
-echo "REST port:           10300"
-echo "Failure detection:   O(log n) convergence via randomised probing"
-echo ""
-echo "=== vs Ignite 2.x ==="
-echo "2.x Protocol:        Ring-based TcpDiscoverySpi"
-echo "2.x Discovery port:  47500"
-echo "2.x Comm port:       47100"
-echo "2.x Failure detect:  O(n) -- message must traverse the ring"
+# Fetch cluster state via REST and extract the node list
+curl -s http://localhost:10300/management/v1/cluster/state | python3 -m json.tool
+
+# Fetch physical topology via REST
+curl -s http://localhost:10300/management/v1/cluster/topology/physical | python3 -m json.tool
+
+# Now fetch the same information via CLI and compare
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster topology physical
+
+# Inspect the network configuration that SWIM uses
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 node config show --selector=network
 ```
 
-**Key Takeaway (vs 2.x):** Ignite 2.x uses a ring topology where failure detection is O(n). Ignite 3.x uses SWIM gossip, which converges in O(log n), making it significantly more scalable for large clusters.
+**Expected Output (REST physical topology):**
+```json
+[
+    {
+        "name": "defaultNode",
+        "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "host": "...",
+        "port": 3344
+    }
+]
+```
+
+**Step 4:** Write a Java program that retrieves cluster node information programmatically via system views.
+
+Create `Ex01_DiscoveryExplorer.java`:
+
+```java
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+
+public class Ex01_DiscoveryExplorer {
+
+    public static void main(String[] args) {
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
+
+            System.out.println("=== Exercise 1: Discovery Explorer ===\n");
+
+            // Query cluster nodes via system view
+            System.out.println("--- Cluster Nodes (SYSTEM.NODES) ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.NODES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  Name: %-15s  ID: %s%n",
+                        row.stringValue("NAME"),
+                        row.stringValue("ID"));
+                }
+            }
+
+            // Show client connection metadata
+            System.out.println("\n--- Client Connections ---");
+            client.connections().forEach(conn -> {
+                System.out.printf("  Connected to: %s @ %s%n",
+                    conn.name(), conn.address());
+            });
+
+            // Count tables and zones to show cluster state
+            System.out.println("\n--- Cluster Inventory ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT COUNT(*) AS cnt FROM SYSTEM.TABLES")) {
+                if (rs.hasNext()) {
+                    System.out.println("  Tables: " + rs.next().longValue("cnt"));
+                }
+            }
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT COUNT(*) AS cnt FROM SYSTEM.ZONES")) {
+                if (rs.hasNext()) {
+                    System.out.println("  Distribution Zones: " + rs.next().longValue("cnt"));
+                }
+            }
+
+            System.out.println("\nExercise 1 complete.");
+        }
+    }
+}
+```
+
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex01_DiscoveryExplorer"
+```
+
+**Expected Output:**
+```
+=== Exercise 1: Discovery Explorer ===
+
+--- Cluster Nodes (SYSTEM.NODES) ---
+  Name: defaultNode       ID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+--- Client Connections ---
+  Connected to: defaultNode @ /127.0.0.1:10800
+
+--- Cluster Inventory ---
+  Tables: 0
+  Distribution Zones: 1
+```
+
+**Key Takeaway (vs 2.x):** Ignite 2.x uses a ring topology where failure detection is O(n). Ignite 3.x uses SWIM gossip, which converges in O(log n), making it significantly more scalable for large clusters. You can verify topology through three independent channels: REST API, CLI, and SQL system views.
 
 ---
 
@@ -308,30 +400,143 @@ docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config show \
 
 ### Exercise 4: Explore Node-Level vs Cluster-Level Configuration
 
-**Objective:** Understand the two tiers of configuration in Ignite 3.x.
+**Objective:** Understand the two tiers of configuration in Ignite 3.x by querying both tiers and making a change to each.
+
+**Step 1:** Compare cluster-level vs node-level configuration.
 
 ```bash
-echo "=== Cluster-level config ==="
-echo "Applies to ALL nodes. Changed via 'cluster config update'."
-echo "Examples: storage profiles, distribution zones, GC settings"
-echo ""
-
-# Show cluster-level storage config
+# Cluster-level: applies to ALL nodes (replicated via RAFT)
+# View the storage section (cluster-wide)
 docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config show \
   --selector=storage
 
-echo ""
-echo "=== Node-level config ==="
-echo "Applies to ONE node. Changed via 'node config update'."
-echo "Examples: network port, REST port, client connector port"
-echo ""
-
-# Show node-level network config
+# Node-level: applies to THIS node only
+# View the network section (node-local)
 docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 node config show \
   --selector=network
+
+# View the client connector (node-local)
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 node config show \
+  --selector=clientConnector
 ```
 
-**Key Takeaway (vs 2.x):** Ignite 2.x had a single `IgniteConfiguration` per node. Ignite 3.x separates cluster-wide settings (replicated via RAFT) from node-local settings.
+**Step 2:** Make a dynamic cluster-level change and verify it took effect.
+
+```bash
+# Check current GC config
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config show \
+  --selector=gc
+
+# Update GC low watermark (cluster-wide, no restart needed)
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config update \
+  "gc.lowWatermark=0.3"
+
+# Verify the change -- should show lowWatermark = 0.3
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config show \
+  --selector=gc
+```
+
+**Step 3:** Also verify the configuration via the REST API.
+
+```bash
+# REST API returns the full cluster config as HOCON/JSON
+curl -s http://localhost:10300/management/v1/configuration/cluster | python3 -m json.tool | head -30
+
+# REST API for node-level config
+curl -s http://localhost:10300/management/v1/configuration/node | python3 -m json.tool | head -30
+```
+
+**Step 4:** Write a Java program that reads configuration via REST and displays key settings.
+
+Create `Ex04_ConfigExplorer.java`:
+
+```java
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+public class Ex04_ConfigExplorer {
+
+    public static void main(String[] args) throws Exception {
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .build()) {
+
+            System.out.println("=== Exercise 4: Configuration Explorer ===\n");
+
+            // Use Java HttpClient to fetch cluster config via REST
+            HttpClient http = HttpClient.newHttpClient();
+
+            System.out.println("--- Cluster Configuration (via REST) ---");
+            HttpResponse<String> clusterCfg = http.send(
+                HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:10300/management/v1/configuration/cluster"))
+                    .build(),
+                HttpResponse.BodyHandlers.ofString());
+            // Print first 500 chars to show structure
+            String body = clusterCfg.body();
+            System.out.println(body.substring(0, Math.min(500, body.length())));
+            System.out.println("  ... (truncated)\n");
+
+            System.out.println("--- Node Configuration (via REST) ---");
+            HttpResponse<String> nodeCfg = http.send(
+                HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:10300/management/v1/configuration/node"))
+                    .build(),
+                HttpResponse.BodyHandlers.ofString());
+            body = nodeCfg.body();
+            System.out.println(body.substring(0, Math.min(500, body.length())));
+            System.out.println("  ... (truncated)\n");
+
+            // Also show zones (cluster-level config reflected in system views)
+            System.out.println("--- Distribution Zones (cluster-level config) ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.ZONES")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  Zone: %-15s  Replicas: %d  Partitions: %d%n",
+                        row.stringValue("NAME"),
+                        row.intValue("REPLICAS"),
+                        row.intValue("PARTITIONS"));
+                }
+            }
+
+            System.out.println("\nExercise 4 complete.");
+        }
+    }
+}
+```
+
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex04_ConfigExplorer"
+```
+
+**Expected Output:**
+```
+=== Exercise 4: Configuration Explorer ===
+
+--- Cluster Configuration (via REST) ---
+{"gc":{"lowWatermark":...},"storage":{"profiles":...},...
+  ... (truncated)
+
+--- Node Configuration (via REST) ---
+{"clientConnector":{"port":10800},"network":{"port":3344},...
+  ... (truncated)
+
+--- Distribution Zones (cluster-level config) ---
+  Zone: DEFAULT           Replicas: 1  Partitions: 25
+
+Exercise 4 complete.
+```
+
+**Key Takeaway (vs 2.x):** Ignite 2.x had a single `IgniteConfiguration` per node set at startup. Ignite 3.x separates cluster-wide settings (replicated via RAFT, changed via `cluster config update`) from node-local settings (changed via `node config update`). Both can be queried via CLI, REST API, or programmatically.
 
 ---
 
@@ -344,7 +549,7 @@ docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 node config show \
 ```bash
 # Create a "hot" zone -- higher replication for frequently accessed data
 docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql \
-  "CREATE ZONE IF NOT EXISTS hot_zone WITH replicas=3, partitions=256, storage_profiles='default'"
+  "CREATE ZONE IF NOT EXISTS hot_zone WITH replicas=1, partitions=256, storage_profiles='default'"
 
 # Create a "cold" zone -- lower replication for archival data
 docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql \
@@ -355,12 +560,14 @@ docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql \
   "SELECT * FROM SYSTEM.ZONES"
 ```
 
+<!-- Note: On a single-node lab cluster, replicas > 1 are accepted but cannot be fully satisfied. Production clusters use 3+ nodes. -->
+
 **Expected Output:**
 ```
 ╔═══════════╤══════════╤════════════╤═══════════════════╗
 ║ NAME      │ REPLICAS │ PARTITIONS │ STORAGE_PROFILES  ║
 ╠═══════════╪══════════╪════════════╪═══════════════════╣
-║ hot_zone  │ 3        │ 256        │ default           ║
+║ hot_zone  │ 1        │ 256        │ default           ║
 ║ cold_zone │ 1        │ 64         │ default           ║
 ╚═══════════╧══════════╧════════════╧═══════════════════╝
 ```
@@ -386,7 +593,7 @@ public class Ex05_DistributionZones {
             // Create zones via SQL from the client
             client.sql().executeScript(
                 "CREATE ZONE IF NOT EXISTS app_zone " +
-                "WITH replicas=2, partitions=128, storage_profiles='default'");
+                "WITH replicas=1, partitions=128, storage_profiles='default'");
 
             // List all zones
             System.out.println("Distribution Zones:");
@@ -403,6 +610,22 @@ public class Ex05_DistributionZones {
         }
     }
 }
+```
+
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex05_DistributionZones"
+```
+
+**Expected Output:**
+```
+=== Exercise 5: Distribution Zones ===
+
+Distribution Zones:
+  Zone: DEFAULT           Replicas: 1  Partitions: 25
+  Zone: HOT_ZONE          Replicas: 1  Partitions: 256
+  Zone: COLD_ZONE         Replicas: 1  Partitions: 64
+  Zone: APP_ZONE          Replicas: 1  Partitions: 128
 ```
 
 **Key Takeaway (vs 2.x):** In Ignite 2.x, backup count and partition count were set per cache in `CacheConfiguration`. In 3.x, Distribution Zones decouple placement policy from table definitions, allowing multiple tables to share the same zone configuration.
@@ -555,6 +778,11 @@ public class Ex06_RecordViewTuples {
 }
 ```
 
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex06_RecordViewTuples"
+```
+
 **Expected Output:**
 ```
 Table 'Person' created.
@@ -677,6 +905,11 @@ public class Ex07_RecordViewPojo {
 }
 ```
 
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex07_RecordViewPojo"
+```
+
 **Expected Output:**
 ```
 --- Insert via POJO ---
@@ -796,6 +1029,11 @@ public class Ex08_KeyValueAndSQL {
         }
     }
 }
+```
+
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex08_KeyValueAndSQL"
 ```
 
 **Expected Output:**
@@ -959,6 +1197,11 @@ public class Ex09_Transactions {
 }
 ```
 
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex09_Transactions"
+```
+
 **Expected Output:**
 ```
 Initial balances:
@@ -1025,8 +1268,8 @@ public class Ex10_MixedTransaction {
                 ");");
 
             // Reset data
-            client.sql().execute(null, "DELETE FROM Account WHERE accountId IN (1,2)");
-            client.sql().execute(null, "DELETE FROM AuditLog WHERE logId >= 0");
+            client.sql().executeScript("DELETE FROM Account WHERE accountId IN (1,2);" +
+                "DELETE FROM AuditLog WHERE logId >= 0");
 
             Table accountTable  = client.tables().table("ACCOUNT");
             KeyValueView<Tuple, Tuple> accountKv = accountTable.keyValueView();
@@ -1111,6 +1354,11 @@ public class Ex10_MixedTransaction {
 }
 ```
 
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex10_MixedTransaction"
+```
+
 **Expected Output:**
 ```
 Before transaction:
@@ -1151,9 +1399,9 @@ Audit log:
 
 ## Part 5: Compute Grid (15 minutes)
 
-### Exercise 11: Colocated Compute with JobTarget and JobDescriptor
+### Exercise 11: Compute Grid -- API Exploration and Node Targeting
 
-**Objective:** Execute a compute job on the node that owns specific data using the Ignite 3.x compute API.
+**Objective:** Explore the Ignite 3.x compute API by enumerating cluster nodes, examining the `JobTarget` and `JobDescriptor` types, and attempting to submit a compute job. Understand why deployment units are required and what happens without them.
 
 Create `Ex11_ComputeGrid.java`:
 
@@ -1162,22 +1410,46 @@ package com.example.ignite3;
 
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.compute.JobDescriptor;
-import org.apache.ignite.compute.JobExecution;
 import org.apache.ignite.compute.JobTarget;
+import org.apache.ignite.network.ClusterNode;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
 import org.apache.ignite.table.Tuple;
 
-import java.util.Set;
+import java.util.List;
 
 public class Ex11_ComputeGrid {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         try (IgniteClient client = IgniteClient.builder()
                 .addresses("127.0.0.1:10800")
                 .build()) {
 
             System.out.println("=== Exercise 11: Compute Grid ===\n");
 
-            // Ensure the Person table exists with data
+            // --- Step 1: Enumerate cluster nodes ---
+            // In 3.x, you need ClusterNode references for JobTarget
+            System.out.println("--- Step 1: Enumerate Cluster Nodes ---");
+            List<ClusterNode> nodes = client.clusterNodes();
+            System.out.println("Cluster has " + nodes.size() + " node(s):");
+            for (ClusterNode node : nodes) {
+                System.out.printf("  Name: %-15s  ID: %s%n",
+                    node.name(), node.id());
+            }
+
+            // --- Step 2: Build JobTarget variants ---
+            System.out.println("\n--- Step 2: JobTarget Variants ---");
+
+            // Target any node in the cluster
+            JobTarget anyTarget = JobTarget.anyNode(nodes);
+            System.out.println("  anyNode target created (routes to any available node)");
+
+            // Target a specific node
+            JobTarget nodeTarget = JobTarget.node(nodes.get(0));
+            System.out.println("  node target created (routes to: " + nodes.get(0).name() + ")");
+
+            // Target colocated with data
+            // Ensure Person table exists
             client.sql().executeScript(
                 "CREATE TABLE IF NOT EXISTS Person (" +
                 "    personId INT PRIMARY KEY," +
@@ -1186,58 +1458,87 @@ public class Ex11_ComputeGrid {
                 "    age       INT" +
                 ")");
             client.sql().execute(null,
-                "INSERT INTO Person (personId, firstName, lastName, age) " +
-                "VALUES (100, 'Test', 'User', 30) " +
+                "INSERT INTO Person VALUES (100, 'Test', 'User', 30) " +
                 "ON CONFLICT DO NOTHING");
 
-            // --- Execute on any node ---
-            System.out.println("--- Execute on any node ---");
-            System.out.println("In Ignite 3.x, compute jobs are submitted via:");
-            System.out.println("  client.compute().execute(JobTarget, JobDescriptor, args)");
-            System.out.println();
+            JobTarget colocatedTarget = JobTarget.colocated(
+                "PERSON",
+                Tuple.create().set("personId", 100));
+            System.out.println("  colocated target created (routes to node owning personId=100)");
 
-            // --- Colocated compute ---
-            System.out.println("--- Colocated compute ---");
-            System.out.println("JobTarget.colocated() routes the job to the node");
-            System.out.println("that owns the specified key in the specified table.");
-            System.out.println();
-            System.out.println("Example (conceptual):");
-            System.out.println("  JobTarget target = JobTarget.colocated(");
-            System.out.println("      \"PERSON\",");
-            System.out.println("      Tuple.create().set(\"personId\", 100));");
-            System.out.println("  JobDescriptor<String, String> descriptor =");
-            System.out.println("      JobDescriptor.builder(MyComputeJob.class).build();");
-            System.out.println("  String result = client.compute()");
-            System.out.println("      .execute(target, descriptor, \"input\");");
-            System.out.println();
+            // --- Step 3: Attempt to submit a job ---
+            // This will fail because no deployment unit with the job class is deployed.
+            // This is intentional -- it demonstrates the deployment unit requirement.
+            System.out.println("\n--- Step 3: Attempt Job Submission ---");
+            System.out.println("Building a JobDescriptor for a class not yet deployed...");
 
-            // --- Deployment units ---
-            System.out.println("--- Deployment Units ---");
-            System.out.println("Ignite 3.x replaces peer class loading with deployment units.");
-            System.out.println("You package compute job classes into a JAR and deploy via CLI:");
-            System.out.println();
-            System.out.println("  ignite3 cluster unit deploy --path=my-jobs.jar --id=my-unit:1.0");
-            System.out.println();
-            System.out.println("Then reference the unit when building the JobDescriptor:");
-            System.out.println("  JobDescriptor.builder(\"com.example.MyJob\")");
-            System.out.println("      .units(\"my-unit\", \"1.0\")");
-            System.out.println("      .build();");
+            JobDescriptor<String, String> descriptor = JobDescriptor
+                .<String, String>builder("com.example.ignite3.jobs.PingJob")
+                .build();
 
-            System.out.println("\n--- Feature Gaps vs 2.x ---");
-            System.out.println("Available in 3.x:");
-            System.out.println("  + Execute on specific nodes (JobTarget.node())");
-            System.out.println("  + Execute on any node (JobTarget.anyNode())");
-            System.out.println("  + Colocated compute (JobTarget.colocated())");
-            System.out.println("  + Deployment units (replaces peer class loading)");
-            System.out.println("  + JobDescriptor with builder pattern");
-            System.out.println();
-            System.out.println("NOT yet available in 3.x:");
-            System.out.println("  - Full MapReduce (ComputeTask / ComputeTaskAdapter)");
-            System.out.println("  - Service Grid (cluster singletons, node singletons)");
-            System.out.println("  - Broadcast to all nodes");
-            System.out.println("  - Failover SPI (automatic job retry)");
-            System.out.println("  - Load Balancing SPI");
-            System.out.println("  - Java ExecutorService over grid");
+            System.out.println("  JobDescriptor created: com.example.ignite3.jobs.PingJob");
+            System.out.println("  Submitting to any node...");
+
+            try {
+                String result = client.compute().execute(anyTarget, descriptor, "hello");
+                System.out.println("  Result: " + result);
+            } catch (Exception e) {
+                System.out.println("  Expected error: " + e.getClass().getSimpleName());
+                System.out.println("  Message: " + e.getMessage());
+                System.out.println();
+                System.out.println("  This fails because 'PingJob' is not deployed.");
+                System.out.println("  In Ignite 3.x, compute jobs must be packaged in a JAR");
+                System.out.println("  and deployed as a deployment unit BEFORE submission:");
+                System.out.println();
+                System.out.println("  Step A: Package job class into a JAR");
+                System.out.println("    mvn package -f compute-jobs/pom.xml");
+                System.out.println();
+                System.out.println("  Step B: Deploy the unit to the cluster");
+                System.out.println("    ignite3 cluster unit deploy \\");
+                System.out.println("      --path=compute-jobs/target/jobs.jar \\");
+                System.out.println("      --version=1.0 --id=my-jobs");
+                System.out.println();
+                System.out.println("  Step C: Reference the unit in JobDescriptor");
+                System.out.println("    JobDescriptor.builder(\"com.example.PingJob\")");
+                System.out.println("      .units(DeploymentUnit.of(\"my-jobs\", \"1.0\"))");
+                System.out.println("      .build();");
+            }
+
+            // --- Step 4: Verify what distributed compute CAN do today ---
+            // SQL aggregations execute distributed computation across all partitions
+            System.out.println("\n--- Step 4: Distributed SQL as Alternative ---");
+            System.out.println("While deployment units require server-side setup,");
+            System.out.println("SQL aggregations run distributed computation out of the box:\n");
+
+            // Ensure Sales table exists with data
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS Sales (" +
+                "    saleId INT PRIMARY KEY," +
+                "    region VARCHAR(50)," +
+                "    product VARCHAR(100)," +
+                "    amount DOUBLE," +
+                "    quantity INT" +
+                ")");
+            String[] inserts = {
+                "INSERT INTO Sales VALUES (1,'North','Widget',150.0,10) ON CONFLICT DO NOTHING",
+                "INSERT INTO Sales VALUES (2,'South','Widget',200.0,15) ON CONFLICT DO NOTHING",
+                "INSERT INTO Sales VALUES (3,'North','Gadget',300.0,5)  ON CONFLICT DO NOTHING",
+                "INSERT INTO Sales VALUES (4,'East','Widget',175.0,12)  ON CONFLICT DO NOTHING"
+            };
+            for (String sql : inserts) {
+                try (var ignored = client.sql().execute(null, sql)) {}
+            }
+
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT region, SUM(amount * quantity) AS revenue " +
+                    "FROM Sales GROUP BY region ORDER BY revenue DESC")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  %-8s  Revenue: $%,.2f%n",
+                        row.stringValue("region"),
+                        row.doubleValue("revenue"));
+                }
+            }
 
             System.out.println("\nExercise 11 complete.");
         }
@@ -1245,7 +1546,41 @@ public class Ex11_ComputeGrid {
 }
 ```
 
-**Key Takeaway (vs 2.x):** Ignite 2.x had a rich compute API with `ComputeTask`, `broadcast()`, `affinityRun()`, failover, and load balancing. Ignite 3.x provides a streamlined API centered around `JobTarget` and `JobDescriptor`, with colocated compute and deployment units. Full MapReduce and Service Grid are not yet available.
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex11_ComputeGrid"
+```
+
+**Expected Output:**
+```
+=== Exercise 11: Compute Grid ===
+
+--- Step 1: Enumerate Cluster Nodes ---
+Cluster has 1 node(s):
+  Name: defaultNode       ID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+--- Step 2: JobTarget Variants ---
+  anyNode target created (routes to any available node)
+  node target created (routes to: defaultNode)
+  colocated target created (routes to node owning personId=100)
+
+--- Step 3: Attempt Job Submission ---
+Building a JobDescriptor for a class not yet deployed...
+  JobDescriptor created: com.example.ignite3.jobs.PingJob
+  Submitting to any node...
+  Expected error: CompletionException
+  Message: ... class not found ...
+
+  This fails because 'PingJob' is not deployed.
+  ...
+
+--- Step 4: Distributed SQL as Alternative ---
+  North     Revenue: $3,000.00
+  South     Revenue: $3,000.00
+  East      Revenue: $2,100.00
+```
+
+**Key Takeaway (vs 2.x):** Ignite 2.x had `compute().call(callable)` with automatic peer class loading — jobs ran immediately from client code. Ignite 3.x requires explicit deployment units (packaged JARs deployed via CLI) before jobs can execute. The API itself (`JobTarget`, `JobDescriptor`, `client.compute().execute()`) is straightforward, but the deployment step is an operational prerequisite. For many analytics workloads, distributed SQL aggregations are a simpler alternative that works without deployment units.
 
 ---
 
@@ -1293,7 +1628,7 @@ public class Ex12_SQLAsCompute {
                 "INSERT INTO Sales VALUES (8,'South','Widget',180.0,11) ON CONFLICT DO NOTHING"
             };
             for (String sql : inserts) {
-                client.sql().execute(null, sql);
+                try (var ignored = client.sql().execute(null, sql)) {}
             }
 
             // --- Aggregation that would have been MapReduce in 2.x ---
@@ -1350,6 +1685,36 @@ public class Ex12_SQLAsCompute {
 }
 ```
 
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex12_SQLAsCompute"
+```
+
+**Expected Output:**
+```
+=== Exercise 12: SQL as a Compute Replacement ===
+
+--- Revenue by Region (replaces MapReduce SUM) ---
+
+  North     Revenue: $4,000.00  Transactions: 3
+  South     Revenue: $4,980.00  Transactions: 3
+  East      Revenue: $3,300.00  Transactions: 2
+
+--- Top Product by Quantity (replaces custom reduce) ---
+
+  Widget      Total Qty: 68
+  Gadget      Total Qty: 16
+
+--- Region x Product Breakdown ---
+
+  East     Gadget     $400.00
+  East     Widget     $175.00
+  North    Gadget     $300.00
+  North    Widget     $275.00
+  South    Gadget     $250.00
+  South    Widget     $380.00
+```
+
 **Key Takeaway (vs 2.x):** Many 2.x MapReduce patterns (sum across nodes, group-by aggregations, top-N) can be replaced with SQL `GROUP BY`, `ORDER BY`, and window functions in 3.x. SQL execution in 3.x is distributed and pushes computation to the data nodes automatically.
 
 ---
@@ -1394,7 +1759,7 @@ public class Ex13_ColocatedTables {
             System.out.println("--- Step 1: Create Distribution Zone ---");
             client.sql().executeScript(
                 "CREATE ZONE IF NOT EXISTS ecommerce_zone " +
-                "WITH replicas=2, partitions=128, storage_profiles='default'");
+                "WITH replicas=1, partitions=128, storage_profiles='default'");
             System.out.println("Zone 'ecommerce_zone' created.\n");
 
             // Step 2: Create a parent table (Customer)
@@ -1422,10 +1787,10 @@ public class Ex13_ColocatedTables {
 
             // Step 4: Insert data
             System.out.println("--- Step 4: Insert data ---");
-            client.sql().execute(null,
-                "INSERT INTO Customer VALUES (1, 'Alice Morgan', 'alice@example.com') ON CONFLICT DO NOTHING");
-            client.sql().execute(null,
-                "INSERT INTO Customer VALUES (2, 'Bob Chen', 'bob@example.com') ON CONFLICT DO NOTHING");
+            try (var ignored = client.sql().execute(null,
+                "INSERT INTO Customer VALUES (1, 'Alice Morgan', 'alice@example.com') ON CONFLICT DO NOTHING")) {}
+            try (var ignored = client.sql().execute(null,
+                "INSERT INTO Customer VALUES (2, 'Bob Chen', 'bob@example.com') ON CONFLICT DO NOTHING")) {}
 
             String[] orders = {
                 "INSERT INTO CustomerOrder VALUES (101, 1, 'Laptop', 999.99) ON CONFLICT DO NOTHING",
@@ -1435,7 +1800,7 @@ public class Ex13_ColocatedTables {
                 "INSERT INTO CustomerOrder VALUES (105, 1, 'USB Hub', 45.00)  ON CONFLICT DO NOTHING"
             };
             for (String sql : orders) {
-                client.sql().execute(null, sql);
+                try (var ignored = client.sql().execute(null, sql)) {}
             }
             System.out.println("Inserted 2 customers and 5 orders.\n");
 
@@ -1482,6 +1847,11 @@ public class Ex13_ColocatedTables {
 }
 ```
 
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex13_ColocatedTables"
+```
+
 **Expected Output:**
 ```
 --- Step 5: Colocated JOIN ---
@@ -1500,9 +1870,9 @@ public class Ex13_ColocatedTables {
 
 ---
 
-### Exercise 14: Inspecting Zones and Storage Profiles
+### Exercise 14: Inspecting Zones, Storage Profiles, and Altering Zones
 
-**Objective:** Query system views to inspect zone configuration and verify colocation.
+**Objective:** Query system views to inspect zone configuration, explore available storage profiles, create zones with different settings, and dynamically alter a zone.
 
 Create `Ex14_InspectZones.java`:
 
@@ -1520,10 +1890,10 @@ public class Ex14_InspectZones {
                 .addresses("127.0.0.1:10800")
                 .build()) {
 
-            System.out.println("=== Exercise 14: Inspect Zones & Storage Profiles ===\n");
+            System.out.println("=== Exercise 14: Zones, Storage Profiles & ALTER ZONE ===\n");
 
-            // List all distribution zones
-            System.out.println("--- Distribution Zones ---");
+            // --- Step 1: List all distribution zones ---
+            System.out.println("--- Step 1: All Distribution Zones ---");
             try (ResultSet<SqlRow> rs = client.sql().execute(
                     null, "SELECT * FROM SYSTEM.ZONES")) {
                 while (rs.hasNext()) {
@@ -1535,35 +1905,139 @@ public class Ex14_InspectZones {
                 }
             }
 
-            // List all tables and their zones
-            System.out.println("\n--- Tables and Zones ---");
+            // --- Step 2: List all tables with their schemas ---
+            System.out.println("\n--- Step 2: All Tables ---");
             try (ResultSet<SqlRow> rs = client.sql().execute(
                     null, "SELECT * FROM SYSTEM.TABLES")) {
                 while (rs.hasNext()) {
                     SqlRow row = rs.next();
-                    System.out.printf("  Table: %-20s  Schema: %s%n",
+                    System.out.printf("  Table: %-25s  Schema: %s%n",
                         row.stringValue("NAME"),
                         row.stringValue("SCHEMA_NAME"));
                 }
             }
 
-            // Discuss storage profiles
-            System.out.println("\n--- Storage Profiles ---");
-            System.out.println("Ignite 3.x supports multiple storage engines:");
-            System.out.println("  aimem     - Volatile in-memory (fastest, no persistence)");
-            System.out.println("  aipersist - Page memory + disk persistence (balanced)");
-            System.out.println("  rocksdb   - LSM-tree on disk (large datasets, write-optimised)");
-            System.out.println();
-            System.out.println("In 2.x, all caches used the same B+ tree page memory engine.");
-            System.out.println("In 3.x, you choose the engine per zone via storage_profiles.");
+            // --- Step 3: Query available storage profiles ---
+            System.out.println("\n--- Step 3: Storage Profiles (via cluster config) ---");
+            // Storage profiles are configured at the cluster level
+            // Query them via CLI (shown below) or via REST
+            System.out.println("  Run this CLI command to see configured profiles:");
+            System.out.println("  docker exec ignite3-node1 /opt/ignite/bin/ignite3 \\");
+            System.out.println("    cluster config show --selector=storage\n");
+
+            // --- Step 4: Create zones with different configurations ---
+            System.out.println("--- Step 4: Create Tiered Zones ---");
+
+            client.sql().executeScript(
+                "CREATE ZONE IF NOT EXISTS hot_data_zone " +
+                "WITH replicas=3, partitions=256, storage_profiles='default'");
+            System.out.println("  Created 'hot_data_zone' (replicas=3, partitions=256)");
+
+            client.sql().executeScript(
+                "CREATE ZONE IF NOT EXISTS cold_data_zone " +
+                "WITH replicas=1, partitions=32, storage_profiles='default'");
+            System.out.println("  Created 'cold_data_zone' (replicas=1, partitions=32)");
+
+            // --- Step 5: ALTER ZONE to change replicas dynamically ---
+            System.out.println("\n--- Step 5: ALTER ZONE (dynamic change) ---");
+
+            // Show before
+            System.out.println("  Before ALTER:");
+            printZone(client, "HOT_DATA_ZONE");
+
+            // Alter the zone -- change replicas from 3 to 2
+            client.sql().executeScript(
+                "ALTER ZONE hot_data_zone SET replicas=2");
+            System.out.println("  Executed: ALTER ZONE hot_data_zone SET replicas=2");
+
+            // Show after
+            System.out.println("  After ALTER:");
+            printZone(client, "HOT_DATA_ZONE");
+
+            // --- Step 6: Create tables in different zones ---
+            System.out.println("\n--- Step 6: Tables in Different Zones ---");
+
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS HotMetrics (" +
+                "    metricId INT PRIMARY KEY," +
+                "    name VARCHAR(100)," +
+                "    value DOUBLE" +
+                ") WITH PRIMARY_ZONE='HOT_DATA_ZONE'");
+            System.out.println("  Created HotMetrics in hot_data_zone");
+
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS ColdArchive (" +
+                "    archiveId INT PRIMARY KEY," +
+                "    data VARCHAR(500)" +
+                ") WITH PRIMARY_ZONE='COLD_DATA_ZONE'");
+            System.out.println("  Created ColdArchive in cold_data_zone");
+
+            // Verify by querying system tables
+            System.out.println("\n--- Final Zone Summary ---");
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT * FROM SYSTEM.ZONES ORDER BY NAME")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("  %-20s  replicas=%-3d  partitions=%-5d%n",
+                        row.stringValue("NAME"),
+                        row.intValue("REPLICAS"),
+                        row.intValue("PARTITIONS"));
+                }
+            }
+
+            // Cleanup
+            client.sql().executeScript("DROP TABLE IF EXISTS HotMetrics");
+            client.sql().executeScript("DROP TABLE IF EXISTS ColdArchive");
+            client.sql().executeScript("DROP ZONE IF EXISTS hot_data_zone");
+            client.sql().executeScript("DROP ZONE IF EXISTS cold_data_zone");
 
             System.out.println("\nExercise 14 complete.");
+        }
+    }
+
+    private static void printZone(IgniteClient client, String zoneName) {
+        try (ResultSet<SqlRow> rs = client.sql().execute(
+                null, "SELECT * FROM SYSTEM.ZONES WHERE NAME = ?", zoneName)) {
+            if (rs.hasNext()) {
+                SqlRow row = rs.next();
+                System.out.printf("    %-20s  replicas=%d  partitions=%d%n",
+                    row.stringValue("NAME"),
+                    row.intValue("REPLICAS"),
+                    row.intValue("PARTITIONS"));
+            }
         }
     }
 }
 ```
 
-**Key Takeaway (vs 2.x):** In 2.x, all data used a single storage engine. In 3.x, distribution zones can reference different storage profiles, allowing hot data to use `aimem` (fast, volatile) while cold data uses `rocksdb` (disk-based, write-optimized) within the same cluster.
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex14_InspectZones"
+```
+
+**Expected Output:**
+```
+--- Step 4: Create Tiered Zones ---
+  Created 'hot_data_zone' (replicas=3, partitions=256)
+  Created 'cold_data_zone' (replicas=1, partitions=32)
+
+--- Step 5: ALTER ZONE (dynamic change) ---
+  Before ALTER:
+    HOT_DATA_ZONE         replicas=3  partitions=256
+  Executed: ALTER ZONE hot_data_zone SET replicas=2
+  After ALTER:
+    HOT_DATA_ZONE         replicas=2  partitions=256
+```
+
+Also verify storage profiles via the CLI:
+
+```bash
+# View available storage profiles (cluster-level config)
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 cluster config show \
+  --selector=storage
+```
+
+**Key Takeaway (vs 2.x):** In 2.x, all data used a single storage engine and changing backup count required cache recreation. In 3.x, distribution zones can be altered dynamically (`ALTER ZONE`), reference different storage profiles (aimem for volatile speed, aipersist for durable persistence, rocksdb for write-heavy workloads), and multiple tables share the same zone.
 
 ---
 
@@ -1620,6 +2094,8 @@ curl -s http://localhost:10300/management/v1/configuration/node | python3 -m jso
 
 **Step 3:** System views from Java.
 
+Create `Ex15_Monitoring.java`:
+
 ```java
 package com.example.ignite3;
 
@@ -1674,41 +2150,231 @@ public class Ex15_Monitoring {
 }
 ```
 
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex15_Monitoring"
+```
+
+**Expected Output:**
+```
+=== Exercise 15: Monitoring ===
+
+--- SYSTEM.TABLES ---
+  PERSON
+  PRODUCT
+  ACCOUNT
+  AUDITLOG
+  SALES
+  (tables from previous exercises)
+
+--- SYSTEM.ZONES ---
+  DEFAULT              replicas=1 partitions=25
+  (zones from previous exercises)
+
+--- SYSTEM.NODES ---
+  Node: defaultNode  ID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+Exercise 15 complete.
+```
+
 **Key Takeaway (vs 2.x):** In 2.x, monitoring relied on JMX beans and programmatic `ClusterMetrics`. In 3.x, monitoring is available via REST API (port 10300), CLI commands, and SQL system views (`SYSTEM.TABLES`, `SYSTEM.ZONES`, `SYSTEM.NODES`).
 
 ---
 
-### Exercise 16: OpenMetrics and Prometheus Integration
+### Exercise 16: OpenMetrics, Prometheus, and Client Metrics
 
-**Objective:** Understand how Ignite 3.x exposes metrics in OpenMetrics format for Prometheus scraping.
+**Objective:** Fetch actual metrics from the Ignite 3.x OpenMetrics endpoint, examine the metric format, and read client-side metrics programmatically.
+
+**Step 1:** Fetch raw metrics from the REST endpoint.
 
 ```bash
-# OpenMetrics endpoint (Prometheus-compatible)
-curl -s http://localhost:10300/management/v1/metric/node | head -50
+# Fetch OpenMetrics-format metrics from the node
+curl -s http://localhost:10300/management/v1/metric/node
 
-# If the endpoint returns metrics, you can configure Prometheus to scrape it:
-echo ""
-echo "=== Prometheus Configuration ==="
-echo "Add to prometheus.yml:"
-echo ""
-echo "scrape_configs:"
-echo "  - job_name: 'ignite3'"
-echo "    metrics_path: '/management/v1/metric/node'"
-echo "    static_configs:"
-echo "      - targets: ['localhost:10300']"
-echo ""
-echo "=== Key Metrics to Watch ==="
-echo "  ignite_sql_*       - SQL query stats"
-echo "  ignite_tx_*        - Transaction stats"
-echo "  ignite_compute_*   - Compute job stats"
-echo "  ignite_storage_*   - Storage engine stats"
-echo ""
-echo "=== vs Ignite 2.x ==="
-echo "2.x: JMX only (JConsole, VisualVM, JMX-to-Prometheus exporters)"
-echo "3.x: Native REST + OpenMetrics (Prometheus-ready out of the box)"
+# If the above returns data, pipe through grep to find specific metrics
+curl -s http://localhost:10300/management/v1/metric/node | grep -i "jvm\|client\|sql" | head -30
 ```
 
-**Key Takeaway (vs 2.x):** Ignite 2.x required JMX exporters for Prometheus integration. Ignite 3.x has built-in REST endpoints that serve metrics in OpenMetrics format, making observability setup significantly simpler.
+**Expected Output (partial):**
+```
+# HELP jvm_memory_used_bytes ...
+# TYPE jvm_memory_used_bytes gauge
+jvm_memory_used_bytes{area="heap"} 1.2345678E8
+...
+```
+
+**Step 2:** Enable metric sources via CLI.
+
+```bash
+# List available metric sources
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 node metric source list
+
+# Enable JVM metrics (if not already enabled)
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 node metric source enable jvm
+
+# Enable client handler metrics
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 node metric source enable client.handler
+
+# Fetch metrics again -- should see more data
+curl -s http://localhost:10300/management/v1/metric/node | head -30
+```
+
+**Step 3:** Write a Java program that fetches metrics via REST and displays them.
+
+Create `Ex16_Metrics.java`:
+
+```java
+package com.example.ignite3;
+
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+public class Ex16_Metrics {
+
+    public static void main(String[] args) throws Exception {
+        try (IgniteClient client = IgniteClient.builder()
+                .addresses("127.0.0.1:10800")
+                .metricsEnabled(true)    // Enable client-side metrics
+                .build()) {
+
+            System.out.println("=== Exercise 16: Metrics & Monitoring ===\n");
+
+            // --- Step 1: Fetch OpenMetrics from REST API ---
+            System.out.println("--- Step 1: OpenMetrics via REST ---");
+            HttpClient http = HttpClient.newHttpClient();
+
+            try {
+                HttpResponse<String> resp = http.send(
+                    HttpRequest.newBuilder()
+                        .uri(URI.create(
+                            "http://localhost:10300/management/v1/metric/node"))
+                        .build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+                String body = resp.body();
+                if (body.isEmpty()) {
+                    System.out.println("  (No metrics returned -- enable sources via CLI first)");
+                } else {
+                    // Show first 20 lines
+                    String[] lines = body.split("\n");
+                    int limit = Math.min(20, lines.length);
+                    for (int i = 0; i < limit; i++) {
+                        System.out.println("  " + lines[i]);
+                    }
+                    System.out.println("  ... (" + lines.length + " total lines)");
+                }
+            } catch (Exception e) {
+                System.out.println("  Could not fetch metrics: " + e.getMessage());
+            }
+
+            // --- Step 2: Generate some activity ---
+            System.out.println("\n--- Step 2: Generate Activity ---");
+            client.sql().executeScript(
+                "CREATE TABLE IF NOT EXISTS MetricTest (" +
+                "    id INT PRIMARY KEY, val VARCHAR(100))");
+
+            for (int i = 0; i < 100; i++) {
+                try (var ignored = client.sql().execute(null,
+                    "INSERT INTO MetricTest VALUES (?, ?) ON CONFLICT DO UPDATE SET val = ?",
+                    i, "value-" + i, "value-" + i)) {}
+            }
+            System.out.println("  Executed 100 SQL operations.");
+
+            try (ResultSet<SqlRow> rs = client.sql().execute(
+                    null, "SELECT COUNT(*) AS cnt FROM MetricTest")) {
+                if (rs.hasNext()) {
+                    System.out.println("  Row count: " + rs.next().longValue("cnt"));
+                }
+            }
+
+            // --- Step 3: Show client connection metrics ---
+            System.out.println("\n--- Step 3: Client Connection Info ---");
+            System.out.println("  Active connections: " + client.connections().size());
+            client.connections().forEach(conn -> {
+                System.out.printf("  Node: %-15s  Address: %s%n",
+                    conn.name(), conn.address());
+            });
+
+            // --- Step 4: Fetch metrics again after activity ---
+            System.out.println("\n--- Step 4: Metrics After Activity ---");
+            try {
+                HttpResponse<String> resp = http.send(
+                    HttpRequest.newBuilder()
+                        .uri(URI.create(
+                            "http://localhost:10300/management/v1/metric/node"))
+                        .build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+                String body = resp.body();
+                // Look for SQL or client-related metrics
+                String[] lines = body.split("\n");
+                int found = 0;
+                for (String line : lines) {
+                    String lower = line.toLowerCase();
+                    if (lower.contains("sql") || lower.contains("client")
+                            || lower.contains("jvm_memory")) {
+                        System.out.println("  " + line);
+                        if (++found >= 15) break;
+                    }
+                }
+                if (found == 0) {
+                    System.out.println("  (Enable metric sources to see SQL/client metrics)");
+                }
+            } catch (Exception e) {
+                System.out.println("  Could not fetch metrics: " + e.getMessage());
+            }
+
+            // Cleanup
+            client.sql().executeScript("DROP TABLE IF EXISTS MetricTest");
+
+            System.out.println("\n--- Prometheus Configuration ---");
+            System.out.println("To scrape these metrics with Prometheus, add to prometheus.yml:");
+            System.out.println("  scrape_configs:");
+            System.out.println("    - job_name: 'ignite3'");
+            System.out.println("      metrics_path: '/management/v1/metric/node'");
+            System.out.println("      static_configs:");
+            System.out.println("        - targets: ['localhost:10300']");
+
+            System.out.println("\nExercise 16 complete.");
+        }
+    }
+}
+```
+
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex16_Metrics"
+```
+
+**Expected Output:**
+```
+=== Exercise 16: Metrics & Monitoring ===
+
+--- Step 1: OpenMetrics via REST ---
+  # HELP jvm_memory_used_bytes ...
+  # TYPE jvm_memory_used_bytes gauge
+  jvm_memory_used_bytes{area="heap"} 1.2345678E8
+  ... (varies based on enabled metric sources)
+
+--- Step 2: Generate Activity ---
+  Executed 100 SQL operations.
+  Row count: 100
+
+--- Step 3: Client Connection Info ---
+  Active connections: 1
+  Node: defaultNode      Address: /127.0.0.1:10800
+
+--- Step 4: Metrics After Activity ---
+  (filtered metrics containing sql, client, or jvm_memory)
+```
+
+**Key Takeaway (vs 2.x):** Ignite 2.x required JMX exporters (a sidecar process) for Prometheus integration. Ignite 3.x serves metrics natively in OpenMetrics format via a REST endpoint. You can enable/disable metric sources at runtime via CLI, and fetch them programmatically via standard HTTP. Client-side metrics are enabled via `metricsEnabled(true)` on the builder.
 
 ---
 
@@ -1862,6 +2528,40 @@ public class Ex17_ComparisonSummary {
 }
 ```
 
+**Run:**
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite3.Ex17_ComparisonSummary"
+```
+
+**Expected Output:**
+```
+=== Exercise 17: Ignite 3.x Cluster Summary ===
+
+Connected to cluster.
+
+--- All Tables ---
+  PUBLIC.PERSON
+  PUBLIC.PRODUCT
+  PUBLIC.ACCOUNT
+  PUBLIC.AUDITLOG
+  PUBLIC.SALES
+  (all tables from previous exercises)
+  Total: N tables
+
+--- All Distribution Zones ---
+  DEFAULT              replicas=1  partitions=25
+  (all zones from previous exercises)
+
+--- Cluster Nodes ---
+  defaultNode  xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+=== Key Takeaways ===
+1. Ignite 3.x is a ground-up rewrite, not an incremental upgrade
+...
+
+Exercise 17 complete.
+```
+
 ---
 
 ### Q&A -- Part 8
@@ -1883,14 +2583,19 @@ public class Ex17_ComparisonSummary {
 ## Cleanup
 
 ```bash
-# Drop tables (run from Java or CLI)
-# client.sql().execute(null, "DROP TABLE IF EXISTS CustomerOrder");
-# client.sql().execute(null, "DROP TABLE IF EXISTS Customer");
-# client.sql().execute(null, "DROP TABLE IF EXISTS Product");
-# client.sql().execute(null, "DROP TABLE IF EXISTS Sales");
-# client.sql().execute(null, "DROP TABLE IF EXISTS Account");
-# client.sql().execute(null, "DROP TABLE IF EXISTS AuditLog");
-# client.sql().execute(null, "DROP TABLE IF EXISTS Person");
+# Drop tables and zones via CLI
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP TABLE IF EXISTS CustomerOrder"
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP TABLE IF EXISTS Customer"
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP TABLE IF EXISTS Product"
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP TABLE IF EXISTS Sales"
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP TABLE IF EXISTS Account"
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP TABLE IF EXISTS AuditLog"
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP TABLE IF EXISTS Person"
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP TABLE IF EXISTS MetricTest"
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP ZONE IF EXISTS ecommerce_zone"
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP ZONE IF EXISTS hot_zone"
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP ZONE IF EXISTS cold_zone"
+docker exec -it ignite3-node1 /opt/ignite/bin/ignite3 sql "DROP ZONE IF EXISTS app_zone"
 
 # Stop and remove Docker container
 docker stop ignite3-node1

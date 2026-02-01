@@ -156,6 +156,57 @@ public class Lab06BasicSQL {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab06BasicSQL"
+```
+
+**Expected Output:**
+
+```
+=== SQL Support Lab ===
+
+=== DDL: Table Created ===
+Table: Person
+Fields: id, name, age, city, salary
+Indexes: name, city
+
+=== DML: Inserting Data ===
+Inserted 5 records
+
+=== DQL: SELECT Queries ===
+1. All persons:
+   [John Doe, 30, New York]
+   [Jane Smith, 28, Los Angeles]
+   [Bob Johnson, 35, New York]
+   [Alice Williams, 32, Chicago]
+   [Charlie Brown, 29, New York]
+
+2. Persons in New York:
+   [John Doe, 30, 75000.0]
+   [Bob Johnson, 35, 95000.0]
+   [Charlie Brown, 29, 72000.0]
+
+3. Average salary by city:
+   New York: $80666.67
+   Los Angeles: $82000.00
+   Chicago: $88000.00
+
+4. Top earners:
+   [Bob Johnson, 95000.0]
+   [Alice Williams, 88000.0]
+   [Jane Smith, 82000.0]
+
+=== DML: UPDATE Data ===
+Updated salaries in New York (+10%)
+
+=== DML: DELETE Data ===
+Deleted persons younger than 29
+
+Final count: 4 records
+```
+
 ## Part 2: Advanced Indexing (15 minutes)
 
 ### Exercise 2: Create and Test Indexes
@@ -304,6 +355,42 @@ public class Lab06Indexing {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab06Indexing"
+```
+
+**Expected Output (your numbers may vary):**
+
+```
+=== Indexing Lab ===
+
+=== Inserting Test Data ===
+Inserted 10 products
+
+=== Testing Indexed Queries ===
+1. Query with category index: 12 ms
+2. Query with composite index: 3 ms
+3. Range query with price index: 4 ms
+   Found 6 products
+
+=== Full-Text Search ===
+   Laptop: High-performance wireless laptop
+   Mouse: Wireless optical mouse
+   Tablet: Wireless tablet with stylus
+
+=== Query Execution Plan ===
+   SELECT
+       __Z0.NAME AS __C0_0,
+       __Z0.PRICE AS __C0_1
+   FROM PUBLIC.PRODUCT __Z0
+       /* PUBLIC.CATEGORY_PRICE_IDX: CATEGORY = 'Electronics'
+           AND PRICE < 500 */
+   WHERE (__Z0.CATEGORY = 'Electronics')
+       AND (__Z0.PRICE < 500)
+```
+
 ## Part 3: JDBC Driver Usage (15 minutes)
 
 ### Exercise 3: Connect Using JDBC
@@ -443,6 +530,53 @@ public class Lab06JDBC {
         }
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab06JDBC"
+```
+
+**Expected Output:**
+
+```
+=== JDBC Driver Lab ===
+
+Connecting to Ignite via JDBC...
+
+Connected successfully!
+
+=== Creating Table ===
+Table 'Employee' created
+
+=== Inserting Data ===
+Inserted 5 employees
+
+=== Querying Data ===
+Employees with salary > 80000:
+Name              | Department    | Salary
+------------------+---------------+--------
+Alice Johnson     | Engineering   | $95000
+Eve Davis         | Engineering   | $92000
+Charlie Brown     | Engineering   | $88000
+Diana Prince      | Sales         | $82000
+
+=== Aggregate Query ===
+Department Statistics:
+Department    | Count | Avg Salary
+--------------+-------+-----------
+Engineering   | 3     | $91666.67
+Marketing     | 1     | $75000.00
+Sales         | 1     | $82000.00
+
+=== Updating Data ===
+Updated 3 engineering salaries (+5%)
+
+=== Database Metadata ===
+Driver: Apache Ignite Thin JDBC Driver
+Version: 2.16.0
+Product: Apache Ignite
 ```
 
 **Note:** To run this, you need to start an Ignite node first:
@@ -628,6 +762,45 @@ public class Lab06DistributedJoins {
         }
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab06DistributedJoins"
+```
+
+**Expected Output (your numbers may vary):**
+
+```
+=== Distributed Joins Lab ===
+
+=== Colocated Join (Fast) ===
+   [Alice, 95000.0, Engineering]
+   [Charlie, 88000.0, Engineering]
+   [Eve, 92000.0, Engineering]
+Time: 15 ms
+
+=== Distributed Join (Slower, requires all nodes) ===
+   [Alice, 95000.0, Engineering]
+   [Eve, 92000.0, Engineering]
+   [Charlie, 88000.0, Engineering]
+   [Diana, 82000.0, Sales]
+   [Bob, 75000.0, Sales]
+   [Frank, 70000.0, Marketing]
+Time: 25 ms
+
+=== Join with Aggregation ===
+   Engineering: 3 employees, avg $91666.67
+   Sales: 2 employees, avg $78500.00
+   Marketing: 1 employees, avg $70000.00
+
+=== Distributed Join Considerations ===
+- Enable with setDistributedJoins(true)
+- Slower than colocated joins
+- Requires network communication between nodes
+- Use affinity keys to avoid when possible
+- Necessary when data can't be colocated
 ```
 
 ## Verification Steps

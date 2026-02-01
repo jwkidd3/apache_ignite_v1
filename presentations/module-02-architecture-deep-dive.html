@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
 
     <!-- Highlight.js for code syntax highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/monokai.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
 
     <style>
         .reveal .slides section { overflow: hidden; }
@@ -50,7 +50,7 @@
 
         .reveal pre {
             width: 100%;
-            font-size: 0.45em;
+            font-size: 0.55em;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
@@ -175,6 +175,7 @@
                 <h1>Apache Ignite Architecture Deep Dive</h1>
                 <p class="subtitle">Understanding the internals of distributed in-memory computing</p>
                 <p class="small-text" style="margin-top: 2em;">Module 2 | Duration: 60 minutes</p>
+                <aside class="notes">This module goes deep into Ignite's architecture. Understanding the internals helps students make better design decisions. Emphasize that while this is conceptual, the lab will make these concepts concrete by setting up a multi-node cluster.</aside>
             </section>
 
             <!-- Module Objectives -->
@@ -188,6 +189,7 @@
                     <li>Discovery mechanisms</li>
                     <li>Baseline topology and cluster activation</li>
                 </ul>
+                <aside class="notes">These five objectives cover the critical architectural concepts. Data distribution and partitioning are the most important for day-to-day development. Memory architecture understanding helps with capacity planning. Discovery mechanisms matter for deployment. Baseline topology is essential for persistent clusters.</aside>
             </section>
 
             <!-- Cluster Topology Section -->
@@ -205,6 +207,7 @@
                         </div>
                         <div style="background: #9b59b6; color: white; padding: 0.3em 1em; border-radius: 4px;">Distributed Data Grid</div>
                     </div>
+                    <aside class="notes">Start with the big picture: an Ignite cluster is a group of interconnected nodes that share data and computation. Unlike master-slave architectures, Ignite is peer-to-peer -- there is no single point of failure. Each node is equal and can serve any request. The distributed data grid spans all nodes.</aside>
                 </section>
 
                 <section>
@@ -215,6 +218,7 @@
                         <li><strong>Self-healing:</strong> Recovers from failures</li>
                         <li><strong>Dynamic topology:</strong> Nodes can join/leave anytime</li>
                     </ul>
+                    <aside class="notes">Peer-to-peer means no single coordinator that must be available. Automatic discovery simplifies deployment since nodes find each other. Self-healing means when a node fails, data is automatically recovered from backups. Dynamic topology allows scaling without downtime. These characteristics make Ignite suitable for cloud environments.</aside>
                 </section>
             </section>
 
@@ -246,6 +250,7 @@
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">The server vs client distinction is fundamental. Server nodes are the workhorses -- they store data and do heavy computation. Client nodes are lightweight connectors that route requests to the right server node. A typical production setup has a fixed number of server nodes and a variable number of client nodes scaling with application load.</aside>
                 </section>
 
                 <section>
@@ -261,6 +266,7 @@ Client Nodes          Server Nodes (Data)
 |  App   |-----------+----------------+
 | Client |
 +--------+</div>
+                    <aside class="notes">This visual shows the typical topology. Client nodes on the left connect to server nodes on the right. Data only lives on server nodes. Client nodes are stateless from a data perspective, making them easy to scale up and down. In Kubernetes, client nodes would be your application pods and server nodes would be a StatefulSet.</aside>
                 </section>
 
                 <section>
@@ -282,6 +288,7 @@ Ignite ignite = Ignition.start(cfg);</code></pre>
                             <li>Typical: 3-5+ server nodes, N client nodes</li>
                         </ul>
                     </div>
+                    <aside class="notes">Show the code for configuring both modes. Note that setClientMode(false) is actually the default, so you only need to explicitly set it for client nodes. Best practice: use an odd number of server nodes (3, 5, 7) for better split-brain resolution. In the lab, students will start multiple nodes and observe them forming a cluster.</aside>
                 </section>
             </section>
 
@@ -294,6 +301,7 @@ Ignite ignite = Ignition.start(cfg);</code></pre>
                     <div class="box">
                         This is a critical architectural decision that affects performance, scaling, and operational complexity.
                     </div>
+                    <aside class="notes">This section dives deeper into the practical implications of the client vs server choice. It is one of the most impactful architectural decisions. Get it wrong and you face cluster instability or unnecessary complexity. The key question on screen should prompt students to think about their own deployment scenarios.</aside>
                 </section>
 
                 <section>
@@ -320,6 +328,7 @@ Ignite ignite = Ignition.start(cfg);</code></pre>
                             <td>Microservices, short-lived apps</td>
                         </tr>
                     </table>
+                    <aside class="notes">Walk through the three connection options. Server nodes should only be dedicated Ignite servers -- never embed a server node in an application container. Thick clients join the cluster and have full API access but add overhead. Thin clients are lightweight TCP connections ideal for microservices. Most modern deployments should default to thin clients.</aside>
                 </section>
 
                 <section>
@@ -348,6 +357,7 @@ Ignite ignite = Ignition.start(cfg);</code></pre>
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">The thick client code is what students will use in most labs. The advantages are significant: full API access including compute grid, near cache for local data copies, and topology awareness for smart routing. The disadvantages matter in production: startup time of several seconds, 100MB+ memory overhead, and every thick client adds to cluster discovery traffic.</aside>
                 </section>
 
                 <section>
@@ -376,6 +386,7 @@ IgniteClient client = Ignition.startClient(cfg);</code></pre>
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">The thin client uses a simple TCP connection on port 10800. Show the code -- it is much simpler than the thick client. Instant startup and minimal memory make it ideal for containerized microservices. The trade-offs are limited API (no compute grid, no near cache) and an extra network hop since the thin client does not know which node owns which partition. Multi-language support is a big plus for polyglot organizations.</aside>
                 </section>
 
                 <section>
@@ -394,6 +405,7 @@ Does your app need compute grid?
                     <div class="box">
                         <strong>Rule of Thumb:</strong> Start with Thin Client. Move to Thick Client only when you need compute grid or near cache.
                     </div>
+                    <aside class="notes">This decision tree simplifies the choice. The rule of thumb at the bottom is the key takeaway: start simple with thin clients and only upgrade to thick clients when you have a concrete need for compute grid or near cache functionality. This avoids premature complexity.</aside>
                 </section>
 
                 <section>
@@ -417,6 +429,7 @@ Does your app need compute grid?
 │  │ Server 1 │  │ Server 2 │  │ Server 3 │              │
 │  └──────────┘  └──────────┘  └──────────┘              │
 └─────────────────────────────────────────────────────────┘</div>
+                    <aside class="notes">This is the recommended production architecture. Application pods use thin clients connecting over TCP port 10800 to dedicated Ignite server nodes in a separate tier. This separation allows independent scaling, independent lifecycle management, and clear resource isolation. If an application pod crashes, the data tier is unaffected.</aside>
                 </section>
 
                 <section>
@@ -446,6 +459,7 @@ Does your app need compute grid?
                     <div class="box">
                         <strong>Key Insight:</strong> Kubernetes pod restarts should never affect your data tier. Keep them separate.
                     </div>
+                    <aside class="notes">These anti-patterns come from real production incidents. Embedding a server node in an application container means restarting the app causes data rebalancing. Thick clients in short-lived Kubernetes pods cause constant cluster churn as pods come and go. The rule of thumb: limit thick clients to 10-20 per cluster to avoid discovery overhead.</aside>
                 </section>
             </section>
 
@@ -469,6 +483,7 @@ Partition: 456
     | (affinity)
     v
 Nodes: [Node 2 (primary), Node 3 (backup)]</div>
+                    <aside class="notes">Partitioning is how Ignite distributes data across nodes. The default 1024 partitions provides good distribution for most clusters. The key-to-partition mapping is deterministic: the same key always maps to the same partition. This means any node can calculate which node owns a particular key without a lookup table. The affinity function assigns each partition to primary and backup nodes.</aside>
                 </section>
 
                 <section>
@@ -488,6 +503,7 @@ When you put key "X":
 3. Primary Node = Node 2 (owns partition 442)
 4. Backup Node = Node 3 (if backups=1)</div>
                     <p><strong>Characteristics:</strong> Deterministic, consistent hashing, automatic rebalancing</p>
+                    <aside class="notes">Walk through the example step by step. The hash function produces a large number, the modulo operation maps it to one of 1024 partitions, and the affinity function determines which node owns that partition. When a new node joins, only a portion of partitions need to move -- this is the benefit of consistent hashing versus simple modulo-based distribution.</aside>
                 </section>
 
                 <section>
@@ -517,6 +533,7 @@ cfg.setBackups(1); // One backup copy</code></pre>
                             <td>High availability</td>
                         </tr>
                     </table>
+                    <aside class="notes">The backup configuration is a critical trade-off decision. Zero backups gives maximum performance but any node failure loses data. One backup is the sweet spot for most production systems -- it survives a single node failure with moderate memory overhead. Two backups are for high-availability requirements like financial systems. Students will configure backups in the lab.</aside>
                 </section>
 
                 <section>
@@ -532,6 +549,7 @@ No data loss!</div>
                         <li><span class="warning">More backups = more memory used</span></li>
                         <li><span class="warning">More backups = more network traffic</span></li>
                     </ul>
+                    <aside class="notes">The visual shows how backup promotion works when a node fails. Node 1 fails and Node 2's backup copy of that data is automatically promoted to primary. No data is lost and no manual intervention is needed. The trade-off triangle of availability, memory, and network traffic should guide the backup count decision. For development and testing, zero backups is fine.</aside>
                 </section>
             </section>
 
@@ -566,6 +584,7 @@ No data loss!</div>
 |    - Slowest access                 |
 |    - Write-Ahead Log                |
 +-------------------------------------+</div>
+                    <aside class="notes">The three-tier memory model is unique to Ignite. On-heap is standard Java objects with fast access but GC overhead. Off-heap is native memory managed by Ignite directly, avoiding GC pauses -- this is where most data should live. Disk persistence via the native persistence layer provides durability. Data flows down through eviction and checkpointing, and is read back up on demand.</aside>
                 </section>
 
                 <section>
@@ -593,6 +612,7 @@ No data loss!</div>
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">For production, off-heap is almost always recommended. The key benefit is avoiding GC pauses which can cause latency spikes. On-heap is fine for small datasets or when you need zero-serialization access to Java objects. The serialization overhead of off-heap is the price you pay for predictable latency. A common student question: "How much off-heap should I allocate?" Answer: 60-70% of available RAM.</aside>
                 </section>
 
                 <section>
@@ -601,6 +621,7 @@ No data loss!</div>
                     <pre><code class="java">DataRegionConfiguration region = new DataRegionConfiguration();
 region.setMaxSize(10L * 1024 * 1024 * 1024); // 10 GB off-heap
 region.setPersistenceEnabled(false); // In-memory only</code></pre>
+                    <aside class="notes">Show this code example -- it is straightforward. The setMaxSize call defines the upper bound of off-heap memory for this region. If persistence is disabled, data that exceeds this limit triggers eviction. Students will configure data regions in the Module 4 lab on configuration and deployment.</aside>
                 </section>
 
                 <section>
@@ -612,6 +633,7 @@ region.setMaxSize(4L * 1024 * 1024 * 1024); // 4 GB
 region.setPersistenceEnabled(true);  // Optional
 
 storageCfg.setDefaultDataRegionConfiguration(region);</code></pre>
+                    <aside class="notes">Data regions let you create logical memory areas with different characteristics. You can have a large in-memory-only region for hot data and a smaller persistent region for critical data. Each cache can be assigned to a specific region. This gives fine-grained control over memory allocation and persistence behavior.</aside>
                 </section>
 
                 <section>
@@ -638,6 +660,7 @@ storageCfg.setDefaultDataRegionConfiguration(region);</code></pre>
                             <td>Eviction enabled</td>
                         </tr>
                     </table>
+                    <aside class="notes">Focus on the table: hot data should be in-memory only for maximum speed, cold data should use persistence for durability, and temporary data should use smaller regions with eviction enabled. A common pattern is to have three regions: hot, warm, and cold, with different size limits and persistence settings for each.</aside>
                 </section>
             </section>
 
@@ -655,6 +678,7 @@ storageCfg.setDefaultDataRegionConfiguration(region);</code></pre>
                         <li>Instant cluster restarts</li>
                         <li>No external database needed</li>
                     </ul>
+                    <aside class="notes">Native persistence is one of Ignite's strongest differentiators. Unlike Redis which uses RDB snapshots or AOF logging, Ignite has a full page-based storage engine with WAL. This means the cluster can be completely restarted and all data is preserved. Instant cluster restarts mean no lengthy data loading phase -- data is read from disk on demand.</aside>
                 </section>
 
                 <section>
@@ -677,6 +701,7 @@ storageCfg.setDefaultDataRegionConfiguration(region);</code></pre>
 |  - Permanent storage                |
 |  - Random access structure          |
 +-------------------------------------+</div>
+                    <aside class="notes">The persistence architecture follows a classic database design pattern. Changes go to RAM first for speed, then to the WAL for durability (sequential writes are fast), and finally to disk storage via checkpointing. This means even if the node crashes between checkpoints, the WAL can replay changes to restore consistency. Students familiar with PostgreSQL or MySQL will recognize this pattern.</aside>
                 </section>
 
                 <section>
@@ -690,6 +715,7 @@ storageCfg.setDefaultDataRegionConfiguration(region);</code></pre>
                         <li>Acknowledgment returned</li>
                         <li>Eventually checkpointed to data files</li>
                     </ol>
+                    <aside class="notes">The five-step WAL process ensures durability. The key insight is step 2-3: changes are written to the append-only WAL before being acknowledged. This guarantees that committed data survives crashes. The fsync to disk in step 3 is the performance bottleneck, which is why different WAL modes offer different trade-offs between performance and durability.</aside>
                 </section>
 
                 <section>
@@ -724,6 +750,7 @@ storageCfg.setWalMode(WALMode.BACKGROUND);</code></pre>
                             <td>Balanced</td>
                         </tr>
                     </table>
+                    <aside class="notes">LOG_ONLY is the most common choice for production -- it writes to the OS page cache but does not force fsync on every write. FSYNC forces every write to disk, providing maximum durability but at significant performance cost. BACKGROUND is a middle ground that flushes periodically. For most use cases with backups enabled, LOG_ONLY provides sufficient durability since data exists on multiple nodes.</aside>
                 </section>
             </section>
 
@@ -738,6 +765,7 @@ storageCfg.setWalMode(WALMode.BACKGROUND);</code></pre>
                         <li>Static IP Discovery</li>
                         <li>Cloud/Kubernetes Discovery</li>
                     </ol>
+                    <aside class="notes">Discovery is how nodes find each other to form a cluster. Getting discovery wrong is the number one cause of cluster startup failures. Multicast works out of the box for development but is often disabled in production networks. Static IP is reliable but requires maintaining a list of addresses. Kubernetes discovery uses the K8s API to find pods automatically.</aside>
                 </section>
 
                 <section>
@@ -749,6 +777,7 @@ TcpDiscoverySpi spi = new TcpDiscoverySpi();
                     <div class="box">
                         <strong>Best for:</strong> Development environments, simple setups where multicast is available
                     </div>
+                    <aside class="notes">Multicast discovery requires zero configuration, which is why it is the default. Nodes broadcast their presence on the network and other nodes respond. The caveat is that multicast is often blocked in cloud environments and corporate data centers. If students have trouble with nodes not finding each other in the lab, switching to static IP discovery is usually the fix.</aside>
                 </section>
 
                 <section>
@@ -764,6 +793,7 @@ spi.setIpFinder(ipFinder);</code></pre>
                     <div class="box">
                         <strong>Best for:</strong> Production environments with known node addresses
                     </div>
+                    <aside class="notes">Static IP discovery is the most common production configuration. You list the addresses of seed nodes that new nodes can contact to join the cluster. Not every node needs to be listed -- just enough seed nodes to ensure at least one is always available. The port range 47500 is the default discovery port. Students will configure this in their lab exercises.</aside>
                 </section>
 
                 <section>
@@ -776,6 +806,7 @@ ipFinder.setServiceName("ignite-service");</code></pre>
                     <div class="box">
                         <strong>Best for:</strong> Cloud-native deployments on Kubernetes
                     </div>
+                    <aside class="notes">The Kubernetes IP finder queries the K8s API to discover Ignite pods by namespace and service name. This eliminates the need to maintain static IP lists in a dynamic container environment. It requires the ignite-kubernetes Maven dependency and appropriate RBAC permissions for the pod to query the K8s API.</aside>
                 </section>
 
                 <section>
@@ -796,6 +827,7 @@ ipFinder.setServiceName("ignite-service");</code></pre>
                     <div class="flow-step">Step 7: Rebalancing (if needed)</div>
                     <div class="flow-arrow">v</div>
                     <div class="flow-step">Step 8: Node Fully Joined</div>
+                    <aside class="notes">Walk through each step of the join sequence. The coordinator (oldest node) manages the join process. The topology exchange in step 5 is where the new node learns about all existing nodes and caches. Rebalancing in step 7 redistributes data partitions to include the new node. This entire process typically takes seconds to a minute depending on data volume.</aside>
                 </section>
 
                 <section>
@@ -806,6 +838,7 @@ ipFinder.setServiceName("ignite-service");</code></pre>
                         <li><strong>Exchange:</strong> Synchronization of node info</li>
                         <li><strong>Ring Topology:</strong> Nodes form logical ring</li>
                     </ul>
+                    <aside class="notes">The coordinator is always the oldest server node in the cluster. If the coordinator fails, the next oldest node takes over automatically. The topology version increments on every change, providing a monotonically increasing version for consistency. The ring topology is used for discovery protocol messages, not for data communication -- data uses direct TCP connections.</aside>
                 </section>
 
                 <section>
@@ -837,6 +870,7 @@ ipFinder.setServiceName("ignite-service");</code></pre>
 spi.setLocalPort(47500);
 spi.setLocalPortRange(10); // 47500-47509
 cfg.setDiscoverySpi(spi);</code></pre>
+                    <aside class="notes">Review the port table carefully. Discovery ports 47500-47509 are for node-to-node discovery. Communication ports 47100-47199 handle actual data transfer. Thin clients connect on port 10800. REST API uses 8080. All of these must be open in firewalls and security groups. The port range allows multiple nodes on the same machine for development.</aside>
                 </section>
 
                 <section>
@@ -847,6 +881,7 @@ cfg.setDiscoverySpi(spi);</code></pre>
                         <li>Allow both TCP and UDP</li>
                         <li>Consider cloud security groups</li>
                     </ul>
+                    <aside class="notes">Firewall issues are the most common reason nodes cannot discover each other. Make sure both TCP and UDP are allowed for the discovery port range. In cloud environments, security groups must allow traffic between all nodes on discovery and communication ports. A quick diagnostic: if nodes start but do not form a cluster, check firewall rules first.</aside>
                 </section>
             </section>
 
@@ -863,6 +898,7 @@ cfg.setDiscoverySpi(spi);</code></pre>
                         <li>Controls rebalancing</li>
                         <li>Required for persistent clusters</li>
                     </ul>
+                    <aside class="notes">Baseline topology is an advanced concept that matters when persistence is enabled. It defines which server nodes are authorized to store data. Without baseline management, a new node joining could trigger unexpected data rebalancing. This is a safety mechanism to prevent accidental data redistribution in production clusters.</aside>
                 </section>
 
                 <section>
@@ -881,6 +917,7 @@ Baseline:      [Node1] [Node2] [Node3]
                             <li>Controls data distribution</li>
                         </ul>
                     </div>
+                    <aside class="notes">The visual makes the concept clear: only the three server nodes are in the baseline and store data. Client nodes are excluded. New server nodes that join the cluster are NOT automatically added to the baseline -- this is intentional to prevent unplanned rebalancing. An administrator must explicitly add nodes to the baseline topology.</aside>
                 </section>
 
                 <section>
@@ -892,6 +929,7 @@ Baseline:      [Node1] [Node2] [Node3]
                         <li><strong>ACTIVE:</strong> Cluster ready for operations</li>
                         <li><strong>READ_ONLY:</strong> Can read but not write</li>
                     </ul>
+                    <aside class="notes">Cluster activation is required for persistent clusters. When a persistent cluster starts, it begins in INACTIVE state to prevent data inconsistency before all nodes have joined. The administrator must explicitly activate the cluster once all expected nodes are present. READ_ONLY mode is useful for maintenance operations.</aside>
                 </section>
 
                 <section>
@@ -915,6 +953,7 @@ bin/ignite.sh --baseline add &lt;nodeId&gt;
 
 # View baseline
 bin/ignite.sh --baseline</code></pre>
+                    <aside class="notes">Show both the Java API and command-line approaches. The Java API is useful for programmatic cluster management. The command-line tools are useful for operations teams. The setBaselineTopology call sets the baseline to the current topology version, which includes all currently joined server nodes. In production, this is typically done once during initial cluster setup.</aside>
                 </section>
 
                 <section>
@@ -932,6 +971,7 @@ kill -SIGTERM &lt;pid&gt;
 
 # Remove from baseline
 bin/ignite.sh --baseline remove &lt;consistentId&gt;</code></pre>
+                    <aside class="notes">Adding and removing nodes from the baseline is a critical operations task. When adding a new node: first start it so it joins the cluster, then add it to the baseline. When removing: stop the node gracefully first, then remove from baseline. Always do this in a controlled manner to avoid data loss during rebalancing.</aside>
                 </section>
 
                 <section>
@@ -951,6 +991,7 @@ cfg.setDataStorageConfiguration(
                             <li>Always backup before topology changes</li>
                         </ul>
                     </div>
+                    <aside class="notes">Auto-adjust baseline was introduced in Ignite 2.4 and automatically adds or removes nodes from the baseline after a configurable timeout. The 30-second default gives temporary failures time to recover before triggering rebalancing. However, use with caution in production -- manual baseline management gives you more control. Always backup data before making topology changes.</aside>
                 </section>
             </section>
 
@@ -971,6 +1012,7 @@ commSpi.setConnectionsPerNode(1);
 commSpi.setMessageQueueLimit(1024);
 
 cfg.setCommunicationSpi(commSpi);</code></pre>
+                    <aside class="notes">The Communication SPI handles all data transfer between nodes, separate from the Discovery SPI which handles membership. The default settings work well for most cases. The connectionsPerNode setting controls how many TCP connections are opened between each pair of nodes. The message queue limit prevents memory issues under high load.</aside>
                 </section>
 
                 <section>
@@ -993,6 +1035,7 @@ cfg.setCommunicationSpi(commSpi);</code></pre>
                             <td>Match network capacity</td>
                         </tr>
                     </table>
+                    <aside class="notes">These tuning parameters are for advanced optimization. Increasing connections per node helps with throughput-heavy workloads by allowing parallel data transfer. Larger message queues help absorb burst traffic. Socket buffer sizes should match your network MTU and bandwidth. Most students will not need to change these defaults initially.</aside>
                 </section>
 
                 <section>
@@ -1007,6 +1050,7 @@ JOINED:   Part of topology
 ACTIVE:   Fully operational
 LEAVING:  Graceful shutdown
 LEFT:     No longer in cluster</div>
+                    <aside class="notes">Understanding the node lifecycle helps with debugging. A common issue is a node stuck in JOINING state, which usually indicates a discovery problem. The difference between LEAVING and LEFT is that LEAVING is a graceful shutdown where the node announces its departure, while a failed node goes directly to LEFT. Graceful shutdowns are preferred because they allow orderly data migration.</aside>
                 </section>
 
                 <section>
@@ -1019,6 +1063,7 @@ LEFT:     No longer in cluster</div>
                         <li>Majority-based decisions</li>
                         <li>Network partition detection</li>
                     </ul>
+                    <aside class="notes">Split-brain is one of the hardest problems in distributed systems. If the network splits a cluster into two groups, each group might think it is the surviving cluster and continue accepting writes, leading to data inconsistency. Ignite uses segmentation resolvers to detect this situation and shut down the minority partition. This is why odd numbers of nodes are recommended.</aside>
                 </section>
             </section>
 
@@ -1034,6 +1079,7 @@ LEFT:     No longer in cluster</div>
                         <li>Baseline topology changes</li>
                         <li>Cache configuration changes</li>
                     </ul>
+                    <aside class="notes">Rebalancing is the process of redistributing data when the cluster topology changes. It happens automatically and in the background, but can temporarily impact performance. Understanding when rebalancing occurs helps operators plan for topology changes. The most common trigger is adding or removing nodes.</aside>
                 </section>
 
                 <section>
@@ -1047,6 +1093,7 @@ LEFT:     No longer in cluster</div>
                     <div class="flow-step">4. Update partition counters</div>
                     <div class="flow-arrow">v</div>
                     <div class="flow-step">5. Verify data consistency</div>
+                    <aside class="notes">The five-step rebalancing process runs automatically. Step 2 uses the affinity function to determine the new optimal partition layout. Step 3 is the most time-consuming -- actual data transfer across the network. The cluster remains fully operational during rebalancing, though performance may be slightly degraded due to network bandwidth usage.</aside>
                 </section>
 
                 <section>
@@ -1064,6 +1111,7 @@ cfg.setRebalanceThreadPoolSize(2);
 
 // Throttle
 cfg.setRebalanceThrottle(100); // 100ms pause</code></pre>
+                    <aside class="notes">These configuration options let you control how aggressively rebalancing uses resources. ASYNC mode allows the cluster to serve requests during rebalancing. Larger batch sizes speed up rebalancing but use more network bandwidth. The throttle parameter adds pauses between batches to reduce impact on production traffic. For large datasets, tuning these parameters is important.</aside>
                 </section>
             </section>
 
@@ -1079,6 +1127,7 @@ AffinityFunction aff = new RendezvousAffinityFunction(
     2048    // number of partitions
 );
 cfg.setAffinity(aff);</code></pre>
+                    <aside class="notes">The affinity function determines how keys map to partitions and partitions map to nodes. The default Rendezvous affinity uses consistent hashing which minimizes data movement when nodes join or leave. You can customize the number of partitions -- more partitions give finer-grained distribution but increase memory overhead. 1024 partitions is optimal for clusters up to about 100 nodes.</aside>
                 </section>
 
                 <section>
@@ -1096,6 +1145,7 @@ cfg.setAffinity(aff);</code></pre>
                         <li>Reduced network hops</li>
                         <li>Faster joins and computations</li>
                     </ul>
+                    <aside class="notes">Affinity keys are a powerful optimization. By annotating the customerId field with @AffinityKeyMapped, all orders for the same customer are stored on the same node. This means a join between customers and orders can be executed locally without network hops. This concept is called data colocation and is critical for distributed SQL performance. We will explore this in depth during the data modeling module.</aside>
                 </section>
             </section>
 
@@ -1111,6 +1161,7 @@ cfg.setAffinity(aff);</code></pre>
                         <li>Node failed</li>
                         <li>Node segmented</li>
                     </ul>
+                    <aside class="notes">Topology events let your application react to cluster changes. This is useful for monitoring, alerting, and custom logic like redistributing work when nodes fail. The four event types cover all topology changes. In production, you should at minimum log these events for operational visibility.</aside>
                 </section>
 
                 <section>
@@ -1131,6 +1182,7 @@ cfg.setAffinity(aff);</code></pre>
                         <li>Custom rebalancing logic</li>
                         <li>Application coordination</li>
                     </ul>
+                    <aside class="notes">The code example shows how to register a local event listener. The lambda receives events and returns true to continue listening. You specify which event types to listen for. This is useful for building monitoring dashboards, sending alerts when nodes fail, or implementing custom coordination logic in your application.</aside>
                 </section>
             </section>
 
@@ -1154,6 +1206,7 @@ cfg.setAffinity(aff);</code></pre>
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">These best practices come from production experience. Odd numbers of server nodes help with split-brain resolution. Allocating 60-70% of RAM to Ignite leaves room for JVM heap, OS, and other processes. Low-latency networking is critical since distributed operations require network round trips. One to two backups provide a good balance of fault tolerance and memory usage.</aside>
                 </section>
             </section>
 
@@ -1162,6 +1215,7 @@ cfg.setAffinity(aff);</code></pre>
                 <section>
                     <h2>Common Architecture Patterns</h2>
                     <h3>Deployment Topologies</h3>
+                    <aside class="notes">These deployment patterns give students concrete architectures to reference when designing their own systems. Each pattern has trade-offs in terms of complexity, performance, and operational overhead. Most organizations start with Pattern 1 or 2 and evolve as needed.</aside>
                 </section>
 
                 <section>
@@ -1173,6 +1227,7 @@ cfg.setAffinity(aff);</code></pre>
                         <li>Good for small apps</li>
                         <li>Tight coupling</li>
                     </ul>
+                    <aside class="notes">The all-in-one pattern is what students use in the labs. It is the simplest to set up and understand. The application and Ignite share the same JVM, so data access is local and fast. The downside is tight coupling -- if the application crashes, the data node goes down too. This is acceptable for development but not recommended for production with important data.</aside>
                 </section>
 
                 <section>
@@ -1184,6 +1239,7 @@ cfg.setAffinity(aff);</code></pre>
                         <li>Independent scaling</li>
                         <li><strong>Production recommended</strong></li>
                     </ul>
+                    <aside class="notes">This is the production-recommended pattern. The application connects as a client to a dedicated Ignite cluster. Independent scaling means you can add more application instances without affecting data distribution, and add more Ignite nodes without restarting applications. This pattern also allows different teams to manage the application and data tiers independently.</aside>
                 </section>
 
                 <section>
@@ -1195,6 +1251,7 @@ cfg.setAffinity(aff);</code></pre>
                         <li>Disaster recovery</li>
                         <li>Application-level replication</li>
                     </ul>
+                    <aside class="notes">Multi-datacenter deployment is the most complex pattern. Ignite does not natively support cross-datacenter replication in the open-source version -- this requires application-level replication or the GridGain commercial product. This pattern is for disaster recovery scenarios where you need data in multiple geographic locations.</aside>
                 </section>
             </section>
 
@@ -1237,6 +1294,7 @@ cfg.setAffinity(aff);</code></pre>
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">Monitoring is essential for production clusters. The four categories of metrics -- topology, memory, performance, and tools -- cover all aspects of cluster health. Cache hit ratio is the single most important performance metric. If it drops below 90%, investigate whether your caching strategy is effective. Prometheus plus Grafana is the most popular monitoring stack for Ignite.</aside>
                 </section>
             </section>
 
@@ -1245,6 +1303,7 @@ cfg.setAffinity(aff);</code></pre>
                 <section>
                     <h2>Troubleshooting Architecture Issues</h2>
                     <h3>Common Problems</h3>
+                    <aside class="notes">Troubleshooting is a practical skill students will need immediately. The next few slides cover the four most common architecture issues. Encourage students to take notes on these since they will encounter them in the lab and in production.</aside>
                 </section>
 
                 <section>
@@ -1255,6 +1314,7 @@ cfg.setAffinity(aff);</code></pre>
                         <li>Check firewall rules</li>
                         <li>Ensure port availability</li>
                     </ul>
+                    <aside class="notes">Discovery failures are the number one issue during initial setup. Check these four things in order: Can nodes ping each other? Is the discovery SPI configured with correct addresses? Are firewall rules allowing traffic on ports 47500-47509? Is another process already using those ports? In the lab, this is usually resolved by verifying the IP finder configuration.</aside>
                 </section>
 
                 <section>
@@ -1264,6 +1324,7 @@ cfg.setAffinity(aff);</code></pre>
                         <li>Review segmentation resolver config</li>
                         <li>Adjust failure detection timeout</li>
                     </ul>
+                    <aside class="notes">Segmentation issues are more subtle and usually indicate network instability. If you see frequent segmentation events in the logs, the network between nodes is unreliable. Increasing the failure detection timeout can help with transient network issues but at the cost of slower failure detection. A segmentation resolver can be configured to handle split-brain scenarios gracefully.</aside>
                 </section>
 
                 <section>
@@ -1274,6 +1335,7 @@ cfg.setAffinity(aff);</code></pre>
                         <li>Check network bandwidth</li>
                         <li>Review throttling settings</li>
                     </ul>
+                    <aside class="notes">Slow rebalancing is common with large datasets. Increasing rebalance threads allows parallel data transfer. Larger batch sizes reduce per-batch overhead. Check that network bandwidth is not saturated during rebalancing. If rebalancing impacts production performance too much, increase the throttle setting to add pauses between batches.</aside>
                 </section>
 
                 <section>
@@ -1284,6 +1346,7 @@ cfg.setAffinity(aff);</code></pre>
                         <li>Review data model</li>
                         <li>Check for memory leaks</li>
                     </ul>
+                    <aside class="notes">Memory issues manifest as OutOfMemoryErrors or degraded performance. First, check if data region size is large enough for your data volume including backups. Enable eviction if data can exceed available memory. Review your data model for unnecessary fields or overly large objects. Memory leaks can occur if cache entries are never removed -- consider using expiry policies.</aside>
                 </section>
             </section>
 
@@ -1298,6 +1361,7 @@ cfg.setAffinity(aff);</code></pre>
                     <li><strong>Baseline topology for persistence</strong> - Controls which nodes store data, manual management recommended</li>
                     <li><strong>Discovery is critical</strong> - Must be configured correctly for different environments</li>
                 </ol>
+                <aside class="notes">These five takeaways summarize the entire module. The peer-to-peer nature eliminates single points of failure. Partitioning and consistent hashing enable horizontal scaling. The three-tier memory model gives flexibility for different workloads. Baseline topology is essential for persistent clusters. Discovery configuration varies by environment. Students should be able to explain each of these concepts after this module.</aside>
             </section>
 
             <!-- Questions Slide -->
@@ -1311,6 +1375,7 @@ cfg.setAffinity(aff);</code></pre>
                     <li>Persistence requirements</li>
                 </ul>
                 <p style="margin-top: 2em;"><strong>Next:</strong> Lab 2 - Multi-Node Cluster Setup</p>
+                <aside class="notes">Open for questions. Common topics include cluster sizing, memory configuration for specific workloads, and which discovery mechanism to use. After Q&A, transition to Lab 2 where students will set up a multi-node cluster and observe partitioning, rebalancing, and node discovery in action. The lab makes these architectural concepts tangible.</aside>
             </section>
 
         </div>

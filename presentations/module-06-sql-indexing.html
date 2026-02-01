@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/intellij-light.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <style>
         .reveal .slides section { overflow: hidden; }
         .reveal section { max-height: 100%; }
@@ -160,6 +160,7 @@
                 <p style="margin-top: 2em; color: #7f8c8d;">
                     Duration: 60 minutes
                 </p>
+                <aside class="notes">Welcome to Module 06 on SQL and Indexing. This module shows that Ignite is not just a key-value store but a full SQL database. Students with relational database experience will feel right at home. Emphasize that the SQL engine runs distributed queries across the cluster transparently. This connects to Lab 06 where students will practice all these concepts.</aside>
             </section>
 
             <!-- Agenda -->
@@ -185,6 +186,7 @@
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">Walk through the agenda so students see the progression from SQL fundamentals through advanced optimization. Part 1 covers the basics they need to get started, while Part 2 dives into performance-critical topics like indexing and distributed joins. The distributed joins section ties directly back to the colocation concepts from Module 05.</aside>
             </section>
 
             <!-- Section 1: SQL in Apache Ignite -->
@@ -192,6 +194,7 @@
                 <section>
                     <h2>SQL in Apache Ignite</h2>
                     <h3>Overview and Capabilities</h3>
+                    <aside class="notes">This section introduces the SQL engine in Ignite. Many students are surprised to learn that Ignite supports full ANSI SQL. The key differentiator from a traditional RDBMS is that queries are automatically distributed across cluster nodes and executed in parallel.</aside>
                 </section>
 
                 <section>
@@ -207,6 +210,7 @@
                         <li>Automatic query parallelization</li>
                         <li>Cost-based optimization</li>
                     </ul>
+                    <aside class="notes">Highlight that Ignite uses Apache Calcite as its query optimizer, which is the same optimizer used by many other systems like Apache Flink and Apache Druid. The cost-based optimization means Ignite chooses the best execution plan based on data statistics. Ask students if they have experience with EXPLAIN plans from other databases -- the concept is the same here.</aside>
                 </section>
 
                 <section>
@@ -241,6 +245,7 @@
                             <td>String, numeric, date/time, aggregate</td>
                         </tr>
                     </table>
+                    <aside class="notes">This table shows the breadth of SQL support. DDL lets you create tables and indexes dynamically. DML provides full data manipulation. The joins support is especially important for distributed queries. Point out that MERGE is supported which is useful for upsert operations. Students coming from Oracle or SQL Server will find the syntax familiar.</aside>
                 </section>
 
                 <section>
@@ -263,6 +268,7 @@
                         <p>Queries are <span class="highlight">parsed</span>, <span class="highlight">optimized</span>,
                         and <span class="highlight">executed</span> across cluster nodes.</p>
                     </div>
+                    <aside class="notes">The three-stage architecture is standard for SQL engines. The parser validates syntax, the optimizer chooses the best execution plan, and the executor runs the query across nodes. The key insight is that the optimizer decides how to split the query across nodes and where to execute each part. This is what makes distributed SQL transparent to the developer.</aside>
                 </section>
             </section>
 
@@ -271,6 +277,7 @@
                 <section>
                     <h2>SqlFieldsQuery API</h2>
                     <h3>Programmatic SQL Access</h3>
+                    <aside class="notes">This section covers the Java API for executing SQL queries programmatically. SqlFieldsQuery is the primary class students will use in the lab. It provides full control over query execution parameters and is the most common way to run SQL from Java application code.</aside>
                 </section>
 
                 <section>
@@ -292,6 +299,7 @@ for (List&lt;?&gt; row : results) {
     String city = (String) row.get(2);
     System.out.println(name + " - " + age + " - " + city);
 }</code></pre>
+                    <aside class="notes">Walk through this code line by line. The SqlFieldsQuery takes a SQL string with parameterized placeholders. setArgs provides the parameter values safely to prevent SQL injection. The result is a list of lists where each inner list is a row. Note the type casting required when extracting values -- this is a common source of ClassCastException errors students encounter.</aside>
                 </section>
 
                 <section>
@@ -316,6 +324,7 @@ personEntity.setKeyFieldName("id");
 
 cfg.setQueryEntities(Arrays.asList(personEntity));
 cfg.setSqlSchema("PUBLIC");</code></pre>
+                    <aside class="notes">This is the QueryEntity approach to defining SQL schemas programmatically. The LinkedHashMap preserves field order which matters for SQL table layout. The setKeyFieldName call tells Ignite which field is the primary key. Students often forget setSqlSchema which can cause tables to be invisible in SQL queries. The PUBLIC schema is the default and recommended for most use cases.</aside>
                 </section>
 
                 <section>
@@ -342,6 +351,7 @@ query.setEnforceJoinOrder(true);
 
 // Enable collocated mode
 query.setCollocated(true);</code></pre>
+                    <aside class="notes">These query options are critical for production use. setTimeout prevents runaway queries. setLazy is essential for large result sets to avoid memory issues. setDistributedJoins must be explicitly enabled for cross-node joins. setCollocated tells the optimizer that the query only touches colocated data, allowing optimizations. setEnforceJoinOrder overrides the optimizer's join order when you know better.</aside>
                 </section>
 
                 <section>
@@ -366,6 +376,7 @@ try (QueryCursor&lt;List&lt;?&gt;&gt; cursor = cache.query(query)) {
         processRow(row);
     }
 }</code></pre>
+                    <aside class="notes">Cursor-based iteration is essential for production code dealing with large datasets. The try-with-resources pattern ensures the cursor is closed even if an exception occurs. Without lazy mode, getAll() loads everything into memory which can cause OutOfMemory errors. Emphasize that the cursor must be closed or resources leak on the server side.</aside>
                 </section>
             </section>
 
@@ -374,6 +385,7 @@ try (QueryCursor&lt;List&lt;?&gt;&gt; cursor = cache.query(query)) {
                 <section>
                     <h2>DDL and DML Operations</h2>
                     <h3>Data Definition & Manipulation</h3>
+                    <aside class="notes">This section covers the full range of SQL data definition and manipulation operations. Students will see how to create tables, insert data, update records, and run complex queries all through SQL. This is the section where Ignite starts to feel like a traditional database to students with RDBMS backgrounds.</aside>
                 </section>
 
                 <section>
@@ -397,6 +409,7 @@ cache.query(new SqlFieldsQuery(
     "  price DECIMAL" +
     ") WITH \"VALUE_TYPE=com.example.Product\""
 )).getAll();</code></pre>
+                    <aside class="notes">The CREATE TABLE syntax is standard SQL with Ignite-specific WITH clause options. The template parameter controls whether the table is partitioned or replicated. The backups parameter sets the number of backup copies. Note the IF NOT EXISTS clause which makes the statement idempotent. The VALUE_TYPE option maps the table to a specific Java class for type-safe access.</aside>
                 </section>
 
                 <section>
@@ -411,6 +424,7 @@ cache.query(new SqlFieldsQuery(
                         value_type=com.example.ValueClass<br>
                         affinity_key=column_name
                     </div>
+                    <aside class="notes">The WITH clause options control how the underlying cache is configured. The template option is the most important -- partitioned distributes data across nodes while replicated copies to all nodes. The affinity_key option ties back to Module 05's colocation discussion. Setting atomicity to TRANSACTIONAL is required if you need multi-row transactions on this table.</aside>
                 </section>
 
                 <section>
@@ -436,6 +450,7 @@ for (Person person : persons) {
 cache.query(new SqlFieldsQuery(
     "INSERT INTO HighEarners SELECT * FROM Person WHERE salary > 100000")
 ).getAll();</code></pre>
+                    <aside class="notes">Show the three INSERT patterns: single row with parameters, batch insert in a loop, and INSERT SELECT for copying data between tables. Always use parameterized queries to prevent SQL injection. The getAll() call at the end is required to execute the DML statement -- forgetting it is a common mistake. For bulk loading, consider using the streaming API instead of individual INSERTs for much better performance.</aside>
                 </section>
 
                 <section>
@@ -460,6 +475,7 @@ cache.query(new SqlFieldsQuery(
 
 // DELETE all (use with caution!)
 cache.query(new SqlFieldsQuery("DELETE FROM TempTable")).getAll();</code></pre>
+                    <aside class="notes">UPDATE and DELETE work as expected from standard SQL. The salary raise example shows arithmetic in the SET clause. Warn students about DELETE without WHERE -- it deletes all rows. In a distributed system, DML operations are coordinated across nodes that own the affected partitions. Mention that DML operations respect the cache's atomicity setting.</aside>
                 </section>
 
                 <section>
@@ -486,6 +502,7 @@ SqlFieldsQuery query4 = new SqlFieldsQuery(
 // Results
 cache.query(query3).getAll().forEach(row ->
     System.out.println(row.get(0) + ": $" + row.get(1)));</code></pre>
+                    <aside class="notes">These SELECT examples show the range of query capabilities: simple select, parameterized WHERE, aggregation with GROUP BY, and ORDER BY with LIMIT. The aggregation query runs in a map-reduce fashion across nodes -- each node computes local aggregates which are then merged. LIMIT is important for large tables to avoid transferring excessive data across the network.</aside>
                 </section>
 
                 <section>
@@ -511,6 +528,7 @@ SqlFieldsQuery havingQuery = new SqlFieldsQuery(
     "FROM Employee " +
     "GROUP BY department " +
     "HAVING COUNT(*) > 5");</code></pre>
+                    <aside class="notes">These advanced query patterns show subqueries, CASE expressions, and HAVING clauses. The subquery example finds employees above average salary, which executes the inner query first across all nodes. CASE expressions are useful for data categorization in reports. HAVING filters groups after aggregation. These are all standard SQL patterns that work identically to traditional databases.</aside>
                 </section>
             </section>
 
@@ -519,6 +537,7 @@ SqlFieldsQuery havingQuery = new SqlFieldsQuery(
                 <section>
                     <h2>JDBC/ODBC Connectivity</h2>
                     <h3>Standard Database Access</h3>
+                    <aside class="notes">JDBC and ODBC connectivity makes Ignite accessible from virtually any programming language or tool. This is often the easiest way for existing applications to start using Ignite. The thin JDBC driver requires no Ignite dependency on the client side -- just a standard JDBC connection string.</aside>
                 </section>
 
                 <section>
@@ -541,6 +560,7 @@ try (Connection conn = DriverManager.getConnection(JDBC_URL)) {
     DatabaseMetaData metadata = conn.getMetaData();
     System.out.println("Driver: " + metadata.getDriverName());
 }</code></pre>
+                    <aside class="notes">The JDBC thin driver connects to port 10800 by default. The Class.forName call registers the driver, though with modern JDBC this is often optional due to auto-discovery. The connection URL format supports multiple hosts for failover. Students will use this JDBC approach in the lab. Common gotcha: make sure the Ignite node is running and the port is accessible before attempting the connection.</aside>
                 </section>
 
                 <section>
@@ -579,6 +599,7 @@ try (Connection conn = DriverManager.getConnection(JDBC_URL)) {
                     </table>
                     <pre><code class="language-java">String url = "jdbc:ignite:thin://127.0.0.1?" +
     "distributedJoins=true&lazy=true";</code></pre>
+                    <aside class="notes">JDBC connection parameters mirror the SqlFieldsQuery options. Setting distributedJoins=true in the URL enables distributed joins for all queries on that connection. The lazy parameter is recommended for connections that will handle large result sets. These parameters can also be set per-statement using JDBC hints if needed.</aside>
                 </section>
 
                 <section>
@@ -601,6 +622,7 @@ try (PreparedStatement pstmt = conn.prepareStatement(insertSQL)) {
     pstmt.setDouble(4, 95000);
     pstmt.executeUpdate();
 }</code></pre>
+                    <aside class="notes">This shows standard JDBC PreparedStatement usage which students with Java experience will find familiar. The important point is that this is completely standard JDBC code that would work with any database. The only Ignite-specific part is the connection URL. This makes Ignite a drop-in replacement for many JDBC-based applications with minimal code changes.</aside>
                 </section>
 
                 <section>
@@ -625,6 +647,7 @@ try (PreparedStatement pstmt = conn.prepareStatement(querySQL)) {
         }
     }
 }</code></pre>
+                    <aside class="notes">The ResultSet example demonstrates column access by name which is more readable than index-based access. The try-with-resources pattern ensures proper cleanup. Note the formatted output using printf. Students should practice this pattern in the lab. A common mistake is not closing the ResultSet or PreparedStatement which can leak resources on the server.</aside>
                 </section>
 
                 <section>
@@ -651,6 +674,7 @@ try (PreparedStatement pstmt = conn.prepareStatement(querySQL)) {
                     <div class="box" style="margin-top: 20px;">
                         ODBC enables connectivity from BI tools, reporting systems, and legacy applications.
                     </div>
+                    <aside class="notes">ODBC connectivity enables non-Java tools like Excel, Tableau, and Power BI to query Ignite directly. This is valuable for business intelligence and reporting use cases. The setup involves installing the Ignite ODBC driver and configuring a Data Source Name. If students use BI tools in their organizations, this is a powerful integration point to highlight.</aside>
                 </section>
             </section>
 
@@ -659,6 +683,7 @@ try (PreparedStatement pstmt = conn.prepareStatement(querySQL)) {
                 <section>
                     <h2>Index Types</h2>
                     <h3>Optimizing Query Performance</h3>
+                    <aside class="notes">Indexes are the single most important tool for query performance. Without proper indexes, Ignite must scan every partition on every node to answer a query. This section covers the types of indexes available and how to create them. Students should pay close attention as indexing decisions directly impact their lab exercise performance.</aside>
                 </section>
 
                 <section>
@@ -689,6 +714,7 @@ try (PreparedStatement pstmt = conn.prepareStatement(querySQL)) {
                             </p>
                         </div>
                     </div>
+                    <aside class="notes">Primary indexes are created automatically on the key field. Secondary indexes must be explicitly created on columns you query frequently. Composite indexes cover multi-column queries and the column order is critical -- the leftmost prefix rule applies just like in MySQL or PostgreSQL. Full-text indexes enable efficient text search on string fields.</aside>
                 </section>
 
                 <section>
@@ -714,6 +740,7 @@ QueryIndex textIdx = new QueryIndex("description", QueryIndexType.FULLTEXT);
 
 // Add all indexes
 entity.setIndexes(Arrays.asList(nameIdx, categoryIdx, compositeIdx, textIdx));</code></pre>
+                    <aside class="notes">This shows index creation through the Java API using QueryIndex objects. Each index has a type: SORTED for B-tree indexes and FULLTEXT for text search. Custom names help identify indexes in EXPLAIN output. The composite index on category and price is especially important -- it handles queries that filter on both columns efficiently. Students will create these exact indexes in the lab.</aside>
                 </section>
 
                 <section>
@@ -729,6 +756,7 @@ CREATE UNIQUE INDEX idx_email ON Customer (email);
 
 -- Drop index
 DROP INDEX idx_name;</code></pre>
+                    <aside class="notes">SQL DDL index creation is simpler and can be done at runtime without restarting the cluster. This is the preferred approach for operational changes. The UNIQUE index enforces uniqueness which is useful for email addresses or other natural keys. DROP INDEX removes an index when it is no longer needed. Note that creating indexes on large tables can take time and temporarily impact performance.</aside>
                 </section>
 
                 <section>
@@ -759,6 +787,7 @@ WHERE price = 100
 -- (Order reversed, may not use)</code></pre>
                         </div>
                     </div>
+                    <aside class="notes">This is one of the most important slides in the module. Column order in composite indexes follows the leftmost prefix rule. An index on (category, price) can be used for queries on category alone or category AND price, but NOT for price alone. This surprises many students. Use the analogy of a phone book sorted by last name then first name -- you can look up by last name, but not efficiently by first name alone.</aside>
                 </section>
 
                 <section>
@@ -778,6 +807,7 @@ cache.query(textQuery).getAll().forEach(row ->
                         <strong>Note:</strong> Full-text indexes use more memory but enable efficient
                         text search operations.
                     </div>
+                    <aside class="notes">Full-text indexes use Lucene under the hood and are suitable for text search on description or comment fields. The LIKE operator with a prefix pattern can use a regular SORTED index, but for contains-type searches a FULLTEXT index is needed. Note that FULLTEXT indexes consume more memory and slow down writes since the Lucene index must be maintained.</aside>
                 </section>
 
                 <section>
@@ -801,6 +831,7 @@ SqlFieldsQuery query2 = new SqlFieldsQuery(
 cache.query(query2).getAll();
 System.out.println("Composite index query: " +
     (System.currentTimeMillis() - startTime) + " ms");</code></pre>
+                    <aside class="notes">This code measures query performance with and without composite indexes. In the lab, students will see the dramatic difference between indexed and non-indexed queries. With thousands of rows, the difference can be 10x or more. Timing queries is a simple but effective way to validate index effectiveness. In production, use Ignite's built-in query metrics instead of manual timing.</aside>
                 </section>
             </section>
 
@@ -809,6 +840,7 @@ System.out.println("Composite index query: " +
                 <section>
                     <h2>Query Optimization</h2>
                     <h3>Understanding and Improving Performance</h3>
+                    <aside class="notes">Query optimization is where theory meets practice. This section teaches students how to use EXPLAIN to understand query plans, how to identify performance bottlenecks, and how to fix them. These skills transfer directly to any SQL database. Encourage students to always check EXPLAIN before deploying queries to production.</aside>
                 </section>
 
                 <section>
@@ -834,6 +866,7 @@ cache.query(explainQuery).getAll().forEach(row ->
                         &nbsp;&nbsp;/* PUBLIC.IDX_CATEGORY_PRICE: CATEGORY = 'Electronics' */<br>
                         WHERE (CATEGORY = 'Electronics') AND (PRICE < 500)
                     </div>
+                    <aside class="notes">EXPLAIN is the most important debugging tool for SQL performance. Walk through the example output: it shows the index being used (IDX_CATEGORY_PRICE) and the filter conditions. If the output shows a table scan instead of an index scan, that is a performance problem. Students should run EXPLAIN on every query they write in the lab. The output format may vary slightly between Ignite versions.</aside>
                 </section>
 
                 <section>
@@ -860,6 +893,7 @@ cache.query(explainQuery).getAll().forEach(row ->
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">The Do and Avoid lists are practical guidelines. The most common mistakes are SELECT * when only a few columns are needed, and applying functions to indexed columns which prevents index usage. Leading wildcards in LIKE bypass the index entirely. Parameterized queries allow plan caching. These tips apply universally to all SQL databases, not just Ignite.</aside>
                 </section>
 
                 <section>
@@ -883,6 +917,7 @@ SELECT * FROM Product WHERE UPPER(name) = 'LAPTOP';
 
 -- DOES NOT USE INDEX (expression)
 SELECT * FROM Product WHERE price * 1.1 > 100;</code></pre>
+                    <aside class="notes">This is a reference slide students should bookmark. It shows exactly which query patterns use indexes and which do not. The expression example at the bottom is subtle -- price * 1.1 > 100 cannot use the index, but rewriting it as price > 100/1.1 can. Similarly UPPER(name) prevents index use, but you can create a functional index or store a normalized column. These are common interview questions too.</aside>
                 </section>
 
                 <section>
@@ -906,6 +941,7 @@ query.setTimeout(30, TimeUnit.SECONDS);</code></pre>
                         Use <code>setEnforceJoinOrder(true)</code> when you know the optimal
                         join order better than the optimizer.
                     </div>
+                    <aside class="notes">Query hints give you manual control over the optimizer. setEnforceJoinOrder is useful when you know the data distribution better than the optimizer. setCollocated skips nodes that do not have relevant data. setLocal restricts execution to the local node only. setQueryParallelism increases intra-node parallelism for CPU-intensive queries. Always set timeouts in production to prevent runaway queries.</aside>
                 </section>
 
                 <section>
@@ -921,6 +957,7 @@ SELECT * FROM SYS.INDEXES WHERE TABLE_NAME = 'PRODUCT';</code></pre>
                         <strong>Best Practice:</strong> Run ANALYZE after bulk data loads or
                         significant data changes to update statistics for the query optimizer.
                     </div>
+                    <aside class="notes">ANALYZE TABLE updates the statistics that the cost-based optimizer uses to choose execution plans. After bulk loading data or significant data changes, running ANALYZE ensures the optimizer has accurate cardinality estimates. The SYS schema provides metadata about tables, columns, and indexes. This is the Ignite equivalent of information_schema in PostgreSQL or MySQL.</aside>
                 </section>
             </section>
 
@@ -929,6 +966,7 @@ SELECT * FROM SYS.INDEXES WHERE TABLE_NAME = 'PRODUCT';</code></pre>
                 <section>
                     <h2>Distributed Joins</h2>
                     <h3>Joining Data Across Nodes</h3>
+                    <aside class="notes">This section ties back to Module 05's colocation concepts and shows the practical SQL implications. Distributed joins are the most performance-sensitive SQL feature in Ignite. The key message is to design your data model so that frequently joined tables are colocated, avoiding distributed joins entirely when possible.</aside>
                 </section>
 
                 <section>
@@ -961,6 +999,7 @@ SELECT * FROM SYS.INDEXES WHERE TABLE_NAME = 'PRODUCT';</code></pre>
                             </div>
                         </div>
                     </div>
+                    <aside class="notes">The visual comparison makes the performance difference clear. Colocated joins execute entirely on one node with no network traffic. Distributed joins must send data between nodes to find matching rows. In production with millions of rows, this difference can be orders of magnitude. Always prefer colocated joins and only fall back to distributed joins when the data model cannot support colocation.</aside>
                 </section>
 
                 <section>
@@ -981,6 +1020,7 @@ results.forEach(row ->
                         <strong>Warning:</strong> Distributed joins are slower than colocated joins.
                         Consider data modeling to avoid them when possible.
                     </div>
+                    <aside class="notes">Note the setDistributedJoins(true) call which must be explicit. Without it, Ignite assumes the join is colocated and may return incorrect results if the data is not actually colocated. This is a safety mechanism. The warning box reinforces that distributed joins should be a last resort. In the lab, students will compare performance of colocated versus distributed joins to see the difference firsthand.</aside>
                 </section>
 
                 <section>
@@ -1003,6 +1043,7 @@ SqlFieldsQuery query = new SqlFieldsQuery(
     "SELECT c.name, o.total FROM Customer c " +
     "JOIN \"OrderCache\".Order o ON c.id = o.customerId");
 // No need for setDistributedJoins(true) - data is colocated!</code></pre>
+                    <aside class="notes">This example shows the complete picture: @AffinityKeyMapped on customerId in the Order key class ensures orders are stored on the same node as their customer. Then the SQL join between Customer and Order executes locally without network traffic. The comment at the bottom emphasizes that setDistributedJoins is not needed because the data is colocated by design. This is the ideal pattern to follow.</aside>
                 </section>
 
                 <section>
@@ -1022,6 +1063,7 @@ SqlFieldsQuery aggJoin = new SqlFieldsQuery(
 empCache.query(aggJoin).getAll().forEach(row ->
     System.out.printf("%s: %d employees, avg $%.2f, max $%.2f%n",
         row.get(0), row.get(1), row.get(2), row.get(3)));</code></pre>
+                    <aside class="notes">This example combines joins with aggregation which is common in reporting queries. The LEFT JOIN ensures departments with no employees still appear in the results. The GROUP BY and ORDER BY clauses work as in standard SQL. Note that setDistributedJoins is needed here since Employee and Department may not be colocated. In production, you would colocate these tables to avoid the distributed join overhead.</aside>
                 </section>
 
                 <section>
@@ -1039,6 +1081,7 @@ empCache.query(aggJoin).getAll().forEach(row ->
                         <strong>Rule of thumb:</strong> If you frequently join two tables,
                         they should share an affinity key.
                     </div>
+                    <aside class="notes">The design-first approach is key: identify frequently joined tables during the design phase, use affinity keys to colocate them, and consider denormalization to avoid joins entirely. The rule of thumb at the bottom is practical: if two tables are joined in more than one query, they should share an affinity key. This may require schema redesign but the performance gains are worth it.</aside>
                 </section>
             </section>
 
@@ -1047,6 +1090,7 @@ empCache.query(aggJoin).getAll().forEach(row ->
                 <section>
                     <h2>Query Performance Tuning</h2>
                     <h3>Advanced Optimization Techniques</h3>
+                    <aside class="notes">This section covers advanced performance tuning techniques for production deployments. These are the knobs you turn after getting indexes and colocation right. Query parallelism, lazy execution, and memory configuration are all important for handling large-scale workloads. Students should treat this as reference material for when they move to production.</aside>
                 </section>
 
                 <section>
@@ -1068,6 +1112,7 @@ SqlFieldsQuery query = new SqlFieldsQuery(
                             <li>May increase memory usage</li>
                         </ul>
                     </div>
+                    <aside class="notes">Query parallelism splits a single query across multiple threads within each node. The default of 1 is conservative. For analytical queries on large datasets, increasing to 4 or 8 can significantly reduce query time. However, higher parallelism uses more memory and CPU. Do not set it higher than the number of CPU cores on the node. This setting is independent of the number of cluster nodes.</aside>
                 </section>
 
                 <section>
@@ -1103,6 +1148,7 @@ try (QueryCursor&lt;List&lt;?&gt;&gt; cursor =
                     <div class="success-box" style="margin-top: 20px;">
                         Use lazy execution for large result sets to avoid OutOfMemory errors.
                     </div>
+                    <aside class="notes">Eager execution loads all results into memory at once which is fine for small result sets. Lazy execution streams results on demand which is essential for queries that return thousands or millions of rows. The try-with-resources pattern is critical for lazy queries because the cursor holds server-side resources that must be released. Default to lazy for production code unless you specifically need all results in memory at once.</aside>
                 </section>
 
                 <section>
@@ -1125,6 +1171,7 @@ cfg.setSqlConfiguration(sqlCfg);</code></pre>
                             <li>Cross joins</li>
                         </ul>
                     </div>
+                    <aside class="notes">Memory quotas prevent individual queries from consuming all available memory. The per-query limit prevents a single bad query from impacting the cluster, while the global limit caps total SQL memory usage. The memory-intensive operations list helps students predict which queries need attention. Sorting large result sets is the most common memory hog because it requires materializing the entire result set in memory.</aside>
                 </section>
 
                 <section>
@@ -1161,6 +1208,7 @@ cfg.setSqlConfiguration(sqlCfg);</code></pre>
                             <td>Optimize query, add indexes</td>
                         </tr>
                     </table>
+                    <aside class="notes">This troubleshooting table is a practical reference. Walk through each symptom-cause-solution row. The most common issue students encounter is queries not using indexes because the WHERE clause does not match the index structure. The slow distributed join is always solved by proper affinity key design from Module 05. High memory usage from large result sets is solved by lazy execution and LIMIT.</aside>
                 </section>
 
                 <section>
@@ -1182,6 +1230,7 @@ KILL QUERY 'query_id';</code></pre>
                             <li>Index usage analysis</li>
                         </ul>
                     </div>
+                    <aside class="notes">These monitoring queries are invaluable for production. SYS.SQL_QUERIES shows currently running queries so you can identify long-running ones. The KILL QUERY command lets you terminate problematic queries. Ignite Control Center provides a graphical interface for these same capabilities. In production, set up alerts on query duration to catch performance regressions early.</aside>
                 </section>
 
                 <section>
@@ -1199,6 +1248,7 @@ KILL QUERY 'query_id';</code></pre>
                             <li>Monitor and tune based on metrics</li>
                         </ol>
                     </div>
+                    <aside class="notes">This checklist should be followed before any production deployment. Items 1 through 4 are about query correctness and performance. Items 5 through 8 are about operational readiness. Emphasize item 7: testing with production-size data is critical because queries that are fast on 1000 rows may be unacceptable on 10 million rows. Print this checklist for students to reference during the lab.</aside>
                 </section>
             </section>
 
@@ -1207,6 +1257,7 @@ KILL QUERY 'query_id';</code></pre>
                 <section>
                     <h2>Lab Exercise</h2>
                     <h3>SQL and Indexing in Practice</h3>
+                    <aside class="notes">Now students will put everything into practice. The lab has four parts covering SQL support, indexing, JDBC, and distributed joins. Give students a few minutes to read through the lab objectives before they start coding. Circulate and help with common issues like missing schema configuration or forgotten getAll() calls.</aside>
                 </section>
 
                 <section>
@@ -1221,6 +1272,7 @@ KILL QUERY 'query_id';</code></pre>
                         <li>Optimize query performance</li>
                         <li>Understand distributed joins and their implications</li>
                     </ul>
+                    <aside class="notes">Review the lab objectives with the class. The 60-minute duration allows time for all four parts plus experimentation. Emphasize that understanding distributed joins and their performance implications is the most important objective. Students who finish early should try creating additional indexes and measuring performance improvements with EXPLAIN.</aside>
                 </section>
 
                 <section>
@@ -1245,6 +1297,7 @@ personEntity.setIndexes(Arrays.asList(
     new QueryIndex("name"),
     new QueryIndex("city")
 ));</code></pre>
+                    <aside class="notes">This is the starting point for Lab Part 1. Students create a cache with SQL schema configuration including QueryEntity, field definitions, and basic indexes. The most common mistakes are forgetting setKeyFieldName or not setting the SQL schema. Walk through the code line by line before students start coding. The indexes on name and city enable the WHERE clause queries they will write next.</aside>
                 </section>
 
                 <section>
@@ -1267,6 +1320,7 @@ SqlFieldsQuery explain = new SqlFieldsQuery(
     "EXPLAIN SELECT name FROM Product " +
     "WHERE category = 'Electronics' AND price < 500");
 cache.query(explain).getAll().forEach(System.out::println);</code></pre>
+                    <aside class="notes">Lab Part 2 focuses on creating different index types and verifying they are used by the optimizer. Students should create each index, run an EXPLAIN query, and verify the index appears in the plan. The composite index on category and price is the key learning moment. Have students try querying on price alone to see that the composite index is not used in that case.</aside>
                 </section>
 
                 <section>
@@ -1294,6 +1348,7 @@ try (Connection conn = DriverManager.getConnection(JDBC_URL)) {
         // Process results...
     }
 }</code></pre>
+                    <aside class="notes">Lab Part 3 covers JDBC connectivity. Students establish a thin client connection, create tables via DDL, and query with PreparedStatement. Common issues include the JDBC driver not being on the classpath and the Ignite node not running. Make sure students start their Ignite node before attempting the JDBC connection. The thin client connects on port 10800 by default.</aside>
                 </section>
 
                 <section>
@@ -1317,6 +1372,7 @@ long colocatedTime = measureQuery(colocatedJoin);
 long distributedTime = measureQuery(distributedJoin);
 System.out.println("Colocated: " + colocatedTime + " ms");
 System.out.println("Distributed: " + distributedTime + " ms");</code></pre>
+                    <aside class="notes">Lab Part 4 is the most important exercise. Students compare colocated and distributed join performance by measuring execution time. The colocated join should be noticeably faster even with a small dataset. With larger datasets, the difference becomes dramatic. This exercise solidifies the connection between Module 05's colocation design and Module 06's SQL performance.</aside>
                 </section>
 
                 <section>
@@ -1355,6 +1411,7 @@ System.out.println("Distributed: " + distributedTime + " ms");</code></pre>
                             <td style="text-align: center;">[ ]</td>
                         </tr>
                     </table>
+                    <aside class="notes">Use this checklist to verify students have completed all lab parts successfully. Walk around and check each student's progress. The most commonly missed items are examining query execution plans and verifying index usage. Students who complete all items early can experiment with additional query patterns or try creating their own composite indexes.</aside>
                 </section>
             </section>
 
@@ -1362,6 +1419,7 @@ System.out.println("Distributed: " + distributedTime + " ms");</code></pre>
             <section>
                 <section>
                     <h2>Module Summary</h2>
+                    <aside class="notes">Transition to the summary. Ask students what they found most useful or surprising. The three key themes are: SQL is fully supported and distributed, indexes are critical for performance, and colocation determines join performance.</aside>
                 </section>
 
                 <section>
@@ -1395,6 +1453,7 @@ System.out.println("Distributed: " + distributedTime + " ms");</code></pre>
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">These three columns summarize the module. The SQL Engine column covers what Ignite can do, the Indexing column covers how to make it fast, and the Performance column covers how to tune and monitor. Students should feel confident executing SQL queries, creating indexes, and using EXPLAIN to verify query plans. These are foundational skills for the remaining modules.</aside>
                 </section>
 
                 <section>
@@ -1421,6 +1480,7 @@ System.out.println("Distributed: " + distributedTime + " ms");</code></pre>
                             <td>Enable lazy execution, add LIMIT clause</td>
                         </tr>
                     </table>
+                    <aside class="notes">Review the common issues table. These are the problems students are most likely to encounter in the lab and in production. The query not using index issue is the most frequent. The JDBC connection failure is usually a configuration problem. The distributed join slowness is a data modeling problem that should be solved in the design phase rather than at query time.</aside>
                 </section>
 
                 <section>
@@ -1437,6 +1497,7 @@ System.out.println("Distributed: " + distributedTime + " ms");</code></pre>
                             <li>Use lazy execution for large result sets</li>
                         </ol>
                     </div>
+                    <aside class="notes">These eight best practices are the most important takeaways from the module. Items 1 through 4 are about design and should be done before writing any code. Items 5 through 8 are about operational excellence. Encourage students to bookmark this slide as a reference for their projects. Every point here comes from real production experience and common mistakes.</aside>
                 </section>
 
                 <section>
@@ -1451,6 +1512,7 @@ System.out.println("Distributed: " + distributedTime + " ms");</code></pre>
                             <li>Two-phase commit protocol</li>
                         </ul>
                     </div>
+                    <aside class="notes">Preview Module 07 on Distributed Transactions. This builds on the SQL knowledge from this module by adding ACID transaction support. The optimistic versus pessimistic locking topic is especially relevant for students building financial or e-commerce systems. The two-phase commit protocol is how Ignite coordinates transactions across nodes.</aside>
                 </section>
 
                 <section>
@@ -1459,6 +1521,7 @@ System.out.println("Distributed: " + distributedTime + " ms");</code></pre>
                         <p><strong>Lab Resources:</strong></p>
                         <p>labs/lab06_sql_indexing.md</p>
                     </div>
+                    <aside class="notes">Open the floor for questions. Common questions include: How does SQL performance compare to key-value access? Can I use an ORM like Hibernate with Ignite? What is the maximum number of indexes per table? If no questions, direct students to the lab resources and begin the lab exercise. Circulate to help with any setup issues.</aside>
                 </section>
             </section>
         </div>

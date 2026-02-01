@@ -136,6 +136,34 @@ public class Lab07BasicTransactions {
 }
 ```
 
+**Expected Output:**
+
+```
+=== Basic Transactions Lab ===
+
+Initial balances:
+Account 1: $1000
+Account 2: $500
+
+=== Test 1: Successful Transaction ===
+Transaction committed successfully
+New balances:
+Account 1: $800
+Account 2: $700
+
+=== Test 2: Transaction Rollback ===
+Insufficient funds! Rolling back...
+Balances after rollback:
+Account 1: $800
+Account 2: $700
+
+=== Test 3: Exception Handling ===
+Exception caught: Simulated error
+Transaction automatically rolled back
+Balance after exception:
+Account 1: $800 (unchanged)
+```
+
 ## Part 2: Transaction Models and Isolation Levels (5 minutes)
 
 ### Exercise 2: PESSIMISTIC vs OPTIMISTIC
@@ -307,6 +335,48 @@ public class Lab07TransactionModels {
 }
 ```
 
+**Expected Output:**
+
+```
+=== Transaction Models Lab ===
+
+=== PESSIMISTIC Transactions ===
+Locks acquired immediately on first access
+Prevents conflicts but may cause contention
+
+Running pessimistic transaction...
+  Read value: 0 (lock acquired)
+  Updated value: 1
+  Transaction committed
+
+=== OPTIMISTIC Transactions ===
+No locks until commit
+Better concurrency but may fail at commit
+
+Running optimistic transaction...
+  Read value: 1 (no lock)
+  Preparing to commit...
+  Transaction committed (validation successful)
+
+=== Isolation Levels ===
+
+1. READ_COMMITTED:
+   Can read different values within transaction
+
+2. REPEATABLE_READ:
+   Reads same value throughout transaction
+
+3. SERIALIZABLE:
+   Strictest - prevents all anomalies
+
+  Reader: First read = 100
+
+  Writer: Updating value to 200
+
+  Reader: Second read = 100
+  Reader: Values are SAME
+```
+
 ## Part 3: Transaction Best Practices (5 minutes)
 
 ### Exercise 3: Best Practices Implementation
@@ -457,6 +527,49 @@ public class Lab07BestPractices {
         }
     }
 }
+```
+
+**Expected Output:**
+
+```
+=== Transaction Best Practices Lab ===
+
+1. Keep Transactions Short
+   - Minimize work inside transaction
+   - Do heavy computation outside transaction
+   - Avoid long-running operations
+
+   Transaction completed quickly
+
+2. Choose Appropriate Isolation Level
+   - READ_COMMITTED: Fastest, less strict
+   - REPEATABLE_READ: Balance of speed and consistency
+   - SERIALIZABLE: Slowest, most strict
+
+3. Always Handle Exceptions
+   - Use try-with-resources
+   - Explicit rollback on error
+   - Clean up resources
+
+   Transaction handled correctly
+
+4. Avoid Nested Transactions
+   - Ignite doesn't support nested transactions
+   - Complete inner transaction before outer
+
+5. Use Batch Operations
+   - putAll/getAll within transaction
+   - Reduces network overhead
+   - Better performance
+
+   Batch of 10 entries committed
+
+=== Transaction Configuration Tips ===
+- Set appropriate timeout
+- Use OPTIMISTIC for read-heavy workloads
+- Use PESSIMISTIC when conflicts are likely
+- Monitor transaction metrics
+- Test deadlock scenarios
 ```
 
 ## Part 4: Transaction Isolation Comparison (10 minutes)
@@ -783,6 +896,70 @@ public class Lab07IsolationComparison {
         }
     }
 }
+```
+
+**Expected Output (your numbers may vary):**
+
+```
+=== Transaction Isolation Comparison Lab ===
+
+=== Test 1: READ_COMMITTED Isolation ===
+Characteristic: Can see committed changes from other transactions
+Use case: High throughput, eventual consistency acceptable
+
+  [Reader] First read: 100
+  [Writer] Updated value to 200
+  [Reader] Second read: 200
+  [Result] NON-REPEATABLE READ occurred!
+  [Result] Values changed within same transaction
+
+=== Test 2: REPEATABLE_READ Isolation ===
+Characteristic: Same read returns same value within transaction
+Use case: Most common choice, good balance
+
+  [Reader] First read: 100 (lock acquired)
+  [Writer] Attempting to update (will wait for lock)...
+  [Reader] Second read: 100
+  [Result] REPEATABLE READ guaranteed!
+  [Result] Same value read throughout transaction
+  [Writer] Update completed after 205ms
+  [Writer] Had to wait for reader's lock release
+
+=== Test 3: SERIALIZABLE Isolation ===
+Characteristic: Transactions execute as if serialized
+Use case: Financial transactions, critical consistency
+
+  [TX-1] Read value: 100
+  [TX-2] Read value: 100
+  [TX-1] Attempting to commit...
+  [TX-1] Commit SUCCESS
+  [TX-2] Attempting to commit...
+  [TX-2] Commit FAILED - conflict detected
+
+  [Result] Successful commits: 1
+  [Result] Failed commits: 1
+  [Result] Final value: 150
+  [Result] SERIALIZABLE prevents lost updates!
+
+=== Test 4: Concurrent Increment Comparison ===
+
+  READ_COMMITTED:
+    Duration: 1250ms
+    Expected: 1000, Actual: 1000
+    Successful: 1000, Failed: 0
+    Correct: true
+
+  REPEATABLE_READ:
+    Duration: 1480ms
+    Expected: 1000, Actual: 1000
+    Successful: 1000, Failed: 0
+    Correct: true
+
+  SERIALIZABLE:
+    Duration: 1650ms
+    Expected: 1000, Actual: 1000
+    Successful: 1000, Failed: 0
+    Correct: true
 ```
 
 **Key Observations:**
@@ -1218,6 +1395,65 @@ public class Lab07DeadlockHandling {
         void execute() throws Exception;
     }
 }
+```
+
+**Expected Output:**
+
+```
+=== Deadlock Handling Lab ===
+
+=== Part 1: Creating Deliberate Deadlock ===
+Transaction 1: Locks A, then tries to lock B
+Transaction 2: Locks B, then tries to lock A
+
+[TX1] Acquiring lock on resourceA...
+[TX1] Locked resourceA (value: 1000)
+[TX2] Acquiring lock on resourceB...
+[TX2] Locked resourceB (value: 2000)
+[TX1] Trying to acquire lock on resourceB...
+[TX2] Trying to acquire lock on resourceA...
+[TX1] DEADLOCK DETECTED!
+[TX1] Exception: Deadlock detected...
+[TX2] Transaction committed successfully!
+
+Deadlocks detected: 1
+One transaction was rolled back to resolve deadlock
+
+=== Part 2: Retry Logic with Exponential Backoff ===
+Executing transaction with retry logic...
+
+  Retry 1/5 - Deadlock detected, backing off 120ms
+  Updated retryResource to: 1
+
+Transaction completed successfully!
+Final value: 1
+
+--- Testing retry with concurrent transactions ---
+Successful transactions: 5/5
+Final counter value: 5
+
+=== Part 3: Deadlock-Free Pattern ===
+Using consistent lock ordering to prevent deadlocks
+
+[OrderedTX-0] Locking orderedA...
+[OrderedTX-1] Locking orderedA...
+[OrderedTX-0] Locking orderedB...
+[OrderedTX-0] Committed transfer of 10
+[OrderedTX-1] Locking orderedB...
+[OrderedTX-1] Committed transfer of -10
+
+All 4/4 transactions completed successfully
+No deadlocks occurred due to consistent ordering!
+Final values - A: 500, B: 500
+
+=== Part 4: Timeout-Based Prevention ===
+Using short timeouts to prevent long-running deadlocks
+
+Transaction timed out as expected!
+Short timeouts prevent indefinite blocking
+
+Best Practice: Set timeouts based on expected operation duration
+Typical values: 1-5 seconds for short transactions
 ```
 
 **Key Takeaways:**
@@ -1659,6 +1895,78 @@ public class Lab07CrossCacheTransactions {
         public String getDetails() { return details; }
     }
 }
+```
+
+**Expected Output:**
+
+```
+=== Cross-Cache Transactions Lab ===
+
+Initial Data:
+  Accounts: Alice($1000), Bob($500), Charlie($2000)
+  Inventory: Laptop(10), Mouse(50), Keyboard(30)
+
+=== Part 1: Successful Cross-Cache Transaction ===
+Alice ordering 2 mice...
+
+  [Inventory] Reserving 2 Mouse
+  [Account] Charging $59.98 to Alice
+  [Order] Creating order a1b2c3d4
+  [Audit] Recording transaction
+
+Transaction committed successfully!
+  New balance: $940.02
+  New inventory: 48 Mouse(s)
+
+=== Part 2: Cross-Cache Rollback ===
+Bob attempting to order 1 laptop ($599.99)...
+Bob's balance: $500.0
+
+  [Inventory] Reserving 1 Laptop
+  [Account] Checking balance: $500.0
+  [Account] INSUFFICIENT FUNDS!
+  [Transaction] Rolling back ALL changes...
+
+Rollback completed!
+
+Verifying rollback:
+  Account balance: $500.0 -> $500.0 (UNCHANGED)
+  Laptop inventory: 10 -> 10 (UNCHANGED)
+
+  ATOMICITY VERIFIED: All caches rolled back together!
+
+=== Part 3: Complex Multi-Step Transaction ===
+Complex transaction: Transfer + Purchase + Logging
+
+  Step 1: Transfer $100.0 from Charlie to Alice
+  Step 2: Alice purchases keyboard ($79.99)
+  Step 3: Recording audit logs
+
+Complex transaction committed!
+  Alice's final balance: $960.03
+  Charlie's final balance: $1900.0
+  Keyboards remaining: 29
+
+=== Part 4: Atomicity Verification ===
+Testing atomicity with simulated failure...
+
+Before transaction:
+  Alice's balance: $960.03
+  Laptop quantity: 10
+
+  Modified account (not yet committed)
+  Modified inventory (not yet committed)
+
+  Simulating failure...
+  Exception: Simulated system failure!
+  Transaction automatically rolled back
+
+After rollback:
+  Alice's balance: $960.03 (UNCHANGED)
+  Laptop quantity: 10 (UNCHANGED)
+
+  CROSS-CACHE ATOMICITY CONFIRMED!
+  Both caches remain consistent after rollback.
 ```
 
 **Key Concepts:**

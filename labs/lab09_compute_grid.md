@@ -110,6 +110,50 @@ public class Lab09BasicCompute {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab09BasicCompute"
+```
+
+**Expected Output:**
+
+```
+=== Basic Compute Grid Lab ===
+
+Cluster nodes: 1
+
+=== Example 1: Simple Runnable ===
+Hello from node: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+=== Example 2: Broadcast to All Nodes ===
+[127.0.0.1:47500] Received broadcast message
+
+=== Example 3: Callable with Return Value ===
+Result: Computed on node: 127.0.0.1:47500
+
+=== Example 4: Multiple Callables ===
+Computing square of 1 on node 127.0.0.1:47500
+Computing square of 2 on node 127.0.0.1:47500
+Computing square of 3 on node 127.0.0.1:47500
+Computing square of 4 on node 127.0.0.1:47500
+Computing square of 5 on node 127.0.0.1:47500
+
+Results: [1, 4, 9, 16, 25]
+
+=== Example 5: Load Balancing ===
+Task 0 on node 127.0.0.1:47500
+Task 1 on node 127.0.0.1:47500
+...
+Task 9 on node 127.0.0.1:47500
+
+=== Compute Grid Features ===
+- Automatic load balancing
+- Failover support
+- Task distribution across nodes
+- Parallel execution
+```
+
 ## Part 2: Closure-Based Computing (10 minutes)
 
 ### Exercise 2: Advanced Closures and Resource Injection
@@ -221,6 +265,40 @@ public class Lab09ClosureCompute {
         }
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab09ClosureCompute"
+```
+
+**Expected Output:**
+
+```
+=== Closure-Based Computing Lab ===
+
+=== Example 1: Apply Closure to Collection ===
+Processing 'Hello' on node: 127.0.0.1:47500
+Processing 'Apache' on node: 127.0.0.1:47500
+Processing 'Ignite' on node: 127.0.0.1:47500
+Processing 'Compute' on node: 127.0.0.1:47500
+Word lengths: [5, 6, 6, 7]
+
+=== Example 2: Apply with Reducer ===
+Sum of squares (1-10): 385
+Expected: 385
+
+=== Example 3: Processing Pipeline ===
+Key 1: PROCESSED: HELLO WORLD
+Key 2: PROCESSED: APACHE IGNITE
+Key 3: PROCESSED: DISTRIBUTED COMPUTING
+
+=== Closure Computing Benefits ===
+- Functional programming style
+- Automatic distribution
+- Built-in reduction
+- Composable operations
 ```
 
 ## Part 3: Cluster Groups and Targeted Execution (5 minutes)
@@ -340,6 +418,51 @@ public class Lab09ClusterGroups {
         }
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab09ClusterGroups"
+```
+
+**Expected Output:**
+
+```
+=== Cluster Groups and Targeted Execution ===
+
+Total nodes in cluster: 1
+
+=== Execute on Server Nodes ===
+Server node: 127.0.0.1:47500
+
+=== Execute on Client Nodes ===
+No client nodes in cluster
+
+=== Execute on Oldest Node ===
+Oldest node: 127.0.0.1:47500
+Node order: 1
+
+=== Execute on Youngest Node ===
+Youngest node: 127.0.0.1:47500
+Node order: 1
+
+=== Execute on Nodes with Attribute ===
+No nodes with ROLE=COMPUTE attribute
+
+=== Execute on Random Node ===
+Random execution on: 127.0.0.1:47500
+Random execution on: 127.0.0.1:47500
+Random execution on: 127.0.0.1:47500
+Random execution on: 127.0.0.1:47500
+Random execution on: 127.0.0.1:47500
+
+=== Cluster Group Use Cases ===
+- forServers(): Heavy computation tasks
+- forClients(): Lightweight coordination
+- forOldest(): Singleton services, coordination
+- forAttribute(): Role-based task routing
+- forRemotes(): Exclude local node
 ```
 
 ## Part 4: MapReduce Implementation (15 minutes)
@@ -660,6 +783,65 @@ public class Lab09MapReduce {
         public void cancel() {}
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab09MapReduce"
+```
+
+**Expected Output (your numbers may vary):**
+
+```
+=== MapReduce Implementation Lab ===
+
+Loaded 8 documents
+
+=== Word Count MapReduce ===
+Executing distributed word count...
+
+Created 8 jobs across 1 nodes
+Reduced 8 job results
+Top 15 Word Counts:
+  distributed     : 4
+  computing       : 3
+  ignite          : 3
+  data            : 3
+  processing      : 3
+  apache          : 2
+  inmemory        : 2
+  provides        : 2
+  a               : 2
+  is              : 2
+  for             : 2
+  sql             : 1
+  and             : 1
+  keyvalue        : 1
+  operations      : 1
+
+=== Numeric Aggregation MapReduce ===
+Loaded 1000 sales records
+
+Sales Statistics:
+  Count: 1000
+  Sum:   $487234.56
+  Avg:   $487.23
+  Min:   $0.73
+  Max:   $999.45
+
+=== MapReduce Pattern Explained ===
+1. MAP Phase:
+   - Task splits work into jobs
+   - Jobs distributed to cluster nodes
+   - Each job processes local data
+2. REDUCE Phase:
+   - Results collected from all jobs
+   - Aggregated into final result
+3. Benefits:
+   - Parallel processing
+   - Data locality
+   - Horizontal scalability
 ```
 
 ---
@@ -1001,6 +1183,12 @@ public class Lab09AffinityCompute {
         String getDescription() { return description; }
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab09AffinityCompute"
 ```
 
 ### Optional: Compute with Failover
@@ -1389,6 +1577,12 @@ public class Lab09FailoverCompute {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab09FailoverCompute"
+```
+
 ### Optional: Async Compute Operations
 
 ### Exercise 7: Asynchronous and Parallel Execution
@@ -1660,6 +1854,12 @@ public class Lab09AsyncCompute {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab09AsyncCompute"
+```
+
 ### Optional: Challenge Exercises
 
 ### Challenge 1: Distributed Word Counter
@@ -1890,6 +2090,12 @@ public class Lab09Challenge1WordCounter {
         public void cancel() {}
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab09Challenge1WordCounter"
 ```
 
 ### Challenge 2: Parallel Data Processor
@@ -2157,6 +2363,12 @@ public class Lab09Challenge2ParallelProcessor {
         }
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab09Challenge2ParallelProcessor"
 ```
 
 ### Challenge 3: Compute-Based Aggregator
@@ -2643,5 +2855,11 @@ public class Lab09Challenge3ComputeAggregator {
         public void cancel() {}
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab09Challenge3ComputeAggregator"
 ```
 

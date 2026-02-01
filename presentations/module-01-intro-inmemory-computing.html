@@ -72,7 +72,7 @@
 
         .reveal pre {
             width: 100%;
-            font-size: 0.45em;
+            font-size: 0.55em;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
@@ -84,8 +84,8 @@
         }
 
         .reveal pre code {
-            background: #2d2d2d;
-            color: #f8f8f2;
+            background: #f6f8fa;
+            color: #24292e;
             padding: 1em;
         }
 
@@ -196,6 +196,7 @@
                     Module 1 | 3-Day Intensive Course<br>
                     <em>Hands-on Labs Throughout</em>
                 </p>
+                <aside class="notes">Welcome students to the course. Set expectations: this is a hands-on, 3-day intensive covering Apache Ignite from fundamentals to production. Ask students about their background with distributed systems and caching. Mention that every module has a corresponding lab exercise.</aside>
             </section>
 
             <!-- Module Objectives -->
@@ -209,6 +210,7 @@
                     <li class="fragment">Apache Ignite's position in the ecosystem</li>
                     <li class="fragment">How Ignite compares to alternatives</li>
                 </ul>
+                <aside class="notes">Walk through each objective briefly. Emphasize that this module sets the foundation for everything else in the course. Students should understand the "why" before diving into the "how" in later modules.</aside>
             </section>
 
             <!-- Traditional Database Limitations -->
@@ -216,6 +218,7 @@
                 <section>
                     <h2>Traditional Database Limitations</h2>
                     <h3>The Problem with Disk-Based Databases</h3>
+                    <aside class="notes">This section motivates the entire course. Ask students if they have experienced slow database queries in production. Most will relate to this pain point, which makes the case for in-memory computing more compelling.</aside>
                 </section>
 
                 <section>
@@ -229,6 +232,7 @@ RAM Access:      ~1,000,000+ IOPS</code></pre>
                         <li><strong>SSD:</strong> 50-150 microseconds <span class="warning">(500-1500x slower)</span></li>
                         <li><strong>HDD:</strong> 1-10 milliseconds <span class="crossmark">(10,000-100,000x slower)</span></li>
                     </ul>
+                    <aside class="notes">Emphasize the orders-of-magnitude difference between RAM and disk. The IOPS numbers are key: RAM can do millions of operations per second versus tens of thousands for SSDs. Ask students to think about what this means for a system doing thousands of queries per second.</aside>
                 </section>
 
                 <section>
@@ -239,6 +243,7 @@ RAM Access:      ~1,000,000+ IOPS</code></pre>
                         <li>High latency for real-time applications</li>
                         <li>Expensive hardware upgrades</li>
                     </ul>
+                    <aside class="notes">These challenges are what drive organizations to adopt in-memory computing. Highlight that vertical scaling (bigger hardware) has limits, while horizontal scaling with in-memory grids can grow linearly. Common student question: "Can't we just add more indexes?" Yes, but that only helps so much with disk-based I/O.</aside>
                 </section>
             </section>
 
@@ -249,6 +254,7 @@ RAM Access:      ~1,000,000+ IOPS</code></pre>
                     <div class="highlight-box">
                         <p><strong>In-Memory Computing (IMC)</strong> uses RAM as the primary storage medium for data and computation.</p>
                     </div>
+                    <aside class="notes">Stress the word "primary" -- this is not just a cache sitting in front of a database. In-memory computing treats RAM as the main storage layer. This is a paradigm shift from traditional architectures where disk is primary and RAM is just a buffer.</aside>
                 </section>
 
                 <section>
@@ -260,6 +266,7 @@ RAM Access:      ~1,000,000+ IOPS</code></pre>
                         <li>Sub-millisecond response times</li>
                         <li>Horizontal scalability</li>
                     </ul>
+                    <aside class="notes">Walk through each characteristic. Distributed across cluster nodes is key -- this is not a single-server solution. Massively parallel processing means computation moves to where the data lives, not the other way around. Sub-millisecond response times are achievable for key-value lookups.</aside>
                 </section>
 
                 <section>
@@ -269,6 +276,7 @@ RAM Access:      ~1,000,000+ IOPS</code></pre>
 
 In-Memory Computing:
 [Application] --> [Distributed RAM Grid] --> Fast</div>
+                    <aside class="notes">This simple diagram illustrates the fundamental architectural difference. In the traditional model, every query hits disk. In the in-memory model, data is spread across a grid of RAM on multiple machines. Point out that the "distributed" aspect is what makes this scalable beyond a single machine's RAM capacity.</aside>
                 </section>
             </section>
 
@@ -293,6 +301,7 @@ In-Memory Computing:
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">This distinction is crucial. Many students initially think of Ignite as "just another Redis." Emphasize that a traditional cache like Memcached only stores key-value pairs and sits passively in front of a database. An in-memory platform like Ignite can run SQL queries, execute distributed computations, and even serve as the primary data store with ACID guarantees.</aside>
             </section>
 
             <!-- Why In-Memory Computing Matters -->
@@ -300,6 +309,7 @@ In-Memory Computing:
                 <section>
                     <h2>Why In-Memory Computing Matters</h2>
                     <h3>Business Drivers</h3>
+                    <aside class="notes">Transition from the technical "what" to the business "why." This section helps students justify in-memory computing adoption to stakeholders. Ask students what business pressures they face that might benefit from faster data processing.</aside>
                 </section>
 
                 <section>
@@ -316,6 +326,7 @@ In-Memory Computing:
                         <li>Social media analytics</li>
                         <li>Log aggregation and analysis</li>
                     </ul>
+                    <aside class="notes">Real-time requirements are the strongest driver. Financial trading firms cannot wait 100ms for a database query when they need microsecond decisions. Fraud detection must analyze transactions instantly before they complete. IoT data volumes can overwhelm traditional databases that were designed for slower ingest rates.</aside>
                 </section>
 
                 <section>
@@ -332,6 +343,7 @@ In-Memory Computing:
                         <li>Real-time analytics = actionable insights</li>
                         <li>Better user experience = customer retention</li>
                     </ul>
+                    <aside class="notes">User expectations have shifted dramatically. People expect Google-like sub-second search responses from every application. Always-on availability means planned maintenance windows are shrinking. Companies that can deliver real-time insights gain a measurable competitive advantage over those relying on batch processing.</aside>
                 </section>
             </section>
 
@@ -340,6 +352,7 @@ In-Memory Computing:
                 <section>
                     <h2>In-Memory Computing Use Cases</h2>
                     <h3>Industry Applications</h3>
+                    <aside class="notes">Ask students which industries they work in. Tailor the upcoming examples to their backgrounds. In-memory computing has use cases across virtually every industry that processes data at scale.</aside>
                 </section>
 
                 <section>
@@ -363,6 +376,7 @@ In-Memory Computing:
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">Financial services is the most established use case for in-memory computing. High-frequency trading requires microsecond latency. Risk calculations need to process millions of scenarios in parallel. Retail is a growing area -- product recommendations need real-time personalization, and inventory must be accurate across all channels.</aside>
                 </section>
 
                 <section>
@@ -386,6 +400,7 @@ In-Memory Computing:
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">Telecom companies process billions of Call Detail Records daily and need real-time billing. IoT is exploding -- a single factory can have thousands of sensors generating data every second. Edge computing pushes processing closer to data sources, and Ignite's lightweight footprint makes it suitable for edge deployments.</aside>
                 </section>
 
                 <section>
@@ -396,6 +411,7 @@ In-Memory Computing:
                         <li>Session management</li>
                         <li>Real-time matchmaking</li>
                     </ul>
+                    <aside class="notes">Gaming is a fun example students relate to. Leaderboards need instant updates visible to millions of players. Session management requires low-latency state tracking. Matchmaking algorithms need to scan player data in real time. These are all natural fits for an in-memory data grid.</aside>
                 </section>
             </section>
 
@@ -406,6 +422,7 @@ In-Memory Computing:
                     <div class="highlight-box">
                         <p><strong>Apache Ignite</strong> is a distributed database for high-performance computing with in-memory speed.</p>
                     </div>
+                    <aside class="notes">Now we transition from general in-memory computing concepts to Apache Ignite specifically. Emphasize that Ignite is not just a cache -- it is a full distributed database platform. The key differentiator from other solutions is the combination of in-memory speed with database-grade features like SQL and ACID transactions.</aside>
                 </section>
 
                 <section>
@@ -418,6 +435,7 @@ In-Memory Computing:
                         <li>Machine learning</li>
                         <li>Streaming & CEP</li>
                     </ul>
+                    <aside class="notes">Walk through each feature briefly. SQL queries using ANSI-99 syntax are a major selling point for teams familiar with relational databases. ACID transactions provide data consistency guarantees. Distributed computing allows moving code to data. ML capabilities are built-in for predictive analytics. We will cover most of these in depth during the 3-day course.</aside>
                 </section>
 
                 <section>
@@ -428,6 +446,7 @@ In-Memory Computing:
                         <li>Active community</li>
                         <li>Production-proven (GridGain roots since 2007)</li>
                     </ul>
+                    <aside class="notes">The Apache Software Foundation governance provides credibility and long-term viability. GridGain originally developed the technology starting in 2007, then donated it to the Apache Foundation. This means nearly two decades of production hardening. The active community means bugs get fixed quickly and features are continuously added.</aside>
                 </section>
             </section>
 
@@ -439,6 +458,7 @@ In-Memory Computing:
                     <div class="highlight-box">
                         <p style="font-size: 1.1em; text-align: center;"><strong>Think of Ignite as Redis that speaks SQL and scales horizontally</strong></p>
                     </div>
+                    <aside class="notes">This mental model resonates with most developers because almost everyone has used Redis. The "Redis with SQL" analogy is a simplification but gives students an immediate anchor point. It captures the essence: in-memory speed plus relational query capabilities. Caveat: Ignite is architecturally very different from Redis under the hood.</aside>
                 </section>
 
                 <section>
@@ -473,6 +493,7 @@ In-Memory Computing:
                             </tr>
                         </tbody>
                     </table>
+                    <aside class="notes">Walk through each row of the comparison table. The SQL support is the biggest differentiator -- Redis has no query language for complex lookups. Multi-threaded vs single-threaded is important for CPU-intensive operations. True horizontal scaling means adding nodes increases both capacity and throughput, unlike Redis's primary-replica model. Distributed joins are something Redis simply cannot do.</aside>
                 </section>
 
                 <section>
@@ -496,6 +517,7 @@ In-Memory Computing:
                         </div>
                     </div>
                     <p style="text-align: center; margin-top: 1em;"><em>+ Distributed computing + ACID transactions</em></p>
+                    <aside class="notes">This is the slide to spend extra time on. The combination of Redis-like speed with SQL power is the core value proposition. Students will build on both of these capabilities throughout the labs. Mention that distributed computing allows running code on the nodes where data lives, avoiding costly data transfers.</aside>
                 </section>
             </section>
 
@@ -504,6 +526,7 @@ In-Memory Computing:
                 <section>
                     <h2>When to Choose Ignite</h2>
                     <h3>Decision Framework</h3>
+                    <aside class="notes">This section is about being honest with students. Ignite is powerful but not the right tool for every job. A good architect knows when NOT to use a technology. Walk through the decision framework methodically.</aside>
                 </section>
 
                 <section>
@@ -518,6 +541,7 @@ In-Memory Computing:
                         <li><strong>You have a read-heavy workload</strong><br>
                             <span class="subtitle">80%+ reads is ideal</span></li>
                     </ul>
+                    <aside class="notes">Focus on the SQL on cached data point -- this is where Ignite shines versus Redis. ACID transactions across records is important for financial and inventory systems. The 80% read-heavy workload guideline is a good rule of thumb. Students should think about their own workload patterns.</aside>
                 </section>
 
                 <section>
@@ -532,6 +556,7 @@ In-Memory Computing:
                         <li><strong>Need complex stored procedures</strong><br>
                             <span class="subtitle">→ Traditional RDBMS</span></li>
                     </ul>
+                    <aside class="notes">Being candid about alternatives builds credibility. If someone just needs simple key-value caching, Redis is simpler to set up and operate. If the dataset fits on a single server, PostgreSQL or MySQL may be perfectly adequate. The overhead of distributed systems only pays off when you actually need distribution.</aside>
                 </section>
 
                 <section>
@@ -546,6 +571,7 @@ In-Memory Computing:
                         </ol>
                     </div>
                     <p style="text-align: center;"><em>Common: Read-optimized layer in front of OLTP database</em></p>
+                    <aside class="notes">The sweet spot summary is what students should remember. The most common deployment pattern is Ignite as a read-optimized layer in front of an existing OLTP database. This gives you in-memory speed for reads while keeping your existing database for writes and persistence. This pattern is low-risk and high-reward.</aside>
                 </section>
             </section>
 
@@ -569,6 +595,7 @@ In-Memory Computing:
                         <strong>Streaming</strong> - Data Streaming, CEP
                     </div>
                 </div>
+                <aside class="notes">This layered architecture diagram shows that Ignite is much more than a cache. The Data Grid is the foundation and what most people use first. The Compute Grid enables MapReduce-style distributed processing. The Service Grid allows deploying microservices directly on the cluster. Streaming enables real-time data ingestion. We will explore several of these layers hands-on in the labs.</aside>
             </section>
 
             <!-- Ignite's Position in the Ecosystem -->
@@ -595,6 +622,7 @@ In-Memory Computing:
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">Stress the word "complements" -- Ignite does not replace your existing database. It sits alongside it and accelerates specific workloads. This is important for student buy-in, as many will be nervous about replacing their existing infrastructure. Ignite integrates with Hadoop, Spark, Kafka, and Spring, which most organizations already use.</aside>
             </section>
 
             <!-- Comparison Matrix -->
@@ -602,6 +630,7 @@ In-Memory Computing:
                 <section>
                     <h2>Ignite vs Other Solutions</h2>
                     <h3>Comparison Matrix</h3>
+                    <aside class="notes">Students always want to see head-to-head comparisons. Be balanced and fair -- each technology has its strengths. The next few slides go into detail on Ignite vs Redis and Ignite vs Hazelcast, which are the two most common comparisons.</aside>
                 </section>
 
                 <section>
@@ -641,6 +670,7 @@ In-Memory Computing:
                             </tr>
                         </tbody>
                     </table>
+                    <aside class="notes">Focus on the SQL row -- this is where Ignite clearly differentiates. Redis has no SQL at all, Hazelcast has limited SQL support. For ACID transactions, both Ignite and Hazelcast support them but Redis only has limited transaction support. Native persistence in Ignite is a unique advantage -- data survives full cluster restarts without an external database.</aside>
                 </section>
             </section>
 
@@ -671,6 +701,7 @@ In-Memory Computing:
                         <p><em>Use case: Simple caching, session store</em></p>
                     </div>
                 </div>
+                <aside class="notes">Be fair to Redis -- it is excellent at what it does. For simple key-value operations, Redis is often faster because of its single-threaded design that avoids locking overhead. Redis also has rich data structures like sorted sets, HyperLogLog, and streams that Ignite does not have. The key differentiator is when you need SQL queries, ACID transactions, or distributed computing on your cached data.</aside>
             </section>
 
             <!-- Ignite vs Hazelcast -->
@@ -698,12 +729,14 @@ In-Memory Computing:
                     </div>
                 </div>
                 <p style="text-align: center; margin-top: 1em;"><em>Both are distributed IMDGs with ACID transactions and horizontal scaling</em></p>
+                <aside class="notes">Hazelcast is the closest competitor to Ignite architecturally. Both are Java-based distributed IMDGs. Ignite's advantages are full SQL support, native persistence, and built-in ML. Hazelcast's advantage is ease of getting started -- the API is simpler and documentation is more beginner-friendly. Note that both are excellent products and the choice often depends on specific requirements.</aside>
             </section>
 
             <!-- Ignite Benefits -->
             <section>
                 <section>
                     <h2>Why Choose Apache Ignite?</h2>
+                    <aside class="notes">This section summarizes the key selling points. After showing the comparisons with alternatives, now bring it back to why Ignite is the right choice for many use cases. These are the talking points students can use when pitching Ignite to their teams.</aside>
                 </section>
 
                 <section>
@@ -735,6 +768,7 @@ In-Memory Computing:
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">Four pillars: Performance, SQL+ACID, Persistence, and Open Source. Native persistence means you can restart the entire cluster without losing data -- a critical production requirement. The Apache 2.0 license means no vendor lock-in and no royalties, which procurement teams appreciate. Write-through and write-behind caching patterns connect Ignite to existing databases.</aside>
                 </section>
             </section>
 
@@ -757,6 +791,7 @@ In-Memory Computing:
                         <p>Trading and risk platform</p>
                     </div>
                 </div>
+                <aside class="notes">Name-dropping real companies adds credibility. ING Bank runs 300+ Ignite nodes processing millions of transactions. Sberbank, Russia's largest bank, uses 600+ nodes for core banking operations. American Airlines uses Ignite for real-time flight booking. These are not toy deployments -- they are mission-critical production systems handling billions of dollars in transactions.</aside>
             </section>
 
             <!-- Deployment Models -->
@@ -764,6 +799,7 @@ In-Memory Computing:
                 <section>
                     <h2>Ignite Deployment Models</h2>
                     <h3>Flexible Deployment Options</h3>
+                    <aside class="notes">Deployment flexibility is important because organizations have different infrastructure requirements. Some want tight integration, others want separation of concerns. We will cover these in much more depth in Module 4 on Configuration and Deployment.</aside>
                 </section>
 
                 <section>
@@ -774,6 +810,7 @@ In-Memory Computing:
                         <li>Zero-latency data access</li>
                         <li>Simpler deployment</li>
                     </ul>
+                    <aside class="notes">Embedded mode is what we use in most of the labs. The Ignite node runs inside your application's JVM, giving zero-latency data access. This is the simplest way to get started and is great for development. The trade-off is that your application lifecycle is tied to the data node lifecycle.</aside>
                 </section>
 
                 <section>
@@ -784,6 +821,7 @@ In-Memory Computing:
                         <li>Cluster is separate tier</li>
                         <li>Better resource isolation</li>
                     </ul>
+                    <aside class="notes">Client-server mode is the recommended production pattern. The Ignite cluster runs as a separate tier, and your applications connect to it as clients. This gives you independent scaling -- you can scale your application servers without affecting data distribution, and vice versa. We will explore both thick and thin clients in Module 2.</aside>
                 </section>
 
                 <section>
@@ -793,6 +831,7 @@ In-Memory Computing:
                         <li>Auto-scaling</li>
                         <li>Cloud-native architecture</li>
                     </ul>
+                    <aside class="notes">Kubernetes deployment is increasingly common. Ignite has first-class Kubernetes support with a dedicated IP finder for discovery. Auto-scaling with Ignite on Kubernetes requires careful consideration of data rebalancing. We will touch on Docker and Kubernetes deployment in Module 4.</aside>
                 </section>
             </section>
 
@@ -827,6 +866,7 @@ In-Memory Computing:
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">Give students a roadmap of what to expect over the next three days. Day 1 builds the foundation with setup, basic operations, and configuration. Day 2 goes deeper into data modeling, SQL, and transactions. Day 3 covers production topics like distributed computing and performance tuning. Encourage students to practice after the course with real projects.</aside>
             </section>
 
             <!-- Common Misconceptions -->
@@ -863,6 +903,7 @@ In-Memory Computing:
                         </tr>
                     </tbody>
                 </table>
+                <aside class="notes">Addressing misconceptions head-on prevents confusion later. The "data loss on restart" myth is the most common -- emphasize that native persistence stores data to disk. The cost myth is important for managers -- fewer servers can actually reduce total cost of ownership. The "only for caching" myth undersells Ignite's capabilities significantly.</aside>
             </section>
 
             <!-- When NOT to Use -->
@@ -879,6 +920,7 @@ In-Memory Computing:
                     </ul>
                 </div>
                 <p style="text-align: center; margin-top: 1em;"><em>Key Question: Does the benefit justify the complexity?</em></p>
+                <aside class="notes">Honesty about limitations builds trust. The key question on screen is the most important takeaway: "Does the benefit justify the complexity?" Distributed systems add operational complexity. If a simple PostgreSQL instance handles your workload, adding Ignite creates unnecessary complexity. Reserve Ignite for cases where you genuinely need the speed, scale, or features it provides.</aside>
             </section>
 
             <!-- Architecture Patterns -->
@@ -886,6 +928,7 @@ In-Memory Computing:
                 <section>
                     <h2>Architecture Patterns</h2>
                     <h3>Common Usage Patterns</h3>
+                    <aside class="notes">These three patterns represent the most common ways organizations deploy Ignite. Understanding these patterns helps students choose the right architecture for their use case. Most organizations start with the caching layer pattern and evolve toward system of record or hybrid as they gain confidence.</aside>
                 </section>
 
                 <section>
@@ -896,6 +939,7 @@ In-Memory Computing:
                         <li>Native persistence enabled</li>
                         <li>Full ACID compliance</li>
                     </ul>
+                    <aside class="notes">System of Record means Ignite IS your database. This requires native persistence to be enabled so data survives restarts. This pattern is bold but increasingly common for new greenfield applications that need high performance from day one. ACID compliance means you get the same guarantees as a traditional database.</aside>
                 </section>
 
                 <section>
@@ -906,6 +950,7 @@ In-Memory Computing:
                         <li>Faster read access</li>
                         <li>Reduced DB load</li>
                     </ul>
+                    <aside class="notes">The caching layer pattern is the most common starting point. It is low risk because your existing database remains the source of truth. Cache-aside means the application checks the cache first, then falls back to the database. Write-through means writes go to both cache and database simultaneously. This pattern can dramatically reduce database load and improve response times.</aside>
                 </section>
 
                 <section>
@@ -917,6 +962,7 @@ In-Memory Computing:
                         <li>Historical data in database</li>
                         <li>Best of both worlds</li>
                     </ul>
+                    <aside class="notes">The hybrid pattern is the most sophisticated and often the end-state architecture. Hot data (frequently accessed) lives in Ignite for fast access, while cold data (historical, rarely accessed) stays in a traditional database. This optimizes both cost and performance. The challenge is defining the boundary between hot and cold data and managing data movement between tiers.</aside>
                 </section>
             </section>
 
@@ -924,6 +970,7 @@ In-Memory Computing:
             <section>
                 <section>
                     <h2>Performance Expectations</h2>
+                    <aside class="notes">Setting realistic performance expectations is important. Students often expect magic -- Ignite is fast but not infinitely fast. The numbers on the next slides are typical but depend heavily on hardware, network, data model, and configuration.</aside>
                 </section>
 
                 <section>
@@ -940,6 +987,7 @@ In-Memory Computing:
                         <li>Batch puts: <span class="metric">50K+ ops/sec</span> per node</li>
                         <li>Transactional: <span class="metric">10K+ tx/sec</span> per node</li>
                     </ul>
+                    <aside class="notes">Highlight the "per node" aspect -- these numbers scale linearly as you add nodes. A 10-node cluster can do 1M+ reads per second. Single key lookups under 1ms is the headline number. SQL queries vary widely depending on complexity -- a simple indexed lookup is sub-millisecond, while a complex join across partitions could take seconds. Write operations are slightly slower due to replication to backup nodes.</aside>
                 </section>
 
                 <section>
@@ -953,6 +1001,7 @@ In-Memory Computing:
                     <div class="highlight-box">
                         <p><strong>Note:</strong> Actual performance depends on hardware, data model, access patterns, and configuration.</p>
                     </div>
+                    <aside class="notes">Linear scalability is the key message here. Adding a node should roughly double your capacity if you go from 1 to 2 nodes. 100+ node clusters exist in production at organizations like Sberbank. The disclaimer at the bottom is important -- always benchmark with your own data and workload patterns rather than relying on published numbers.</aside>
                 </section>
             </section>
 
@@ -987,6 +1036,7 @@ In-Memory Computing:
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">The Apache 2.0 license is very permissive -- you can use Ignite in commercial products without paying royalties. Community support through mailing lists and Stack Overflow is active. GridGain offers a commercial version with enterprise features like rolling upgrades, snapshots, and 24/7 support. For production deployments, having commercial support is often a requirement for enterprise organizations.</aside>
             </section>
 
             <!-- Ecosystem and Integrations -->
@@ -1027,6 +1077,7 @@ In-Memory Computing:
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">Ignite integrates with the tools most organizations already use. Kafka integration enables streaming data into Ignite caches. Spark integration allows using Ignite as an in-memory storage layer for Spark jobs. Spring Boot integration, which we cover in Module 4, makes it easy to add Ignite to existing Java applications. Monitoring via Prometheus and Grafana is essential for production operations.</aside>
             </section>
 
             <!-- Course Overview -->
@@ -1068,6 +1119,7 @@ In-Memory Computing:
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">This is a preview of the full course structure. Emphasize the hands-on focus: 12 comprehensive labs mean students will spend more time coding than listening. Each module builds on the previous one. Day 1 is about getting comfortable with the basics, Day 2 goes deeper into data management, and Day 3 prepares for production deployment.</aside>
             </section>
 
             <!-- Key Takeaways -->
@@ -1085,6 +1137,7 @@ In-Memory Computing:
                     <li class="fragment"><strong>Flexible deployment</strong><br>
                         <span class="subtitle">Works in various architectures and patterns</span></li>
                 </ol>
+                <aside class="notes">Spend time on each takeaway. These five points are what students should remember even weeks after the course. The most important takeaway is that Ignite is more than a cache -- it is a full distributed database platform. Ask students if they have any remaining questions before moving to the first lab.</aside>
             </section>
 
             <!-- Questions -->
@@ -1098,6 +1151,7 @@ In-Memory Computing:
                     <li>Technology comparisons</li>
                 </ul>
                 <p style="color: #f0f0f0; margin-top: 2em;"><strong>Next:</strong> Lab 1 - Environment Setup</p>
+                <aside class="notes">Open the floor for questions. Encourage students to share their specific use cases -- this helps tailor the rest of the course. Common questions at this point include RAM cost concerns, persistence guarantees, and how Ignite compares to their current stack. After Q&A, transition to Lab 1 where students will set up their development environment and start their first Ignite node.</aside>
             </section>
 
         </div>

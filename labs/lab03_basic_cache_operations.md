@@ -120,6 +120,51 @@ public class Lab03BasicCacheOps {
 }
 ```
 
+**Expected Output:**
+
+```
+=== Basic Cache Operations Lab ===
+
+1. PUT Operations:
+   Added 3 entries to cache
+
+2. GET Operations:
+   Key 1: Hello
+   Key 2: World
+   Key 99: null (null expected)
+
+3. CONTAINS Operations:
+   Contains key 1: true
+   Contains key 99: false
+
+4. REPLACE Operations:
+   Replaced 'Hello' with 'Hi': true
+   New value: Hi
+   Tried wrong old value: false (false expected)
+
+5. REMOVE Operations:
+   Removed key 3: true
+   Key 3 exists: false
+   Conditional remove: true
+
+6. GET AND PUT Operations:
+   Old value: Hi
+   New value: Greetings
+
+7. GET AND REMOVE Operations:
+   Removed value: Greetings
+   Key exists: false
+
+8. PUT IF ABSENT Operations:
+   Put if absent (new key): true
+   Put if absent (existing key): false
+
+9. Cache Statistics:
+   Cache size: 2
+
+Press Enter to exit...
+```
+
 ## Part 2: Cache Modes (15 minutes)
 
 ### Exercise 2: Compare Different Cache Modes
@@ -275,6 +320,68 @@ public class Lab03CacheModes {
 
 3. Observe the differences in local cache sizes
 
+**Expected Output (Node 1 - single node):**
+
+```
+=== Cache Modes Lab - Node 1 ===
+
+Node 1: Populating caches...
+
+Added 10 entries to each cache
+
+Waiting for cluster rebalancing...
+Rebalancing complete.
+
+=== Total Cache Sizes (cluster-wide) ===
+Partitioned cache size: 10
+Replicated cache size: 10
+No-backup cache size: 10
+
+=== Local Cache Sizes (data physically on THIS node) ===
+Partitioned (1 backup): local=10 (primary=10, backup=0)
+Replicated: local=10 (should be ALL 10 on every node)
+No-backup: local=10 (primary only, NO redundancy)
+
+=== Data Access Test ===
+Partitioned cache key 1: Partitioned-1
+Replicated cache key 1: Replicated-1
+No-backup cache key 1: NoBackup-1
+
+=== Expected with 1 Node(s) ===
+Single node: ALL entries are local (no distribution)
+...
+```
+
+**Expected Output (Node 2 - after joining a 2-node cluster):**
+
+```
+=== Cache Modes Lab - Node 2 ===
+
+Waiting for cluster rebalancing...
+Rebalancing complete.
+
+=== Total Cache Sizes (cluster-wide) ===
+Partitioned cache size: 10
+Replicated cache size: 10
+No-backup cache size: 10
+
+=== Local Cache Sizes (data physically on THIS node) ===
+Partitioned (1 backup): local=10 (primary=5, backup=5)
+Replicated: local=10 (should be ALL 10 on every node)
+No-backup: local=5 (primary only, NO redundancy)
+
+=== Data Access Test ===
+Partitioned cache key 1: Partitioned-1
+Replicated cache key 1: Replicated-1
+No-backup cache key 1: NoBackup-1
+
+=== Expected with 2 Node(s) ===
+PARTITIONED (1 backup): ~10 local (primary + backup)
+REPLICATED: 10 local (full copy on every node)
+NO-BACKUP: ~5 local (no redundancy!)
+...
+```
+
 ## Part 3: Batch Operations (10 minutes)
 
 ### Exercise 3: Synchronous vs Asynchronous Operations
@@ -382,6 +489,33 @@ public class Lab03AsyncOperations {
 }
 ```
 
+**Expected Output:**
+
+```
+=== Synchronous vs Asynchronous Operations ===
+
+1. Synchronous Operations:
+   Time taken: 245 ms
+
+2. Asynchronous Operations:
+   Time taken: 82 ms
+
+3. Performance Comparison:
+   Synchronous: 245 ms
+   Asynchronous: 82 ms
+   Speedup: 2.99x
+
+4. Async Operations with Callback:
+   Callback: Retrieved value = Value-500
+
+5. Batch Async Operations:
+   Batch operations time: 18 ms
+
+Press Enter to exit...
+```
+
+Note: Actual timing values will vary by system. The key observation is that async operations are faster than synchronous ones.
+
 ### Exercise 4: Batch Operations
 
 Create `Lab03BatchOperations.java`:
@@ -484,6 +618,42 @@ public class Lab03BatchOperations {
     }
 }
 ```
+
+**Expected Output:**
+
+```
+=== Batch Operations Lab ===
+
+1. Performance: Individual vs Batch Operations
+
+   Individual puts (1000): 312 ms
+   Batch put (putAll): 45 ms
+   Performance gain: 6.93x faster
+
+2. Batch GET Operations:
+
+   Retrieved 100 entries
+   Sample: Value-0
+
+3. Batch REMOVE Operations:
+
+   Removed 50 entries
+   Cache size now: 950
+
+4. Replace Operations:
+
+   Updated 50 entries
+
+=== Performance Best Practices ===
+- Use putAll/getAll/removeAll for bulk operations
+- Batch size: 500-1000 entries for optimal performance
+- Reduce network round trips
+- Use async operations for concurrent processing
+
+Press Enter to exit...
+```
+
+Note: Timing values will vary. The key takeaway is that batch putAll is significantly faster than individual puts.
 
 ---
 

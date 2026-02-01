@@ -107,6 +107,48 @@ public class Lab02StaticIPDiscovery {
 
 5. **Observe:** All three nodes should discover each other and form a cluster
 
+**Expected Output (Terminal 1 - first node):**
+
+```
+Starting Ignite node 1 with static IP discovery...
+[INFO] Ignite node started OK (id=a1b2c3d4, instance name=static-node-1)
+
+=== Node Started Successfully ===
+Node Name: static-node-1
+Node ID: a1b2c3d4-...
+Cluster Nodes: 1
+
+=== Cluster Topology ===
+Node: 127.0.0.1:47500 | ID: a1b2c3d4...
+
+Node running. Press Enter to stop...
+```
+
+**Expected Output (Terminal 1 - after all 3 nodes join, topology updates in log):**
+
+```
+Topology snapshot [ver=3, locNode=a1b2c3d4, servers=3, clients=0, ...]
+```
+
+**Expected Output (Terminal 3 - last node):**
+
+```
+Starting Ignite node 3 with static IP discovery...
+[INFO] Ignite node started OK (id=e5f6a7b8, instance name=static-node-3)
+
+=== Node Started Successfully ===
+Node Name: static-node-3
+Node ID: e5f6a7b8-...
+Cluster Nodes: 3
+
+=== Cluster Topology ===
+Node: 127.0.0.1:47500 | ID: a1b2c3d4...
+Node: 127.0.0.1:47501 | ID: c3d4e5f6...
+Node: 127.0.0.1:47502 | ID: e5f6a7b8...
+
+Node running. Press Enter to stop...
+```
+
 ## Part 2: Baseline Topology and Cluster Activation (15 minutes)
 
 ### Exercise 3: Configure Baseline Topology
@@ -264,6 +306,56 @@ public class Lab02BaselineTopology {
 
 5. **Verify:** All three nodes should show they are in the baseline topology
 
+**Expected Output (Terminal 1 - coordinator node):**
+
+```
+Starting node 1 with persistence...
+
+=== Node Information ===
+Node: baseline-node-1
+Cluster state: INACTIVE
+
+=== Waiting for Nodes ===
+Expected nodes: 3
+Current nodes: 1/3
+Current nodes: 2/3
+
+All 3 node(s) have joined!
+Press Enter to ACTIVATE cluster and set baseline...
+
+Activating cluster...
+Baseline set with all 3 nodes!
+
+=== Baseline Topology ===
+Baseline nodes: 3
+  - 127.0.0.1:47500
+  - 127.0.0.1:47501
+  - 127.0.0.1:47502
+
+Node running. Press Enter to stop...
+```
+
+**Expected Output (Terminal 2 or 3 - non-coordinator node):**
+
+```
+Starting node 2 with persistence...
+
+=== Node Information ===
+Node: baseline-node-2
+Cluster state: INACTIVE
+
+Waiting for coordinator (node 1) to activate...
+Cluster is now ACTIVE!
+
+=== Baseline Topology ===
+Baseline nodes: 3
+  - 127.0.0.1:47500
+  - 127.0.0.1:47501
+  - 127.0.0.1:47502
+
+Node running. Press Enter to stop...
+```
+
 ### Exercise 5: Manage Baseline Topology Programmatically
 
 Add this code to check and update baseline:
@@ -287,6 +379,13 @@ if (nodeNumber == 1) {
     // Uncomment to execute:
     // ignite.cluster().setBaselineTopology(currentTopology);
 }
+```
+
+**Expected Output:**
+
+```
+This node in baseline: true
+Current topology version: 3
 ```
 
 ## Part 3: Cluster State Management (10 minutes)
@@ -392,6 +491,35 @@ public class Lab02ClusterStates {
         return cfg;
     }
 }
+```
+
+**Expected Output:**
+
+```
+=== Cluster State Management Demo ===
+Initial cluster state: INACTIVE
+
+--- Setting to ACTIVE state ---
+State: ACTIVE
+Created cache and inserted data in ACTIVE state
+
+--- Setting to ACTIVE_READ_ONLY state ---
+State: ACTIVE_READ_ONLY
+
+Attempting write in ACTIVE_READ_ONLY state...
+Write blocked (expected): IgniteException
+
+Read succeeded: key=1, value=test-value
+
+--- Returning to ACTIVE state ---
+State: ACTIVE
+
+=== State Summary ===
+ACTIVE: Full read/write access
+ACTIVE_READ_ONLY: Reads allowed, writes blocked
+INACTIVE: No cache access (for maintenance)
+
+Press Enter to stop...
 ```
 
 ---

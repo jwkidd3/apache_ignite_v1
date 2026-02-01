@@ -2,6 +2,11 @@ package com.example.ignite.solutions.lab13;
 
 import org.apache.ignite.client.IgniteClient;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
 /**
  * Lab 13 Exercises 15-16: Ignite 3.x Monitoring and Metrics
  *
@@ -39,29 +44,38 @@ public class Lab13Monitoring {
     /**
      * Exercise 15: REST API monitoring
      */
-    private static void demonstrateRestApiMonitoring() {
+    private static void demonstrateRestApiMonitoring() throws Exception {
         System.out.println("=== Exercise 15: REST API Monitoring (3.x) ===\n");
 
         System.out.println("Ignite 3.x has a built-in REST API (no extra modules):\n");
 
-        System.out.println("  Cluster State:");
-        System.out.println("  curl http://localhost:10300/management/v1/cluster/state");
-        System.out.println();
+        HttpClient httpClient = HttpClient.newHttpClient();
 
-        System.out.println("  Cluster Topology:");
+        // Fetch cluster state
+        System.out.println("  Fetching cluster state from REST API...");
+        HttpRequest stateRequest = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:10300/management/v1/cluster/state"))
+                .GET()
+                .build();
+
+        try {
+            HttpResponse<String> stateResponse = httpClient.send(stateRequest,
+                    HttpResponse.BodyHandlers.ofString());
+            String body = stateResponse.body();
+            String preview = body.length() > 300 ? body.substring(0, 300) + "..." : body;
+            System.out.println("  Status code: " + stateResponse.statusCode());
+            System.out.println("  Response (first 300 chars):");
+            System.out.println("  " + preview);
+        } catch (Exception e) {
+            System.out.println("  Could not reach REST API: " + e.getMessage());
+        }
+
+        System.out.println();
+        System.out.println("Other useful REST endpoints:");
         System.out.println("  curl http://localhost:10300/management/v1/cluster/topology/physical");
         System.out.println("  curl http://localhost:10300/management/v1/cluster/topology/logical");
-        System.out.println();
-
-        System.out.println("  Node Configuration:");
         System.out.println("  curl http://localhost:10300/management/v1/configuration/node");
-        System.out.println();
-
-        System.out.println("  Cluster Configuration:");
         System.out.println("  curl http://localhost:10300/management/v1/configuration/cluster");
-        System.out.println();
-
-        System.out.println("  Node Version:");
         System.out.println("  curl http://localhost:10300/management/v1/node/version");
         System.out.println();
 
@@ -114,16 +128,46 @@ public class Lab13Monitoring {
     /**
      * Exercise 16: OpenMetrics / Prometheus
      */
-    private static void demonstrateOpenMetrics() {
+    private static void demonstrateOpenMetrics() throws Exception {
         System.out.println("=== Exercise 16: OpenMetrics / Prometheus (3.x) ===\n");
 
         System.out.println("Ignite 3.x supports native OpenMetrics format:\n");
 
-        System.out.println("  Enable metrics export:");
-        System.out.println("  ignite3 node metric source enable jvm");
-        System.out.println("  ignite3 node metric source enable client.handler");
-        System.out.println();
+        HttpClient httpClient = HttpClient.newHttpClient();
 
+        // Fetch node metrics in OpenMetrics format
+        System.out.println("  Fetching node metrics from REST API...");
+        HttpRequest metricsRequest = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:10300/management/v1/metric/node"))
+                .GET()
+                .build();
+
+        try {
+            HttpResponse<String> metricsResponse = httpClient.send(metricsRequest,
+                    HttpResponse.BodyHandlers.ofString());
+            String body = metricsResponse.body();
+            System.out.println("  Status code: " + metricsResponse.statusCode());
+
+            if (body == null || body.trim().isEmpty()) {
+                System.out.println("  Response is empty. Enable metric sources first:");
+                System.out.println("    ignite3 node metric source enable jvm");
+                System.out.println("    ignite3 node metric source enable client.handler");
+            } else {
+                String[] lines = body.split("\\n");
+                int limit = Math.min(lines.length, 20);
+                System.out.println("  First " + limit + " lines of metrics response:");
+                for (int i = 0; i < limit; i++) {
+                    System.out.println("    " + lines[i]);
+                }
+                if (lines.length > 20) {
+                    System.out.println("    ... (" + (lines.length - 20) + " more lines)");
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("  Could not reach metrics endpoint: " + e.getMessage());
+        }
+
+        System.out.println();
         System.out.println("  Prometheus scrape configuration:");
         System.out.println("  scrape_configs:");
         System.out.println("    - job_name: 'ignite3'");

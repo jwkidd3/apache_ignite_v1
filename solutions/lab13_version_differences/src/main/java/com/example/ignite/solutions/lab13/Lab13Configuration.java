@@ -1,5 +1,10 @@
 package com.example.ignite.solutions.lab13;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.sql.ResultSet;
 import org.apache.ignite.sql.SqlRow;
@@ -70,6 +75,25 @@ public class Lab13Configuration {
         System.out.println("  2.x: Static at startup, requires restart to change");
         System.out.println("  3.x: HOCON file, plus dynamic updates via CLI/REST");
         System.out.println();
+
+        // --- Live REST API call: fetch cluster configuration ---
+        try {
+            HttpClient httpClient = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:10300/management/v1/configuration/cluster"))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            String body = response.body();
+            String preview = body.substring(0, Math.min(body.length(), 300));
+            System.out.println("Live cluster configuration (first 300 chars):");
+            System.out.println(preview);
+            System.out.println("...");
+            System.out.println();
+        } catch (Exception e) {
+            System.out.println("  (Could not fetch cluster config via REST: " + e.getMessage() + ")");
+            System.out.println();
+        }
     }
 
     /**
@@ -98,6 +122,25 @@ public class Lab13Configuration {
         System.out.println("  3.x: Cluster-level and node-level config can be changed live");
         System.out.println("  3.x: Changes propagate via RAFT metastorage");
         System.out.println();
+
+        // --- Live REST API call: fetch node configuration ---
+        try {
+            HttpClient httpClient = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:10300/management/v1/configuration/node"))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            String body = response.body();
+            String preview = body.substring(0, Math.min(body.length(), 300));
+            System.out.println("Live node configuration (first 300 chars):");
+            System.out.println(preview);
+            System.out.println("...");
+            System.out.println();
+        } catch (Exception e) {
+            System.out.println("  (Could not fetch node config via REST: " + e.getMessage() + ")");
+            System.out.println();
+        }
     }
 
     /**

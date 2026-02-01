@@ -185,6 +185,52 @@ public class Lab11JVMTuning {
 }
 ```
 
+**Expected Output (your numbers may vary):**
+
+```
+=== JVM Tuning Lab ===
+
+=== JVM Information ===
+Java Version: 11.0.20
+Java Vendor: Eclipse Adoptium
+JVM Name: OpenJDK 64-Bit Server VM
+
+=== Memory Information ===
+Max Heap: 4096 MB
+Total Heap: 256 MB
+Free Heap: 200 MB
+Processors: 8
+
+Ignite node started with optimized configuration
+
+=== Ignite Memory Configuration ===
+Region: Default_Region
+  Total Allocated: 0 MB
+  Physical Memory: 0 MB
+  Allocation Rate: 0.00 pages/sec
+
+=== JVM Tuning Recommendations ===
+1. Heap Size:
+   - Set -Xms equal to -Xmx
+   - Use 60-70% of available RAM
+   - Leave memory for off-heap and OS
+
+2. Garbage Collector:
+   - Use G1GC (recommended for Ignite)
+   - Alternative: ZGC for low-latency (Java 15+)
+   - Avoid CMS (deprecated)
+
+3. GC Tuning:
+   - MaxGCPauseMillis: 200-500ms
+   - G1HeapRegionSize: 16-64MB
+   - Monitor GC logs regularly
+
+4. Off-Heap Memory:
+   - Configure MaxDirectMemorySize
+   - Should exceed data region sizes
+   - Monitor with JConsole/VisualVM
+```
+
 ## Part 2: Performance Metrics and Monitoring (15 minutes)
 
 ### Exercise 2: Comprehensive Monitoring
@@ -306,6 +352,65 @@ public class Lab11Monitoring {
         }
     }
 }
+```
+
+**Expected Output (your numbers may vary):**
+
+```
+=== Performance Monitoring Lab ===
+
+Generating load...
+
+=== Cache Metrics ===
+Cache Performance:
+  Gets: 500
+  Puts: 1000
+  Hits: 500
+  Misses: 0
+  Hit Rate: 100.00%
+
+Cache Timing:
+  Avg Get Time: 0.045 ms
+  Avg Put Time: 0.062 ms
+  Avg Remove Time: 0.000 ms
+
+Cache Size:
+  Entries: 1000
+  Heap Entries: 0
+  Off-Heap Entries: 1000
+
+=== Cluster Metrics ===
+Cluster Performance:
+  Total Nodes: 1
+  Total CPUs: 8
+  Current CPU Load: 12.50%
+  Average CPU Load: 8.75%
+
+Cluster Memory:
+  Heap Memory Used: 185 MB
+  Heap Memory Max: 4096 MB
+  Non-Heap Memory Used: 92 MB
+
+Cluster Activity:
+  Current Active Jobs: 0
+  Total Executed Jobs: 0
+  Avg Job Wait Time: 0.00 ms
+  Avg Job Execute Time: 0.00 ms
+
+=== Data Region Metrics ===
+Region: default
+  Total Allocated: 10 MB
+  Physical Memory: 10 MB
+  Checkpoint Buffer: 0 MB
+  Pages Read: 0
+  Pages Written: 0
+  Pages Replaced: 0
+
+=== Monitoring Tools ===
+1. JConsole/VisualVM - JMX monitoring
+2. Ignite Web Console - cluster management
+3. Prometheus + Grafana - metrics collection
+4. Custom JMX beans - application-specific metrics
 ```
 
 ## Part 3: Benchmarking and Load Testing (15 minutes)
@@ -519,6 +624,37 @@ public class Lab11Benchmark {
         ignite.destroyCache("concurrentCache");
     }
 }
+```
+
+**Expected Output (your numbers may vary):**
+
+```
+=== Performance Benchmark Lab ===
+
+=== Benchmark 1: Atomic Cache ===
+PUT: 10000 operations in 850 ms
+Throughput: 11764 ops/sec
+GET: 10000 operations in 320 ms
+Throughput: 31250 ops/sec
+
+=== Benchmark 2: Transactional Cache ===
+Transactional PUT: 10000 operations in 2100 ms
+Throughput: 4761 ops/sec
+
+=== Benchmark 3: Batch Operations ===
+Individual PUT: 850 ms
+Batch PUT: 180 ms
+Speedup: 4.7x
+
+=== Benchmark 4: Concurrent Access ===
+Threads: 10
+Total operations: 10000
+Time: 420 ms
+Throughput: 23809 ops/sec
+
+=== Benchmark Summary ===
+All benchmarks completed
+Review results to identify bottlenecks
 ```
 
 ### Exercise 4: Common Anti-Patterns

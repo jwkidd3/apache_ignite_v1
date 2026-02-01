@@ -31,7 +31,7 @@ public class Lab13DataColocation {
             demonstrateDistributionZones(client);
             demonstrateColocateBy(client);
             demonstrateColocatedQuery(client);
-            explainStorageProfiles();
+            demonstrateZoneManagement(client);
             printColocationComparison();
 
             // Cleanup
@@ -201,28 +201,99 @@ public class Lab13DataColocation {
         System.out.println();
     }
 
-    private static void explainStorageProfiles() {
-        System.out.println("=== Storage Profiles per Zone ===\n");
+    private static void demonstrateZoneManagement(IgniteClient client) {
+        System.out.println("=== Zone Management Demo ===\n");
 
-        System.out.println("Each zone can use a different storage engine:\n");
-        System.out.println("  | Engine    | Type      | Use Case                        |");
-        System.out.println("  |----------|-----------|---------------------------------|");
-        System.out.println("  | aimem     | In-memory | Hot data, max speed, volatile   |");
-        System.out.println("  | aipersist | B+ tree   | Persistent, durable, balanced   |");
-        System.out.println("  | rocksdb   | LSM tree  | Write-heavy, large datasets     |");
-        System.out.println();
+        try {
+            // 1. Create two zones with different settings
+            System.out.println("Creating demo zones...");
+            client.sql().executeScript(
+                "DROP TABLE IF EXISTS hot_test_table;" +
+                "DROP TABLE IF EXISTS cold_test_table;" +
+                "DROP ZONE IF EXISTS hot_demo_zone;" +
+                "DROP ZONE IF EXISTS cold_demo_zone");
 
-        System.out.println("  Example: Tiered storage architecture");
-        System.out.println("  CREATE ZONE hot_tier WITH storage_profiles='aimem', replicas=3;");
-        System.out.println("  CREATE ZONE warm_tier WITH storage_profiles='aipersist', replicas=2;");
-        System.out.println("  CREATE ZONE cold_tier WITH storage_profiles='rocksdb', replicas=1;");
-        System.out.println();
+            client.sql().executeScript(
+                "CREATE ZONE hot_demo_zone WITH replicas=3, partitions=256, storage_profiles='default'");
+            System.out.println("  Created hot_demo_zone (replicas=3, partitions=256)");
 
-        System.out.println("Contrast with 2.x:");
-        System.out.println("  2.x: Single storage engine for entire cluster");
-        System.out.println("  2.x: DataRegion for memory settings, persistence on/off for all");
-        System.out.println("  3.x: Different engines per zone (mix in-memory and persistent)");
-        System.out.println();
+            client.sql().executeScript(
+                "CREATE ZONE cold_demo_zone WITH replicas=1, partitions=32, storage_profiles='default'");
+            System.out.println("  Created cold_demo_zone (replicas=1, partitions=32)\n");
+
+            // 2. Query SYSTEM.ZONES to show both zones
+            System.out.println("Querying SYSTEM.ZONES (before ALTER):");
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT * FROM SYSTEM.ZONES WHERE NAME IN ('HOT_DEMO_ZONE', 'COLD_DEMO_ZONE') ORDER BY NAME")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("    Zone: %s, Partitions: %d, Replicas: %d%n",
+                        row.stringValue("NAME"),
+                        row.intValue("PARTITIONS"),
+                        row.intValue("REPLICAS"));
+                }
+            }
+            System.out.println();
+
+            // 3. ALTER ZONE to change replicas
+            System.out.println("Altering hot_demo_zone: replicas 3 -> 2");
+            client.sql().executeScript(
+                "ALTER ZONE hot_demo_zone SET replicas=2");
+            System.out.println("  ALTER ZONE completed.\n");
+
+            // 4. Query SYSTEM.ZONES again to verify the change
+            System.out.println("Querying SYSTEM.ZONES (after ALTER):");
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT * FROM SYSTEM.ZONES WHERE NAME IN ('HOT_DEMO_ZONE', 'COLD_DEMO_ZONE') ORDER BY NAME")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("    Zone: %s, Partitions: %d, Replicas: %d%n",
+                        row.stringValue("NAME"),
+                        row.intValue("PARTITIONS"),
+                        row.intValue("REPLICAS"));
+                }
+            }
+            System.out.println();
+
+            // 5. Create a test table in each zone, verify via SYSTEM.TABLES, then drop them
+            System.out.println("Creating test tables in each zone...");
+            client.sql().executeScript(
+                "CREATE TABLE hot_test_table (id INT PRIMARY KEY, val VARCHAR) WITH PRIMARY_ZONE='HOT_DEMO_ZONE'");
+            client.sql().executeScript(
+                "CREATE TABLE cold_test_table (id INT PRIMARY KEY, val VARCHAR) WITH PRIMARY_ZONE='COLD_DEMO_ZONE'");
+            System.out.println("  Created hot_test_table in HOT_DEMO_ZONE");
+            System.out.println("  Created cold_test_table in COLD_DEMO_ZONE\n");
+
+            System.out.println("Verifying tables via SYSTEM.TABLES:");
+            try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                    "SELECT NAME, ZONE_ID FROM SYSTEM.TABLES " +
+                    "WHERE NAME IN ('HOT_TEST_TABLE', 'COLD_TEST_TABLE') ORDER BY NAME")) {
+                while (rs.hasNext()) {
+                    SqlRow row = rs.next();
+                    System.out.printf("    Table: %s, Zone ID: %d%n",
+                        row.stringValue("NAME"),
+                        row.intValue("ZONE_ID"));
+                }
+            }
+            System.out.println();
+
+            // Drop test tables
+            System.out.println("Dropping test tables...");
+            client.sql().executeScript(
+                "DROP TABLE IF EXISTS hot_test_table;" +
+                "DROP TABLE IF EXISTS cold_test_table");
+            System.out.println("  Dropped hot_test_table and cold_test_table\n");
+
+            // 6. Drop the demo zones
+            System.out.println("Dropping demo zones...");
+            client.sql().executeScript(
+                "DROP ZONE IF EXISTS hot_demo_zone;" +
+                "DROP ZONE IF EXISTS cold_demo_zone");
+            System.out.println("  Dropped hot_demo_zone and cold_demo_zone\n");
+
+        } catch (Exception e) {
+            System.out.println("  Zone management error: " + e.getMessage());
+        }
     }
 
     private static void printColocationComparison() {

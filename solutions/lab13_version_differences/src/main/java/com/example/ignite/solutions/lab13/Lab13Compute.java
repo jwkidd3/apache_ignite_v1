@@ -1,40 +1,42 @@
 package com.example.ignite.solutions.lab13;
 
 import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.compute.JobDescriptor;
+import org.apache.ignite.compute.JobTarget;
+import org.apache.ignite.network.ClusterNode;
+import org.apache.ignite.sql.ResultSet;
+import org.apache.ignite.sql.SqlRow;
+import org.apache.ignite.table.Tuple;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
- * Lab 13 Exercises 11-12: Ignite 3.x Compute Grid
+ * Lab 13 Exercises 11-12: Ignite 3.x Compute Grid (Hands-On)
  *
  * Demonstrates:
- * - Compute job concepts in Ignite 3.x (JobTarget, JobDescriptor)
- * - Colocated compute (run job where data lives)
- * - Broadcast jobs (run on all nodes)
- * - Deployment units for code distribution
- * - Feature gaps vs 2.x (no MapReduce, no Service Grid yet)
- * - Contrast with 2.x compute APIs
+ * - Enumerating cluster nodes
+ * - Creating JobTarget instances (anyNode, node, colocated)
+ * - Submitting a compute job (with expected failure due to missing deployment units)
+ * - Using distributed SQL as a compute workaround
+ * - Feature gap comparison between 2.x and 3.x
  *
  * Prerequisites: Running Ignite 3.x cluster
- *
- * Note: Actual compute job execution requires deploying code to cluster nodes
- * via deployment units. This solution explains the concepts and shows the API
- * patterns without requiring deployment unit setup.
  */
 public class Lab13Compute {
 
     public static void main(String[] args) {
-        System.out.println("=== Lab 13: Ignite 3.x Compute Grid ===\n");
+        System.out.println("=== Lab 13: Ignite 3.x Compute Grid (Hands-On) ===\n");
 
         try (IgniteClient client = IgniteClient.builder()
                 .addresses("127.0.0.1:10800")
                 .build()) {
 
-            explainComputeArchitecture();
-            explainJobTargetAndDescriptor();
-            explainColocatedCompute();
-            explainBroadcastJobs();
-            explainDeploymentUnits();
-            explainFeatureGaps();
-            printComputeComparison();
+            demonstrateNodeEnumeration(client);
+            demonstrateJobTargetCreation(client);
+            demonstrateJobSubmission(client);
+            demonstrateSqlAsCompute(client);
+            printFeatureGapComparison();
 
         } catch (Exception e) {
             System.err.println("Could not connect to Ignite 3.x cluster.");
@@ -42,192 +44,222 @@ public class Lab13Compute {
         }
     }
 
-    /**
-     * Exercise 11: Compute architecture in 3.x
-     */
-    private static void explainComputeArchitecture() {
-        System.out.println("=== Exercise 11: Compute Architecture (3.x) ===\n");
-
-        System.out.println("Ignite 3.x compute is built on two key concepts:\n");
-        System.out.println("  1. JobTarget - WHERE the job runs:");
-        System.out.println("     - anyNode(clusterNodes)    : Run on any available node");
-        System.out.println("     - colocated(tableName, key): Run on node owning the data");
-        System.out.println("     - node(specificNode)       : Run on a specific node");
-        System.out.println("     - allNodes(clusterNodes)   : Broadcast to all nodes");
-        System.out.println();
-        System.out.println("  2. JobDescriptor - WHAT to run:");
-        System.out.println("     - References a class that implements compute logic");
-        System.out.println("     - Specifies deployment unit containing the code");
-        System.out.println("     - Defines input/output types");
-        System.out.println();
-    }
-
-    private static void explainJobTargetAndDescriptor() {
-        System.out.println("=== JobTarget and JobDescriptor API ===\n");
-
-        System.out.println("Submitting a compute job (pseudocode):\n");
-        System.out.println("  // Define the job descriptor");
-        System.out.println("  JobDescriptor<String, Integer> descriptor =");
-        System.out.println("      JobDescriptor.builder(MyComputeJob.class)");
-        System.out.println("          .units(deploymentUnit)");
-        System.out.println("          .build();");
-        System.out.println();
-        System.out.println("  // Execute on any node");
-        System.out.println("  Integer result = client.compute().execute(");
-        System.out.println("      JobTarget.anyNode(client.clusterNodes()),");
-        System.out.println("      descriptor,");
-        System.out.println("      \"input-argument\"");
-        System.out.println("  );");
-        System.out.println();
-        System.out.println("  // Async execution");
-        System.out.println("  CompletableFuture<Integer> future =");
-        System.out.println("      client.compute().executeAsync(");
-        System.out.println("          JobTarget.anyNode(client.clusterNodes()),");
-        System.out.println("          descriptor,");
-        System.out.println("          \"input-argument\"");
-        System.out.println("      );");
-        System.out.println();
-
-        System.out.println("Contrast with 2.x:");
-        System.out.println("  2.x: ignite.compute().call(IgniteCallable)");
-        System.out.println("  2.x: ignite.compute().broadcast(IgniteCallable)");
-        System.out.println("  3.x: client.compute().execute(JobTarget, JobDescriptor, args)");
-        System.out.println();
-    }
+    // ---------------------------------------------------------------
+    // Exercise 11a: Enumerate cluster nodes
+    // ---------------------------------------------------------------
 
     /**
-     * Colocated compute
+     * Discovers and prints all nodes visible to the client.
      */
-    private static void explainColocatedCompute() {
-        System.out.println("=== Colocated Compute (3.x) ===\n");
+    private static void demonstrateNodeEnumeration(IgniteClient client) {
+        System.out.println("=== Node Enumeration ===\n");
 
-        System.out.println("Run computation on the node that owns specific data:\n");
-        System.out.println("  // Run job on node that owns key in 'orders' table");
-        System.out.println("  Tuple key = Tuple.create().set(\"orderId\", 42);");
-        System.out.println();
-        System.out.println("  String result = client.compute().execute(");
-        System.out.println("      JobTarget.colocated(\"orders\", key),");
-        System.out.println("      descriptor,");
-        System.out.println("      args");
-        System.out.println("  );");
+        Collection<ClusterNode> nodes = client.clusterNodes();
+
+        System.out.println("Cluster contains " + nodes.size() + " node(s):\n");
+        for (ClusterNode node : nodes) {
+            System.out.println("  Node name : " + node.name());
+            System.out.println("  Node ID   : " + node.id());
+            System.out.println("  Address   : " + node.address());
+            System.out.println();
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Exercise 11b: Create JobTarget instances
+    // ---------------------------------------------------------------
+
+    /**
+     * Shows how to build the three main JobTarget types:
+     *   anyNode  - pick any cluster node
+     *   node     - target a specific node
+     *   colocated - target the node owning a particular key
+     */
+    private static void demonstrateJobTargetCreation(IgniteClient client) {
+        System.out.println("=== JobTarget Creation ===\n");
+
+        Collection<ClusterNode> nodes = client.clusterNodes();
+
+        // 1. anyNode - run on any available node
+        JobTarget anyTarget = JobTarget.anyNode(nodes);
+        System.out.println("1) JobTarget.anyNode(clusterNodes)  -> " + anyTarget);
+
+        // 2. node - run on a specific node
+        ClusterNode firstNode = nodes.iterator().next();
+        JobTarget nodeTarget = JobTarget.node(firstNode);
+        System.out.println("2) JobTarget.node(\"" + firstNode.name() + "\") -> " + nodeTarget);
+
+        // 3. colocated - run on the node that owns a key in a table
+        //    We need a table to exist; create Person if it does not already exist.
+        ensurePersonTable(client);
+        Tuple personKey = Tuple.create().set("personId", 1);
+        JobTarget colocatedTarget = JobTarget.colocated("Person", personKey);
+        System.out.println("3) JobTarget.colocated(\"Person\", key) -> " + colocatedTarget);
         System.out.println();
 
-        System.out.println("Benefits:");
-        System.out.println("  - Zero network overhead for data access");
-        System.out.println("  - Job runs where the data partition leader is");
-        System.out.println("  - Scales linearly with cluster size");
-        System.out.println();
-
-        System.out.println("Contrast with 2.x:");
+        System.out.println("Contrast with Ignite 2.x:");
         System.out.println("  2.x: ignite.compute().affinityRun(cacheName, key, runnable)");
-        System.out.println("  2.x: ignite.compute().affinityCall(cacheName, key, callable)");
         System.out.println("  3.x: JobTarget.colocated(tableName, keyTuple)");
         System.out.println();
     }
 
+    // ---------------------------------------------------------------
+    // Exercise 11c: Attempt to submit a compute job
+    // ---------------------------------------------------------------
+
     /**
-     * Broadcast jobs
+     * Tries to execute a compute job using a fake class name.
+     * This will fail because no deployment unit contains the class,
+     * illustrating the deployment-unit requirement in Ignite 3.x.
      */
-    private static void explainBroadcastJobs() {
-        System.out.println("=== Broadcast Jobs (3.x) ===\n");
+    private static void demonstrateJobSubmission(IgniteClient client) {
+        System.out.println("=== Job Submission (expected failure) ===\n");
 
-        System.out.println("Run a job on all cluster nodes:\n");
-        System.out.println("  // Broadcast to all nodes");
-        System.out.println("  Map<ClusterNode, Integer> results =");
-        System.out.println("      client.compute().executeBroadcast(");
-        System.out.println("          BroadcastJobTarget.nodes(client.clusterNodes()),");
-        System.out.println("          descriptor,");
-        System.out.println("          args");
-        System.out.println("      );");
-        System.out.println();
+        Collection<ClusterNode> nodes = client.clusterNodes();
 
-        System.out.println("Contrast with 2.x:");
-        System.out.println("  2.x: ignite.compute().broadcast(() -> { ... })");
-        System.out.println("  3.x: client.compute().executeBroadcast(BroadcastJobTarget, descriptor, args)");
+        // Build a descriptor that references a class not deployed to the cluster
+        JobDescriptor<String, String> descriptor = JobDescriptor
+                .<String, String>builder("com.example.fake.NonExistentJob")
+                .build();
+
+        try {
+            String result = client.compute().execute(
+                    JobTarget.anyNode(nodes),
+                    descriptor,
+                    "hello"
+            );
+            // Unlikely to reach here
+            System.out.println("Unexpected result: " + result);
+        } catch (Exception e) {
+            System.out.println("Expected exception caught!");
+            System.out.println("  Type   : " + e.getClass().getSimpleName());
+            System.out.println("  Message: " + e.getMessage());
+            System.out.println();
+            System.out.println("This confirms that compute jobs require the job class to be");
+            System.out.println("deployed to the cluster via deployment units.\n");
+            System.out.println("Deploy a unit with the CLI:");
+            System.out.println("  ignite3 cluster unit deploy \\");
+            System.out.println("    --id=my-jobs --version=1.0.0 \\");
+            System.out.println("    --path=/path/to/my-compute-jobs.jar");
+        }
         System.out.println();
     }
 
-    /**
-     * Deployment units
-     */
-    private static void explainDeploymentUnits() {
-        System.out.println("=== Deployment Units (3.x) ===\n");
-
-        System.out.println("Code must be deployed to cluster nodes before execution:\n");
-        System.out.println("  # Deploy a JAR to the cluster via CLI");
-        System.out.println("  ignite3 cluster unit deploy \\");
-        System.out.println("    --id=my-jobs-v1 \\");
-        System.out.println("    --version=1.0.0 \\");
-        System.out.println("    --path=/path/to/my-compute-jobs.jar");
-        System.out.println();
-        System.out.println("  # List deployed units");
-        System.out.println("  ignite3 cluster unit list");
-        System.out.println();
-
-        System.out.println("In Java, reference the deployment unit:");
-        System.out.println("  DeploymentUnit unit = new DeploymentUnit(\"my-jobs-v1\", \"1.0.0\");");
-        System.out.println("  JobDescriptor<String, String> descriptor =");
-        System.out.println("      JobDescriptor.builder(\"com.example.MyJob\")");
-        System.out.println("          .units(unit)");
-        System.out.println("          .build();");
-        System.out.println();
-
-        System.out.println("Contrast with 2.x:");
-        System.out.println("  2.x: Code must be on classpath of all nodes (peer class loading optional)");
-        System.out.println("  3.x: Explicit deployment units, versioned, deployable via CLI");
-        System.out.println("  3.x: Better isolation, versioned updates, no classpath issues");
-        System.out.println();
-    }
+    // ---------------------------------------------------------------
+    // SQL as a distributed compute workaround
+    // ---------------------------------------------------------------
 
     /**
-     * Exercise 12: Feature gaps
+     * Demonstrates using distributed SQL queries as an alternative to
+     * custom compute jobs for aggregation and analytics workloads.
      */
-    private static void explainFeatureGaps() {
-        System.out.println("=== Exercise 12: Compute Feature Gaps (3.x vs 2.x) ===\n");
+    private static void demonstrateSqlAsCompute(IgniteClient client) {
+        System.out.println("=== SQL as Distributed Compute Workaround ===\n");
 
-        System.out.println("Features available in 2.x but NOT YET in 3.x:\n");
-        System.out.println("  1. MapReduce (ComputeTaskAdapter)");
-        System.out.println("     2.x: Split work across nodes, reduce results");
-        System.out.println("     3.x: Not available; use multiple colocated jobs + client-side reduce");
-        System.out.println();
-        System.out.println("  2. Service Grid");
-        System.out.println("     2.x: Deploy singleton/per-node services to cluster");
-        System.out.println("     3.x: Not available; use external service deployment");
-        System.out.println();
-        System.out.println("  3. Continuous Queries");
-        System.out.println("     2.x: ContinuousQuery for real-time cache change notifications");
-        System.out.println("     3.x: Not available yet");
-        System.out.println();
-        System.out.println("  4. Near Cache");
-        System.out.println("     2.x: Client-side cache for frequently read data");
-        System.out.println("     3.x: Not available yet");
-        System.out.println();
-        System.out.println("  5. ExecutorService interface");
-        System.out.println("     2.x: ignite.executorService() for java.util.concurrent API");
-        System.out.println("     3.x: Not available");
-        System.out.println();
+        // Make sure we have some data to query
+        ensurePersonTable(client);
+        insertSamplePersons(client);
 
-        System.out.println("Features NEW in 3.x:");
-        System.out.println("  - Deployment units (versioned code deployment)");
-        System.out.println("  - Job priority and cancellation");
-        System.out.println("  - Better error handling with CompletableFuture");
+        System.out.println("Running distributed aggregation queries on Person table:\n");
+
+        // Aggregation 1: count
+        try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                "SELECT COUNT(*) AS cnt FROM Person")) {
+            if (rs.hasNext()) {
+                System.out.println("  Total persons : " + rs.next().longValue("cnt"));
+            }
+        }
+
+        // Aggregation 2: group by city
+        System.out.println("  Persons by city:");
+        try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                "SELECT city, COUNT(*) AS cnt FROM Person GROUP BY city ORDER BY cnt DESC")) {
+            while (rs.hasNext()) {
+                SqlRow row = rs.next();
+                System.out.println("    " + row.stringValue("city") + " : " + row.longValue("cnt"));
+            }
+        }
+
+        // Aggregation 3: average age (if column exists)
+        try (ResultSet<SqlRow> rs = client.sql().execute(null,
+                "SELECT AVG(age) AS avgAge FROM Person")) {
+            if (rs.hasNext()) {
+                System.out.println("  Average age   : " + rs.next().doubleValue("avgAge"));
+            }
+        } catch (Exception e) {
+            // age column may not exist - that is fine
+        }
+
         System.out.println();
+        System.out.println("SQL queries are executed across all partitions in the cluster,");
+        System.out.println("making them an effective distributed compute mechanism when");
+        System.out.println("custom job deployment is not feasible.\n");
     }
 
-    private static void printComputeComparison() {
-        System.out.println("=== Compute Grid Comparison ===\n");
+    // ---------------------------------------------------------------
+    // Exercise 12: Feature gap comparison
+    // ---------------------------------------------------------------
+
+    private static void printFeatureGapComparison() {
+        System.out.println("=== Compute Feature Gap Comparison (3.x vs 2.x) ===\n");
 
         System.out.println("  | Feature           | Ignite 2.x                | Ignite 3.x                |");
         System.out.println("  |-------------------|---------------------------|---------------------------|");
         System.out.println("  | Execute on node   | compute().call(callable)  | compute().execute(target) |");
         System.out.println("  | Broadcast         | compute().broadcast()     | executeBroadcast()        |");
         System.out.println("  | Colocated         | affinityRun/affinityCall  | JobTarget.colocated()     |");
-        System.out.println("  | MapReduce         | ComputeTaskAdapter        | Not available             |");
-        System.out.println("  | Service Grid      | serviceGrid().deploy()    | Not available             |");
-        System.out.println("  | Code deployment   | Classpath / peer loading  | Deployment units          |");
+        System.out.println("  | MapReduce         | ComputeTaskAdapter        | submitMapReduce()         |");
+        System.out.println("  | Service Grid      | serviceGrid().deploy()    | Not available yet         |");
+        System.out.println("  | Code deployment   | Classpath / peer loading  | Deployment units (CLI)    |");
         System.out.println("  | Async result      | IgniteFuture              | CompletableFuture         |");
         System.out.println("  | Cluster groups    | cluster().forAttribute()  | Node selection via filter |");
-        System.out.println("  | Continuous Query  | ContinuousQuery           | Not available             |");
+        System.out.println("  | Continuous Query  | ContinuousQuery           | Not available yet         |");
+        System.out.println("  | Near Cache        | NearCacheConfiguration    | Not available yet         |");
+        System.out.println("  | ExecutorService   | ignite.executorService()  | Not available             |");
         System.out.println();
+
+        System.out.println("New in 3.x:");
+        System.out.println("  - Deployment units (versioned code deployment via CLI)");
+        System.out.println("  - Job priority and cancellation via CancellationToken");
+        System.out.println("  - CompletableFuture-based async API");
+        System.out.println("  - MapReduceTask API (submitMapReduce / executeMapReduce)");
+        System.out.println();
+    }
+
+    // ---------------------------------------------------------------
+    // Helper methods
+    // ---------------------------------------------------------------
+
+    private static void ensurePersonTable(IgniteClient client) {
+        try {
+            client.sql().execute(null,
+                    "CREATE TABLE IF NOT EXISTS Person ("
+                    + "  personId INT PRIMARY KEY,"
+                    + "  name     VARCHAR,"
+                    + "  city     VARCHAR,"
+                    + "  age      INT"
+                    + ")");
+        } catch (Exception e) {
+            // Table may already exist
+        }
+    }
+
+    private static void insertSamplePersons(IgniteClient client) {
+        String[][] people = {
+            {"1", "Alice",   "New York",     "30"},
+            {"2", "Bob",     "San Francisco","25"},
+            {"3", "Charlie", "New York",     "35"},
+            {"4", "Diana",   "Chicago",      "28"},
+            {"5", "Eve",     "San Francisco","32"}
+        };
+        for (String[] p : people) {
+            try {
+                client.sql().execute(null,
+                    "INSERT INTO Person (personId, name, city, age) VALUES (?, ?, ?, ?)",
+                    Integer.parseInt(p[0]), p[1], p[2], Integer.parseInt(p[3]));
+            } catch (Exception e) {
+                // Row may already exist
+            }
+        }
     }
 }

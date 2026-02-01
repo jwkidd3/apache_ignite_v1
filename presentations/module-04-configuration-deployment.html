@@ -21,7 +21,7 @@
         .reveal h1 { font-size: 1.8em; }
         .reveal h2 { font-size: 1.4em; }
         .reveal h3 { font-size: 1.1em; }
-        .reveal pre { width: 100%; font-size: 0.48em; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .reveal pre { width: 100%; font-size: 0.55em; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .reveal pre code { max-height: 380px; padding: 15px; }
         .reveal ul, .reveal ol { font-size: 0.75em; }
         .reveal li { margin-bottom: 0.4em; }
@@ -42,6 +42,7 @@
                 <h1>Module 4</h1>
                 <h2>Configuration and Deployment</h2>
                 <p>Apache Ignite Training</p>
+                <aside class="notes">Module 4 bridges the gap between development and production. Students have learned the concepts and basic operations; now they learn how to configure and deploy Ignite properly. This module covers XML and programmatic configuration, Spring Boot integration, and deployment patterns.</aside>
             </section>
 
             <!-- Overview -->
@@ -57,6 +58,7 @@
                     <li>Configuration Best Practices</li>
                 </ul>
                 <p><strong>Duration:</strong> 45 minutes</p>
+                <aside class="notes">Walk through the module overview. Configuration is where many production issues originate, so getting it right is critical. The hybrid approach of XML plus programmatic configuration is common in real-world deployments. Spring Boot integration is important since most Java applications use Spring. The lab will have students practice all six areas listed here.</aside>
             </section>
 
             <!-- Section 1: Configuration Approaches -->
@@ -64,6 +66,7 @@
                 <section>
                     <h2>Section 1</h2>
                     <h3>Configuration Approaches</h3>
+                    <aside class="notes">Configuration is the foundation of a well-running Ignite deployment. There are two main approaches, and understanding when to use each is important for different team structures and deployment workflows.</aside>
                 </section>
 
                 <section>
@@ -88,6 +91,7 @@
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">XML configuration is Spring-based and familiar to teams that use Spring Framework. It allows changing configuration without recompiling code, which operations teams appreciate. Programmatic configuration in Java gives you type safety, IDE auto-completion, and the ability to use conditional logic. Many production deployments use a hybrid: base configuration in XML with programmatic overrides for dynamic settings.</aside>
                 </section>
 
                 <section>
@@ -104,6 +108,7 @@
                             <tr><td>Complex cache topologies</td><td>Hybrid - base XML + programmatic overrides</td></tr>
                         </tbody>
                     </table>
+                    <aside class="notes">Walk through the table row by row. The key insight is the last row: complex production deployments often use both approaches. Base infrastructure settings like discovery and memory go in XML for ops teams, while cache-specific settings and dynamic logic go in code for developers. This gives each team control over their area of responsibility.</aside>
                 </section>
             </section>
 
@@ -112,6 +117,7 @@
                 <section>
                     <h2>Section 2</h2>
                     <h3>XML Configuration (Spring-based)</h3>
+                    <aside class="notes">Section 2 covers XML configuration in depth. Ignite uses the Spring Framework's bean definition format for XML configuration. If students are familiar with Spring XML configuration, this will feel natural. If not, the key concept is that each bean element creates a Java object and property elements set its fields.</aside>
                 </section>
 
                 <section>
@@ -133,6 +139,7 @@
     &lt;/bean&gt;
 &lt;/beans&gt;
                     </code></pre>
+                    <aside class="notes">This is the minimal XML configuration. The root element uses Spring's beans namespace. Inside, a single bean of type IgniteConfiguration sets up the node. The igniteInstanceName property gives the node a human-readable name for logging. peerClassLoadingEnabled allows deploying code to nodes without restarting them -- useful for development but should be disabled in production for security.</aside>
                 </section>
 
                 <section>
@@ -153,6 +160,7 @@
 &lt;/property&gt;
                     </code></pre>
                     <blockquote>Port range 47500..47509 allows multiple nodes on same machine</blockquote>
+                    <aside class="notes">The discovery SPI configuration is nested several levels deep in XML. The TcpDiscoverySpi configures TCP-based discovery. Inside it, the ipFinder specifies how to find other nodes. TcpDiscoveryVmIpFinder uses a static list of addresses. The port range 47500..47509 allows up to 10 nodes on the same machine, each using a different port. Students will use this exact configuration in the lab.</aside>
                 </section>
 
                 <section>
@@ -177,6 +185,7 @@
     &lt;/list&gt;
 &lt;/property&gt;
                     </code></pre>
+                    <aside class="notes">This XML shows how to pre-configure caches that will be available when the node starts. The first cache is PARTITIONED with one backup and TRANSACTIONAL atomicity for ACID guarantees. The second is REPLICATED with ATOMIC atomicity for maximum read speed. Pre-configuring caches in XML means they exist immediately on startup without any application code needed to create them.</aside>
                 </section>
 
                 <section>
@@ -196,6 +205,7 @@
 &lt;/property&gt;
                     </code></pre>
                     <p>Spring Expression Language (SpEL) for memory calculations</p>
+                    <aside class="notes">Data storage configuration controls memory allocation. The SpEL expressions like #{100L * 1024 * 1024} are a convenient way to express memory sizes in bytes within XML. initialSize is the starting allocation (100MB here), and maxSize is the upper limit (200MB). persistenceEnabled controls whether data is written to disk. Getting these sizes right is critical for avoiding OutOfMemoryErrors.</aside>
                 </section>
 
                 <section>
@@ -222,6 +232,7 @@ public class Lab04XmlConfig {
     }
 }
                     </code></pre>
+                    <aside class="notes">This code shows how to load an XML configuration file. Ignition.start() accepts a file path or classpath resource name. The try-with-resources ensures the node shuts down cleanly. After starting, you can access pre-configured caches by name. The cacheNames() method lists all available caches, which is useful for verification. Students will implement this pattern in the lab.</aside>
                 </section>
             </section>
 
@@ -230,6 +241,7 @@ public class Lab04XmlConfig {
                 <section>
                     <h2>Section 3</h2>
                     <h3>Programmatic Configuration</h3>
+                    <aside class="notes">Section 3 shows the same configuration using Java code instead of XML. Programmatic configuration is preferred during development because of type safety, IDE support, and the ability to use conditional logic. The upcoming slides show a well-structured approach with separate methods for each configuration aspect.</aside>
                 </section>
 
                 <section>
@@ -259,6 +271,7 @@ private static IgniteConfiguration createIgniteConfiguration() {
     return cfg;
 }
                     </code></pre>
+                    <aside class="notes">This is a well-organized configuration class. Each aspect of configuration has its own method. The main method creates the IgniteConfiguration object and delegates to helper methods for discovery, data storage, and cache configuration. This modular approach is much more readable than putting everything in one method. Students should follow this pattern in their own code.</aside>
                 </section>
 
                 <section>
@@ -278,6 +291,7 @@ private static TcpDiscoverySpi createDiscoverySpi() {
 }
                     </code></pre>
                     <blockquote>TcpDiscoveryVmIpFinder for static IP addresses; use TcpDiscoveryMulticastIpFinder for multicast discovery</blockquote>
+                    <aside class="notes">The programmatic discovery configuration mirrors the XML version but with Java objects. The TcpDiscoveryVmIpFinder uses static IP addresses. The localPort and localPortRange settings control which ports this node uses for discovery. For development on localhost, the default range of 47500-47509 allows running up to 10 nodes on one machine.</aside>
                 </section>
 
                 <section>
@@ -306,6 +320,7 @@ private static DataStorageConfiguration createDataStorageConfig() {
     return storageCfg;
 }
                     </code></pre>
+                    <aside class="notes">This code shows how to create multiple data regions. The default region is in-memory only with a 500MB limit and LRU eviction. The persistent region enables persistence for durable storage. Enabling metrics on regions allows monitoring memory usage. The RANDOM_2_LRU eviction policy is a good default that approximates true LRU with low overhead.</aside>
                 </section>
 
                 <section>
@@ -336,6 +351,7 @@ private static CacheConfiguration&lt;Integer, String&gt; createReplicatedCache()
     return cacheCfg;
 }
                     </code></pre>
+                    <aside class="notes">Two cache configuration examples side by side. The partitioned cache has 1 backup, ATOMIC mode for speed, PRIMARY_SYNC write mode for a balance of safety and performance, and statistics enabled. The replicated cache does not need backups since every node has all data. Both have statistics enabled for monitoring. Students should note how type parameters on CacheConfiguration provide compile-time type safety.</aside>
                 </section>
 
                 <section>
@@ -356,6 +372,7 @@ cfg.setFailureDetectionTimeout(10000);
                         <li><strong>networkTimeout</strong> - Max wait for network responses</li>
                         <li><strong>failureDetectionTimeout</strong> - Node failure detection</li>
                     </ul>
+                    <aside class="notes">Thread pool and network settings are advanced but important for production tuning. The public thread pool handles user cache operations -- increase it for workloads with many concurrent requests. Network timeout controls how long to wait for responses before considering them failed. Failure detection timeout determines how quickly a crashed node is detected. Shorter timeouts mean faster failover but more false positives on slow networks.</aside>
                 </section>
             </section>
 
@@ -364,6 +381,7 @@ cfg.setFailureDetectionTimeout(10000);
                 <section>
                     <h2>Section 4</h2>
                     <h3>Spring Boot Integration</h3>
+                    <aside class="notes">Spring Boot is the most popular Java application framework. Integrating Ignite with Spring Boot lets teams leverage both ecosystems. This section shows the dependencies, configuration, and code patterns needed for a Spring Boot application with an embedded Ignite node.</aside>
                 </section>
 
                 <section>
@@ -392,6 +410,7 @@ cfg.setFailureDetectionTimeout(10000);
     &lt;/dependency&gt;
 &lt;/dependencies&gt;
                     </code></pre>
+                    <aside class="notes">Three Maven dependencies are needed. Spring Boot starter provides the web framework. The ignite-spring-boot-autoconfigure-ext dependency enables auto-configuration of Ignite from application properties. Ignite-core is the main Ignite library. Version alignment is important -- ensure your Ignite versions are consistent across all dependencies.</aside>
                 </section>
 
                 <section>
@@ -418,6 +437,7 @@ ignite:
       backups: 1
       atomicity-mode: TRANSACTIONAL
                     </code></pre>
+                    <aside class="notes">Spring Boot's application.yml provides a clean way to configure Ignite without Java code. The ignite section maps to IgniteConfiguration properties. Discovery addresses are specified as a list. Cache definitions include name, mode, and atomicity. This YAML-based configuration is easy to read and modify, making it popular with operations teams.</aside>
                 </section>
 
                 <section>
@@ -444,6 +464,7 @@ public class IgniteConfig {
 }
                     </code></pre>
                     <blockquote>Spring manages the Ignite lifecycle automatically</blockquote>
+                    <aside class="notes">The @Configuration class creates an Ignite bean that Spring manages. The @Bean annotation means Spring will call this method once and cache the result as a singleton. Ignition.start(cfg) starts the node. When the Spring application shuts down, the Ignite instance is closed automatically. This is the preferred approach when you need more control than YAML provides.</aside>
                 </section>
 
                 <section>
@@ -473,6 +494,7 @@ public class Lab04SpringBootApp implements CommandLineRunner {
     }
 }
                     </code></pre>
+                    <aside class="notes">The @Autowired Ignite instance is injected by Spring from the @Bean method we defined. CommandLineRunner executes after Spring Boot starts. This pattern demonstrates accessing the cluster and using caches from a Spring Boot application. The cluster nodes size check verifies the node joined the cluster successfully. Students will implement this pattern in the lab.</aside>
                 </section>
 
                 <section>
@@ -493,6 +515,7 @@ public class CacheController {
     }
 }
                     </code></pre>
+                    <aside class="notes">This simple REST controller exposes cache operations over HTTP. The @Autowired Ignite instance is the same singleton bean. POST puts a value, GET retrieves it. This demonstrates how easy it is to build a REST API backed by Ignite. In production, you would add error handling, validation, and authentication. This pattern is the basis for building microservices with Ignite as the data layer.</aside>
                 </section>
 
                 <section>
@@ -509,6 +532,7 @@ curl http://localhost:8080/api/cache/mykey
 # Get cache size
 curl http://localhost:8080/api/cache/size
                     </code></pre>
+                    <aside class="notes">These curl commands demonstrate testing the REST API. Students should try these during the lab to verify their Spring Boot integration works. The POST command stores a value, the GET retrieves it. If students have issues, common problems are port conflicts, Ignite not starting before the REST endpoint is available, and cache name mismatches.</aside>
                 </section>
             </section>
 
@@ -517,6 +541,7 @@ curl http://localhost:8080/api/cache/size
                 <section>
                     <h2>Section 5</h2>
                     <h3>Deployment Patterns</h3>
+                    <aside class="notes">Section 5 covers how to deploy Ignite in different architectures. The embedded vs client-server decision was introduced in Module 2. Here we go deeper into the practical configuration for each pattern, including the thin client option which is increasingly popular for microservices.</aside>
                 </section>
 
                 <section>
@@ -543,6 +568,7 @@ curl http://localhost:8080/api/cache/size
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">This side-by-side comparison highlights the key differences. Embedded mode is simpler but tightly coupled -- the app and data share a JVM. Client-server mode adds a network hop but gives independent scaling and better separation of concerns. Most production deployments use client-server mode because it allows the data tier to be managed independently from applications.</aside>
                 </section>
 
                 <section>
@@ -562,6 +588,7 @@ try (Ignite ignite = Ignition.start(cfg)) {
 }
                     </code></pre>
                     <blockquote>Use when: tight integration, single-node deployment, or data-intensive applications</blockquote>
+                    <aside class="notes">Embedded mode is what students use in the labs. setClientMode(false) is the default, so the node acts as a server. Data may be stored on this node since it is a full cluster member. The try-with-resources ensures clean shutdown. Use cases include single-node deployments, data-intensive applications that need colocation of code and data, and rapid prototyping.</aside>
                 </section>
 
                 <section>
@@ -585,6 +612,7 @@ try (Ignite ignite = Ignition.start(cfg)) {
     IgniteCache&lt;Integer, String&gt; cache = ignite.cache("myCache");
 }
                     </code></pre>
+                    <aside class="notes">Client-server mode requires setClientMode(true). The discovery configuration must point to the server nodes so the client can find the cluster. Note the server addresses use the discovery port 47500, not the thin client port. This thick client joins the cluster and receives topology updates. It does not store data but can route requests directly to the node that owns the data.</aside>
                 </section>
 
                 <section>
@@ -608,6 +636,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                         <li>No cluster topology awareness</li>
                         <li>Available for multiple languages (Java, .NET, Python, Node.js)</li>
                     </ul>
+                    <aside class="notes">The thin client uses a completely different API: ClientConfiguration and Ignition.startClient. Note port 10800 instead of 47500 -- this is the thin client connector port. The API uses ClientCache instead of IgniteCache. The thin client does not join the cluster and has minimal memory footprint. Multi-language support makes it ideal for polyglot environments where not all services are Java-based.</aside>
                 </section>
 
                 <section>
@@ -624,6 +653,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                             <tr><td>Use case</td><td>Microservices, single node</td><td>Multi-tier apps</td><td>Web apps, polyglot</td></tr>
                         </tbody>
                     </table>
+                    <aside class="notes">This decision matrix helps students choose the right deployment model. Focus on the resource usage row: embedded has the highest resource usage because each application instance is also a data node. The coupling row matters for maintainability. For most production deployments, start with thin clients and only move to thick clients or embedded when specific features like compute grid or near cache are needed.</aside>
                 </section>
             </section>
 
@@ -632,6 +662,7 @@ try (IgniteClient client = Ignition.startClient(cfg)) {
                 <section>
                     <h2>Section 6</h2>
                     <h3>Environment-Specific Configuration</h3>
+                    <aside class="notes">Real applications need different configurations for development, staging, and production. This section covers strategies for managing environment-specific settings including Spring profiles, environment variables, Docker, and Kubernetes. These are essential DevOps skills for deploying Ignite in modern infrastructure.</aside>
                 </section>
 
                 <section>
@@ -659,6 +690,7 @@ ignite:
 # Run with specific profile
 java -jar myapp.jar --spring.profiles.active=prod
                     </code></pre>
+                    <aside class="notes">Spring profiles are the cleanest way to manage environment-specific configuration. The dev profile uses localhost discovery for single-machine development. The prod profile uses actual server addresses. Switching between profiles at deployment time requires no code changes. This pattern is widely used in Spring Boot applications and integrates naturally with CI/CD pipelines.</aside>
                 </section>
 
                 <section>
@@ -685,6 +717,7 @@ private static IgniteConfiguration createConfig() {
     return cfg;
 }
                     </code></pre>
+                    <aside class="notes">Environment variables provide another level of configuration flexibility. This pattern reads IGNITE_INSTANCE_NAME and IGNITE_DISCOVERY_ADDRESSES from the environment at runtime. The null checks provide sensible defaults for local development. This approach works well with Docker, Kubernetes, and cloud platforms where configuration is injected via environment variables.</aside>
                 </section>
 
                 <section>
@@ -708,6 +741,7 @@ CMD ["java", "-jar", "/app/myapp.jar"]
 docker run -e IGNITE_DISCOVERY_ADDRESSES=server1:47500,server2:47500 \
            -p 47500:47500 -p 10800:10800 myapp:latest
                     </code></pre>
+                    <aside class="notes">The Dockerfile copies both the application JAR and the Ignite configuration XML. Three ports are exposed: 47500 for discovery, 47100 for communication, and 10800 for thin clients. Environment variables are set with defaults that can be overridden at runtime with docker run -e flags. The docker run example shows how to override discovery addresses for connecting to a multi-node cluster.</aside>
                 </section>
 
                 <section>
@@ -726,6 +760,7 @@ docker run -e IGNITE_DISCOVERY_ADDRESSES=server1:47500,server2:47500 \
 &lt;/property&gt;
                     </code></pre>
                     <p>Requires: <code>ignite-kubernetes</code> dependency</p>
+                    <aside class="notes">Kubernetes discovery uses the K8s API to automatically discover Ignite pods. The namespace and serviceName must match your Kubernetes deployment. This eliminates the need to maintain static IP lists since pods get dynamic IPs. The ignite-kubernetes dependency is required. RBAC permissions must allow the pod to query the Kubernetes API for service endpoints.</aside>
                 </section>
             </section>
 
@@ -734,6 +769,7 @@ docker run -e IGNITE_DISCOVERY_ADDRESSES=server1:47500,server2:47500 \
                 <section>
                     <h2>Section 7</h2>
                     <h3>Configuration Best Practices</h3>
+                    <aside class="notes">Section 7 distills production experience into actionable best practices. These recommendations come from real-world deployments and common pitfalls. Students should reference these guidelines when setting up their own Ignite clusters.</aside>
                 </section>
 
                 <section>
@@ -758,6 +794,7 @@ docker run -e IGNITE_DISCOVERY_ADDRESSES=server1:47500,server2:47500 \
                             </ul>
                         </li>
                     </ul>
+                    <aside class="notes">Memory configuration is where most production issues originate. Set initialSize to your expected data size to avoid reallocation. Set maxSize to prevent out-of-memory errors -- Ignite will evict data when this limit is reached. RANDOM_2_LRU eviction is efficient and recommended for most workloads. Remember that Ignite uses off-heap memory, so leave enough JVM heap for application objects and garbage collection.</aside>
                 </section>
 
                 <section>
@@ -783,6 +820,7 @@ cacheCfg.setWriteSynchronizationMode(
 // Enable statistics for monitoring
 cacheCfg.setStatisticsEnabled(true);  // Small overhead
                     </code></pre>
+                    <aside class="notes">This annotated code example is a reference card for cache configuration. Each line has a comment explaining the choice. PARTITIONED mode for scalability, one backup for fault tolerance, ATOMIC mode for speed (use TRANSACTIONAL only when needed), PRIMARY_SYNC for balanced write performance, and statistics enabled for monitoring. Students should use this as a template for their own cache configurations.</aside>
                 </section>
 
                 <section>
@@ -809,6 +847,7 @@ cacheCfg.setStatisticsEnabled(true);  // Small overhead
     &lt;/Loggers&gt;
 &lt;/Configuration&gt;
                     </code></pre>
+                    <aside class="notes">Proper logging is essential for debugging production issues. The log4j2 configuration sends Ignite logs to both the console and a dedicated file. Set the Ignite logger to INFO level for normal operation and DEBUG for troubleshooting. The separate log file makes it easy to grep for Ignite-specific issues without wading through application logs.</aside>
                 </section>
 
                 <section>
@@ -831,6 +870,7 @@ System.out.println("Total CPUs: " +
 System.out.println("Heap memory used: " +
     ignite.cluster().metrics().getHeapMemoryUsed() / (1024 * 1024) + " MB");
                     </code></pre>
+                    <aside class="notes">This code shows how to programmatically access cache and cluster metrics. Cache metrics include operation counts, hit/miss ratios, and timing information. Cluster metrics provide CPU and memory utilization. The hit percentage is the single most important metric -- it tells you how effective your caching strategy is. Students will add metrics collection to their lab code.</aside>
                 </section>
 
                 <section>
@@ -847,6 +887,7 @@ System.out.println("Heap memory used: " +
                             <tr><td>Heap Usage</td><td>JVM health</td><td>Tune GC, increase heap</td></tr>
                         </tbody>
                     </table>
+                    <aside class="notes">This metrics reference table is worth bookmarking. Hit ratio below 90% means the cache is not effective. Average get/put time increasing indicates performance degradation. Cache size growing unexpectedly suggests missing eviction or expiry policies. Eviction rate shows how often data is being pushed out. Heap usage that is consistently high means GC pressure, which causes latency spikes.</aside>
                 </section>
 
                 <section>
@@ -863,6 +904,7 @@ System.out.println("Heap memory used: " +
 cfg.setAuthenticationEnabled(true);
 cfg.setPluginConfigurations(new SecurityPluginConfiguration());
                     </code></pre>
+                    <aside class="notes">Security is often overlooked during development but critical for production. SSL/TLS encrypts data in transit between nodes. Authentication prevents unauthorized access. Separate data regions can enforce access control boundaries. Never hardcode passwords or secrets in configuration files -- use environment variables or secret management tools like HashiCorp Vault. Bind Ignite to internal network interfaces to limit exposure.</aside>
                 </section>
             </section>
 
@@ -871,6 +913,7 @@ cfg.setPluginConfigurations(new SecurityPluginConfiguration());
                 <section>
                     <h2>Lab 4</h2>
                     <h3>Configuration and Deployment</h3>
+                    <aside class="notes">Time for the hands-on lab. This lab is comprehensive and covers all the configuration approaches discussed in the module. Make sure students have their development environment ready before starting.</aside>
                 </section>
                 <section>
                     <h3>Lab 4 Exercises</h3>
@@ -885,6 +928,7 @@ cfg.setPluginConfigurations(new SecurityPluginConfiguration());
                     </ul>
                     <p><strong>Time:</strong> 60 minutes</p>
                     <p><strong>File:</strong> <code>labs/lab04_configuration_deployment.md</code></p>
+                    <aside class="notes">Walk through the six lab exercises briefly so students know what to expect. The XML configuration exercise creates a config file with multiple caches. The programmatic exercise builds the same configuration in Java code. Spring Boot integration is the most involved exercise -- if time is limited, prioritize the XML and programmatic exercises. Metrics collection will be used throughout the remaining labs.</aside>
                 </section>
             </section>
 
@@ -901,6 +945,7 @@ cfg.setPluginConfigurations(new SecurityPluginConfiguration());
                         <li><strong>Environment-specific configs</strong> via profiles and env variables</li>
                         <li><strong>Monitor key metrics</strong>: hit ratio, latency, memory usage</li>
                     </ol>
+                    <aside class="notes">These six takeaways summarize the entire module. XML for ops, programmatic for developers. Spring Boot simplifies integration. Embedded for simplicity, client-server for production. Environment-specific configs keep deployments clean. Monitoring is not optional -- it is essential. Students should be able to configure Ignite in any of these ways after this module.</aside>
                 </section>
 
                 <section>
@@ -913,11 +958,13 @@ cfg.setPluginConfigurations(new SecurityPluginConfiguration());
                         <li>Logging configured for troubleshooting</li>
                         <li>Metrics enabled for monitoring</li>
                     </ul>
+                    <aside class="notes">This checklist is a production readiness guide. Before deploying to production, verify each item. Data regions sized correctly prevents out-of-memory issues. Cache modes matching access patterns ensures optimal performance. Backups provide fault tolerance. Discovery SPI must match the deployment environment. Logging enables troubleshooting. Metrics enable monitoring. Print this slide for reference during production deployments.</aside>
                 </section>
 
                 <section>
                     <h2>Questions?</h2>
                     <h3>Next Module: Data Modeling and Persistence</h3>
+                    <aside class="notes">Open for final questions. Common topics at this point include Docker networking challenges, Spring Boot auto-configuration conflicts, and how to choose between XML and programmatic configuration. After Q&A, students should proceed to Lab 4. The next module on Data Modeling and Persistence builds on the configuration skills learned here.</aside>
                 </section>
             </section>
         </div>

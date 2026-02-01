@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/intellij-light.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <style>
         .reveal .slides section { overflow: hidden; }
         .reveal section { max-height: 100%; }
@@ -35,7 +35,7 @@
         }
         .reveal pre {
             width: 100%;
-            font-size: 0.5em;
+            font-size: 0.55em;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .reveal pre code {
@@ -151,6 +151,7 @@
                 <h2 class="accent">Advanced Caching Patterns</h2>
                 <p>Apache Ignite Training Course</p>
                 <p class="subtitle">Duration: 60 minutes</p>
+                <aside class="notes">Welcome to Module 08 on Advanced Caching Patterns. This module covers the features that take Ignite from a simple cache to a sophisticated data platform. Each pattern addresses a specific production need: near caches for latency, expiry for freshness, eviction for memory management, entry processors for atomicity, and continuous queries for real-time updates.</aside>
             </section>
 
             <!-- Agenda -->
@@ -164,6 +165,7 @@
                     <li><strong>Cache Events</strong> - Event handling</li>
                     <li><strong>Continuous Queries</strong> - Real-time notifications</li>
                 </ul>
+                <aside class="notes">Walk through the six topics on the agenda. Each one addresses a different production concern. Near caches and expiry policies are the most commonly used in practice. Entry processors are the most underutilized but arguably the most powerful feature. Continuous queries enable event-driven architectures. Students will implement all six in the lab.</aside>
             </section>
 
             <!-- Section 1: Near Caches -->
@@ -171,6 +173,7 @@
                 <section>
                     <h2>Near Caches</h2>
                     <p class="subtitle">Client-Side Caching for Performance</p>
+                    <aside class="notes">Near caches are one of the simplest yet most impactful performance optimizations in Ignite. They keep a local copy of frequently accessed data on the client node, eliminating network round-trips for repeated reads. This is especially useful for reference data that changes infrequently but is read constantly.</aside>
                 </section>
 
                 <section>
@@ -183,6 +186,7 @@
                         <span class="arrow">&#8594;</span>
                         <div class="diagram-box">Server Node<br><small>(Primary Data)</small></div>
                     </div>
+                    <aside class="notes">The diagram shows the basic architecture: the client node has a local near cache that sits between the application and the server node. On first access, data comes from the server. On subsequent access, data is served from the local near cache with zero network latency. The near cache is automatically invalidated when data changes on the server, though there is a brief window of staleness.</aside>
                 </section>
 
                 <section>
@@ -193,6 +197,7 @@
                         <li><strong>Better Performance</strong> - For frequently accessed data</li>
                         <li><strong>Automatic Invalidation</strong> - Updates propagated from server</li>
                     </ul>
+                    <aside class="notes">The four benefits map to common production needs. Reduced latency is the primary benefit, especially for client nodes that are geographically distant from server nodes. Lower server load means the cluster can handle more clients. Automatic invalidation means the developer does not need to manually manage consistency, though they should understand the brief staleness window.</aside>
                 </section>
 
                 <section>
@@ -207,6 +212,7 @@ Subsequent Access:
 Client --[GET key=100]--> Near Cache --[Return value]--> Client
          (No network call!)
 </code></pre>
+                    <aside class="notes">This text diagram shows the two access paths. On first access, the request goes to the server, the value is returned and stored in the near cache. On subsequent access, the near cache serves the value directly with no network call. In production, this difference can be 0.1ms local versus 1-5ms network, which is significant for high-frequency read operations.</aside>
                 </section>
 
                 <section>
@@ -223,6 +229,7 @@ nearCfg.setNearEvictionPolicyFactory(
 // Create cache with near cache on client
 IgniteCache&lt;Integer, String&gt; cache =
     ignite.getOrCreateNearCache("dataCache", nearCfg);</code></pre>
+                    <aside class="notes">The configuration is straightforward. The LruEvictionPolicy with maxSize 100 means the near cache will keep at most 100 entries locally and evict the least recently used when full. The getOrCreateNearCache method creates the near cache on the client side. Students should size the near cache based on their working set, not the total data size.</aside>
                 </section>
 
                 <section>
@@ -239,6 +246,7 @@ String value2 = cache.get(100);  // Local access
 long time2 = System.currentTimeMillis() - start;
 System.out.println("Second access: " + time2 + " ms");
 System.out.println("Speedup: " + (float)time1/time2 + "x faster");</code></pre>
+                    <aside class="notes">This performance measurement code is a great demo opportunity. Run it in the lab and students will see the first access taking milliseconds while the second access takes microseconds. The speedup can be 10x to 100x depending on network latency. This makes the value proposition of near caches immediately tangible.</aside>
                 </section>
 
                 <section>
@@ -252,6 +260,7 @@ nearCfg.setNearEvictionPolicyFactory(
 // Get cache with near cache enabled
 IgniteCache&lt;Integer, String&gt; cache =
     ignite.getOrCreateNearCache("dataCache", nearCfg);</code></pre>
+                    <aside class="notes">This is a condensed version showing the essential near cache setup. In the lab, students will expand this to include performance measurement and multiple entries. Note that near caches are only relevant for client nodes; server nodes already have local data through partitioning. A common mistake is trying to create near caches on server nodes, which is unnecessary.</aside>
                 </section>
 
                 <section>
@@ -276,6 +285,7 @@ IgniteCache&lt;Integer, String&gt; cache =
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">The good and avoid columns help students decide when near caches are appropriate. The key insight is that near caches work best for read-heavy workloads with reference data. For write-heavy workloads, the invalidation overhead outweighs the read benefit. For memory-constrained clients, the near cache consumes local heap. Random access patterns do not benefit because the cached data is rarely reused.</aside>
                 </section>
             </section>
 
@@ -284,6 +294,7 @@ IgniteCache&lt;Integer, String&gt; cache =
                 <section>
                     <h2>Expiry Policies</h2>
                     <p class="subtitle">Time-to-Live Management</p>
+                    <aside class="notes">Expiry policies control how long data stays in the cache based on time. This is essential for caching data that has a known freshness requirement, like session tokens that should expire after 30 minutes or API response caches that should refresh every 5 minutes. The three policy types provide different timer reset behaviors for different use cases.</aside>
                 </section>
 
                 <section>
@@ -314,6 +325,7 @@ IgniteCache&lt;Integer, String&gt; cache =
                             <td>LRU-like behavior</td>
                         </tr>
                     </table>
+                    <aside class="notes">This comparison table is the key reference for understanding the three policies. Created never resets so the timer counts from creation only. Modified resets on updates but not reads. Touched resets on any access including reads. Use Created for absolute TTL like session tokens, Modified for data that should stay alive while being updated, and Touched for keeping hot data alive.</aside>
                 </section>
 
                 <section>
@@ -335,6 +347,7 @@ IgniteCache&lt;Integer, String&gt; cache = ignite.getOrCreateCache(cfg);
 cache.put(1, "Session data");    // Timer starts
 Thread.sleep(6000);              // Wait 6 seconds
 cache.get(1);                    // Returns null - expired!</code></pre>
+                    <aside class="notes">The Created expiry policy is the simplest. The entry expires exactly 5 seconds after creation regardless of whether it is read or updated. This is perfect for session tokens, OTP codes, and any data with an absolute lifetime. The code demonstrates the full lifecycle: put, wait, then get returns null. Students will implement this in the lab and verify the expiration timing.</aside>
                 </section>
 
                 <section>
@@ -359,6 +372,7 @@ Thread.sleep(2000);
 cache.get(1);                    // Still there! (only 2 sec elapsed)
 Thread.sleep(4000);
 cache.get(1);                    // null - expired after 3 seconds</code></pre>
+                    <aside class="notes">Modified expiry resets the timer on every put operation but not on get. The example shows the timer starting at creation, then resetting when the value is updated. After the update, only 2 seconds pass before the next get, so the entry is still alive. But then 4 seconds pass without any update, exceeding the 3-second TTL. This is useful for configuration data that should expire only if it stops being updated.</aside>
                 </section>
 
                 <section>
@@ -384,6 +398,7 @@ for (int i = 0; i &lt; 5; i++) {
 }
 Thread.sleep(5000);
 cache.get(1);  // null - no access for 5 seconds</code></pre>
+                    <aside class="notes">Touched expiry keeps data alive as long as it is being accessed, even by reads. The loop reads the entry every 2 seconds, which resets the 4-second timer each time. As long as the gap between accesses is less than 4 seconds, the entry survives. Once access stops for 5 seconds, the entry expires. This implements LRU-like behavior at the data level rather than the memory level.</aside>
                 </section>
 
                 <section>
@@ -410,6 +425,7 @@ longTTL.put(2, "Long expiry");      // 10-second TTL
 Thread.sleep(3000);
 baseCache.get(1);  // null (expired)
 baseCache.get(2);  // Still there</code></pre>
+                    <aside class="notes">Per-entry expiry is a powerful technique for when different entries need different TTLs. The withExpiryPolicy method creates a cache view with a specific policy. The key insight is that entries put through the shortTTL view get a 2-second TTL while entries put through the longTTL view get 10 seconds. The base cache reads both entries regardless of their TTL settings. This is commonly used for tiered data freshness requirements.</aside>
                 </section>
 
                 <section>
@@ -421,6 +437,7 @@ baseCache.get(2);  // Still there</code></pre>
                             <li><strong>Touched</strong>: Recently accessed data (keep hot data)</li>
                         </ul>
                     </div>
+                    <aside class="notes">This summary helps students match the right policy to their use case. Session tokens and OTP codes have fixed lifetimes so use Created. Configuration data should stay fresh while being actively updated so use Modified. Hot data caches should keep frequently accessed entries alive so use Touched. Ask students what policy they would use for their specific application scenarios.</aside>
                 </section>
             </section>
 
@@ -429,6 +446,7 @@ baseCache.get(2);  // Still there</code></pre>
                 <section>
                     <h2>Eviction Policies</h2>
                     <p class="subtitle">Memory Management Strategies</p>
+                    <aside class="notes">Eviction policies manage memory by removing entries from the on-heap cache when it gets too full. This is fundamentally different from expiry which removes entries based on time. Students often confuse the two, so the comparison on the next slide is critical. Eviction is about memory management, expiry is about data freshness.</aside>
                 </section>
 
                 <section>
@@ -460,6 +478,7 @@ baseCache.get(2);  // Still there</code></pre>
                             <td>No</td>
                         </tr>
                     </table>
+                    <aside class="notes">This is the most important distinction students need to understand. Eviction moves entries from on-heap to off-heap storage, while expiry completely removes entries. Evicted data is still accessible (just slower), while expired data is gone forever. Eviction is triggered by memory pressure, expiry by time elapsed. Both can be used together on the same cache for comprehensive data management.</aside>
                 </section>
 
                 <section>
@@ -485,6 +504,7 @@ IgniteCache&lt;Integer, String&gt; cache = ignite.getOrCreateCache(cfg);
 for (int i = 0; i &lt; 200; i++) {
     cache.put(i, "Value-" + i);
 }</code></pre>
+                    <aside class="notes">LRU eviction keeps the most recently used entries on heap and evicts the least recently used. The setOnheapCacheEnabled(true) call is required to enable on-heap caching which is where eviction operates. The maxSize of 100 means at most 100 entries stay on heap. When the 101st entry is added, the least recently accessed entry is evicted to off-heap. In the lab, students will verify this behavior by checking cache sizes.</aside>
                 </section>
 
                 <section>
@@ -504,6 +524,7 @@ policy.setMaxSize(1000);
 cfg.setEvictionPolicyFactory(() -> policy);
 
 IgniteCache&lt;Integer, String&gt; cache = ignite.getOrCreateCache(cfg);</code></pre>
+                    <aside class="notes">FIFO eviction is simpler than LRU: entries are evicted in the order they were inserted regardless of access patterns. This is useful when all entries have equal importance and you just need to bound memory usage. FIFO has slightly less overhead than LRU because it does not need to track access times. Choose FIFO when access patterns are unpredictable or uniform.</aside>
                 </section>
 
                 <section>
@@ -520,6 +541,7 @@ policy.setMaxMemorySize(100_000_000); // Max 100 MB
 policy.setBatchSize(10);            // Evict 10 at a time
 
 cfg.setEvictionPolicyFactory(() -> policy);</code></pre>
+                    <aside class="notes">Memory-based eviction allows you to set limits in bytes rather than entry count. This is more accurate when entries have variable sizes. The maxMemorySize of 100MB means the on-heap cache will not exceed 100MB. The batchSize parameter controls how many entries are evicted at once for better performance. Use memory-based eviction when entry sizes vary significantly.</aside>
                 </section>
 
                 <section>
@@ -540,6 +562,7 @@ cfg.setEvictionPolicyFactory(() -> policy);</code></pre>
             v
     [Move to Off-Heap]
 </code></pre>
+                    <aside class="notes">This flow diagram shows the eviction decision process. On each put, Ignite checks if the on-heap cache has reached its maximum size. If not, the entry is stored normally. If yes, the eviction policy selects which entry to remove from on-heap and the evicted entry moves to off-heap storage. The data is not lost, just stored in a slower tier. Reads of evicted data still work but incur an off-heap access penalty.</aside>
                 </section>
 
                 <section>
@@ -576,6 +599,7 @@ cfg.setEvictionPolicyFactory(() -> policy);</code></pre>
         }
     }
 }</code></pre>
+                    <aside class="notes">This complete example demonstrates the LRU eviction lifecycle. After inserting 200 entries with a max of 100 on-heap, the total cache size is still 200 but only 100 are on-heap. Then accessing entries 0-9 makes them recent and protects them from eviction. Students will implement this in the lab and observe how access patterns affect which entries stay on-heap.</aside>
                 </section>
             </section>
 
@@ -584,6 +608,7 @@ cfg.setEvictionPolicyFactory(() -> policy);</code></pre>
                 <section>
                     <h2>Cache Entry Processors</h2>
                     <p class="subtitle">Atomic Server-Side Operations</p>
+                    <aside class="notes">Entry processors are one of the most powerful features in Ignite but also the most underutilized. They move the computation to the data rather than moving data to the computation. This eliminates race conditions and reduces network traffic. Students who understand entry processors will write much more efficient and correct distributed code.</aside>
                 </section>
 
                 <section>
@@ -605,6 +630,7 @@ cache.invoke(key,
 // No race condition!</code></pre>
                         </div>
                     </div>
+                    <aside class="notes">This side-by-side comparison is the key motivation for entry processors. Without them, a read-modify-write requires three network calls and has a race condition window between get and put. With entry processors, the entire operation executes atomically on the server in a single network call. Ask students what happens if two threads execute the left-hand pattern simultaneously on the same key.</aside>
                 </section>
 
                 <section>
@@ -625,6 +651,7 @@ cache.invoke(key,
                             <li><strong>T</strong> - Return type</li>
                         </ul>
                     </div>
+                    <aside class="notes">The CacheEntryProcessor interface has three type parameters: K for key type, V for value type, and T for the return type. The process method receives a MutableEntry which allows both reading and writing the value atomically. The optional args parameter allows passing additional data without creating a new class. The Serializable requirement is because the processor is shipped to the server node where the data lives.</aside>
                 </section>
 
                 <section>
@@ -650,6 +677,7 @@ cache.invoke(key,
         return newValue;
     }
 }</code></pre>
+                    <aside class="notes">Walk through the IncrementProcessor code. The constructor takes the increment value. The process method reads the current value, handles null for missing entries, adds the increment, and atomically sets the new value. The return value lets the caller know the new count. This entire operation runs on the server node that owns the key, so there is no network round-trip for the read-modify-write cycle. Students will implement this exact pattern in the lab.</aside>
                 </section>
 
                 <section>
@@ -673,6 +701,7 @@ newCount = cache.invoke("pageViews",
     new IncrementProcessor(10));
 
 System.out.println("New count: " + newCount);  // 11</code></pre>
+                    <aside class="notes">This shows how to invoke the entry processor. The cache.invoke method takes a key and a processor instance. The processor is serialized, sent to the server node that owns the key, and executed there. The return value comes back to the client. Note that ATOMIC mode is sufficient for entry processors since they are inherently atomic -- you do not need TRANSACTIONAL mode for single-key atomic operations.</aside>
                 </section>
 
                 <section>
@@ -698,6 +727,7 @@ System.out.println("New count: " + newCount);  // 11</code></pre>
         return false;      // Insufficient funds
     }
 }</code></pre>
+                    <aside class="notes">The WithdrawProcessor demonstrates conditional logic inside an entry processor. It checks if the balance is sufficient before deducting the amount. The return value of Boolean indicates success or failure. This is a compare-and-swap pattern that is completely atomic -- no other transaction can modify the balance between the check and the deduction. This pattern is essential for financial applications.</aside>
                 </section>
 
                 <section>
@@ -717,6 +747,7 @@ success = cache.invoke("account:1234",
 
 System.out.println("Withdraw $100: " + success);    // false
 System.out.println("Balance: $" + cache.get("account:1234")); // 70</code></pre>
+                    <aside class="notes">The usage example shows two withdrawal attempts. The first succeeds (balance goes from 100 to 70), the second fails because 100 exceeds the remaining 70. The balance is unchanged after the failed withdrawal. This pattern eliminates the need for pessimistic locking in many scenarios because the entry processor provides atomicity without explicit transactions.</aside>
                 </section>
 
                 <section>
@@ -739,6 +770,7 @@ for (Map.Entry&lt;String, EntryProcessorResult&lt;Integer&gt;&gt; e :
         results.entrySet()) {
     System.out.println(e.getKey() + ": " + e.getValue().get());
 }</code></pre>
+                    <aside class="notes">invokeAll applies the same entry processor to multiple keys in parallel. Each key's processor executes atomically on the node that owns that key. The results map contains the return value for each key. Note that invokeAll does not guarantee all-or-nothing atomicity across keys -- each key is processed independently. For multi-key atomic operations, use transactions instead.</aside>
                 </section>
 
                 <section>
@@ -752,6 +784,7 @@ for (Map.Entry&lt;String, EntryProcessorResult&lt;Integer&gt;&gt; e :
                             <li><strong>Transactional support</strong> - Works with transactions</li>
                         </ul>
                     </div>
+                    <aside class="notes">Summarize the five benefits. Atomic operations eliminate race conditions that plague naive get-then-put patterns. Single network call reduces latency from 3 round-trips to 1. Server-side processing means less data crosses the network. Guaranteed consistency under contention means entry processors work correctly even with hundreds of concurrent clients. They also integrate with transactions for multi-key atomicity.</aside>
                 </section>
             </section>
 
@@ -760,6 +793,7 @@ for (Map.Entry&lt;String, EntryProcessorResult&lt;Integer&gt;&gt; e :
                 <section>
                     <h2>Cache Events</h2>
                     <p class="subtitle">Monitoring Cache Activity</p>
+                    <aside class="notes">Cache events provide a way to react to changes in the cache. They are useful for audit logging, monitoring, and triggering external processes. Events are disabled by default for performance so they must be explicitly enabled. This section covers the event types, how to register listeners, and practical use cases.</aside>
                 </section>
 
                 <section>
@@ -791,6 +825,7 @@ for (Map.Entry&lt;String, EntryProcessorResult&lt;Integer&gt;&gt; e :
                             <td>Entry expired</td>
                         </tr>
                     </table>
+                    <aside class="notes">The four main event types correspond to the basic cache operations. PUT fires on both create and update. READ fires on get. REMOVED fires on explicit delete. EXPIRED fires when an entry is removed by an expiry policy. There are additional event types for eviction, rebalancing, and other internal operations but these four cover most monitoring needs.</aside>
                 </section>
 
                 <section>
@@ -812,6 +847,7 @@ cfg.setIncludeEventTypes(
                     <div class="warning-box">
                         <strong>Note:</strong> Events are disabled by default for performance. Enable only what you need.
                     </div>
+                    <aside class="notes">There are two ways to enable events: at runtime via enableLocal or at configuration time via setIncludeEventTypes. The runtime approach is more flexible but must be called on each node. The configuration approach ensures events are enabled from startup. The warning is important: enabling events has a measurable performance impact, especially READ events on high-throughput caches. Only enable the specific event types you need.</aside>
                 </section>
 
                 <section>
@@ -830,6 +866,7 @@ cfg.setIncludeEventTypes(
 ignite.events().localListen(listener,
     EventType.EVT_CACHE_OBJECT_PUT,
     EventType.EVT_CACHE_OBJECT_REMOVED);</code></pre>
+                    <aside class="notes">The listener is an IgnitePredicate that receives CacheEvent objects. The event provides the cache name, key, old value, new value, and the node where the event occurred. Returning true means continue listening; returning false unregisters the listener. The localListen method only receives events from the local node. For cluster-wide events, use remoteListen instead.</aside>
                 </section>
 
                 <section>
@@ -863,6 +900,7 @@ ignite.events().localListen(listener,
         }
     }
 }</code></pre>
+                    <aside class="notes">This complete example demonstrates the full lifecycle: enable events, register a listener, and trigger events through cache operations. The put operation fires PUT events, and the remove fires a REMOVED event. Students will run this in the lab and see the events printed in real-time. Common issue: if no events appear, verify that enableLocal was called before the listener was registered.</aside>
                 </section>
 
                 <section>
@@ -874,6 +912,7 @@ ignite.events().localListen(listener,
                         <li><strong>Replication</strong> - Sync to external systems</li>
                         <li><strong>Alerting</strong> - Notify on specific conditions</li>
                     </ul>
+                    <aside class="notes">Walk through each use case. Audit logging captures all data changes for compliance. Cache statistics can be computed from READ events to calculate hit/miss ratios. Workflow triggers start downstream processes when specific data changes. Replication to external systems like Elasticsearch or Kafka is a common integration pattern. Alerting can notify operations teams when specific conditions occur in the cache.</aside>
                 </section>
 
                 <section>
@@ -890,6 +929,7 @@ ignite.events().localListen(listener,
 
 // Later: unregister when done
 ignite.events().stopLocalListen(listener);</code></pre>
+                    <aside class="notes">Proper cleanup of event listeners is important to prevent memory leaks. Keep a reference to the listener so you can call stopLocalListen later. In production applications, register listeners during initialization and unregister them during shutdown. If you forget to unregister, the listener continues receiving events and consuming resources even if the processing code is no longer relevant.</aside>
                 </section>
             </section>
 
@@ -898,6 +938,7 @@ ignite.events().stopLocalListen(listener);</code></pre>
                 <section>
                     <h2>Continuous Queries</h2>
                     <p class="subtitle">Real-Time Notifications</p>
+                    <aside class="notes">Continuous queries are the most sophisticated notification mechanism in Ignite. Unlike cache events which fire on every operation, continuous queries filter on the server side and only push matching changes to the client. This makes them much more efficient for scenarios where you only care about specific data changes like stock price alerts or threshold monitoring.</aside>
                 </section>
 
                 <section>
@@ -911,6 +952,7 @@ ignite.events().stopLocalListen(listener);</code></pre>
                         <li>Low latency updates</li>
                         <li>Reduced network traffic</li>
                     </ul>
+                    <aside class="notes">The four properties of continuous queries make them ideal for real-time applications. Server-side filtering means only relevant changes cross the network, reducing bandwidth. Push-based means the client receives updates immediately without polling. Low latency is achieved because the filter executes on the same node as the data. Reduced network traffic is the key advantage over polling or client-side event filtering.</aside>
                 </section>
 
                 <section>
@@ -935,6 +977,7 @@ ignite.events().stopLocalListen(listener);</code></pre>
                      v
           [Process notification]
 </code></pre>
+                    <aside class="notes">This diagram shows the two components of a continuous query. The remote filter runs on the server where the cache entry lives. It evaluates each change and decides whether to forward it. Only matching changes are sent to the client where the local listener processes them. Non-matching changes are discarded on the server with no network cost. This architecture is key to efficiency.</aside>
                 </section>
 
                 <section>
@@ -958,6 +1001,7 @@ query.setRemoteFilterFactory(() ->
 // Start the continuous query
 QueryCursor&lt;Cache.Entry&lt;Integer, Double&gt;&gt; cursor =
     cache.query(query);</code></pre>
+                    <aside class="notes">This code shows the three components: the local listener that processes matching events on the client, the remote filter factory that creates the server-side filter, and the query execution. The remote filter checks if the value exceeds 100.0 and only matching events reach the local listener. Note that the cursor returned by cache.query must be kept open for the continuous query to remain active. Closing it stops the query.</aside>
                 </section>
 
                 <section>
@@ -985,6 +1029,7 @@ try (QueryCursor&lt;?&gt; cursor = cache.query(alertQuery)) {
     cache.put("GOOGL", 155.0);  // ALERT!
     cache.put("AAPL", 160.0);   // ALERT!
 }</code></pre>
+                    <aside class="notes">The stock price alert example is a realistic use case that students can relate to. The filter checks if any stock price exceeds 150. AAPL at 145 does not trigger an alert, but GOOGL at 155 does. When AAPL is updated to 160, it also triggers. The try-with-resources on the cursor ensures the continuous query is properly closed when done. This pattern is used in financial systems, IoT monitoring, and real-time dashboards.</aside>
                 </section>
 
                 <section>
@@ -1018,6 +1063,7 @@ try (QueryCursor&lt;?&gt; cursor = cache.query(alertQuery)) {
         }
     }
 }</code></pre>
+                    <aside class="notes">This complete example demonstrates the full continuous query workflow in a runnable main method. The Thread.sleep at the end is necessary to give time for asynchronous notifications to be processed. In a real application, the continuous query would run indefinitely. The three cache.put calls show different scenarios: below threshold (no notification), above threshold (notification), and crossing threshold (notification).</aside>
                 </section>
 
                 <section>
@@ -1043,6 +1089,7 @@ try (QueryCursor&lt;Cache.Entry&lt;String, Double&gt;&gt; cursor =
 
     // Then: receive real-time updates via listener
 }</code></pre>
+                    <aside class="notes">The initial query option solves a common race condition: you want to get all existing matching entries AND subscribe to future changes. Without it, you would query first and then start the continuous query, potentially missing changes that happen between the two calls. With setInitialQuery, the cursor first returns existing matches, then the listener receives future changes. This ensures no data is missed during setup.</aside>
                 </section>
 
                 <section>
@@ -1068,6 +1115,7 @@ try (QueryCursor&lt;Cache.Entry&lt;String, Double&gt;&gt; cursor =
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">The best-for and consider-carefully columns help students decide when continuous queries are appropriate. Real-time dashboards and alert systems are the primary use cases. For high-frequency updates, the notification overhead may become significant. For many active queries on the same cache, each one adds server-side processing overhead. Complex filter logic should be kept simple for performance.</aside>
                 </section>
 
                 <section>
@@ -1099,6 +1147,7 @@ try (QueryCursor&lt;Cache.Entry&lt;String, Double&gt;&gt; cursor =
                             <td>Audit/monitoring</td>
                         </tr>
                     </table>
+                    <aside class="notes">This comparison helps students choose between continuous queries and cache events. The key difference is filtering location: continuous queries filter on the server and are more efficient, while cache events filter on the client and are simpler to set up. Continuous queries support initial data retrieval while events do not. Use continuous queries for targeted real-time updates and events for broad monitoring and auditing.</aside>
                 </section>
             </section>
 
@@ -1107,6 +1156,7 @@ try (QueryCursor&lt;Cache.Entry&lt;String, Double&gt;&gt; cursor =
                 <section>
                     <h2>Real-Time Notifications</h2>
                     <p class="subtitle">Choosing the Right Approach</p>
+                    <aside class="notes">This section ties together all the notification approaches covered in the module. Students should understand when to use each one and be able to justify their choice based on the requirements. The decision flow on the next slide provides a quick reference for making this choice.</aside>
                 </section>
 
                 <section>
@@ -1133,6 +1183,7 @@ try (QueryCursor&lt;Cache.Entry&lt;String, Double&gt;&gt; cursor =
                             <td>Topic-based</td>
                         </tr>
                     </table>
+                    <aside class="notes">The three notification methods serve different purposes. Cache events are for broad monitoring of all cache activity. Continuous queries are for targeted real-time updates with server-side filtering. Messaging via pub/sub is for custom notifications that are not tied to specific cache operations. Most applications use continuous queries for real-time features and cache events for audit logging.</aside>
                 </section>
 
                 <section>
@@ -1156,6 +1207,7 @@ Yes       No
 +--> Continuous Query
      (filtered updates, efficient)
 </code></pre>
+                    <aside class="notes">This decision tree simplifies the choice. First ask if you need real-time updates -- if not, polling may be sufficient and simpler. If yes, ask if you need server-side filtering. If no, cache events with client-side filtering work fine. If yes, continuous queries are the right choice. Walk through this flow with a few example scenarios to cement the decision process.</aside>
                 </section>
 
                 <section>
@@ -1170,6 +1222,7 @@ Yes       No
                             <li>Always close query cursors when done</li>
                         </ul>
                     </div>
+                    <aside class="notes">These performance considerations are critical for production. Each continuous query and event listener adds overhead to every cache operation on the relevant nodes. Remote filters reduce network traffic but still have CPU cost on the server. Closing query cursors when done is essential to prevent resource leaks. In production, limit the number of active continuous queries and keep filters simple and fast.</aside>
                 </section>
             </section>
 
@@ -1214,6 +1267,7 @@ Yes       No
                             <td>Push notifications</td>
                         </tr>
                     </table>
+                    <aside class="notes">This summary table is the key reference for the entire module. Each pattern addresses a specific production need. Review each row and connect it to what was covered in the slides. Near caches reduce latency, expiry manages freshness, eviction manages memory, entry processors provide atomicity, events enable monitoring, and continuous queries deliver push notifications. Students should bookmark this table.</aside>
                 </section>
 
                 <section>
@@ -1229,6 +1283,7 @@ Yes       No
                         </ol>
                     </div>
                     <p>Duration: 60 minutes</p>
+                    <aside class="notes">The lab has six exercises corresponding to the six topics. Each exercise builds on the code shown in the slides. Suggest students work through them in order since later exercises build on earlier configurations. The entry processor and continuous query exercises are the most challenging so allow extra time. Circulate and help students with common issues like forgetting to enable on-heap caching for eviction or not enabling events.</aside>
                 </section>
 
                 <section>
@@ -1241,6 +1296,7 @@ Yes       No
                         <li><span class="accent">Cache events</span> provide monitoring and audit capabilities</li>
                         <li><span class="accent">Continuous queries</span> deliver efficient real-time notifications</li>
                     </ul>
+                    <aside class="notes">Reinforce each takeaway. The most important distinction students should remember is eviction versus expiry since they are commonly confused. Entry processors should be the default approach for any read-modify-write operation. Continuous queries should be used instead of polling for real-time features. These patterns are the building blocks for production-quality Ignite applications.</aside>
                 </section>
 
                 <section>
@@ -1253,11 +1309,13 @@ Yes       No
                         <li>MapReduce Operations</li>
                         <li>Parallel Processing</li>
                     </ul>
+                    <aside class="notes">Preview Module 09 on Distributed Computing. This builds on the entry processor concept by extending it to full compute grid capabilities. Affinity-aware computing sends jobs to the nodes where the data lives, which is the distributed computing equivalent of entry processors. MapReduce operations enable large-scale parallel processing across the cluster.</aside>
                 </section>
 
                 <section>
                     <h1>Questions?</h1>
                     <p class="subtitle">Module 08: Advanced Caching Patterns</p>
+                    <aside class="notes">Open the floor for questions. Common questions include: Can near caches be used with entry processors? How do continuous queries interact with transactions? What is the overhead of entry processors versus transactions? If no questions, direct students to the lab and circulate to assist. Remind them to start with the near cache exercise as it is the simplest warmup.</aside>
                 </section>
             </section>
         </div>

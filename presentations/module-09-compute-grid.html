@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/intellij-light.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <style>
         .reveal .slides section { overflow: hidden; }
         .reveal section { max-height: 100%; }
@@ -57,12 +57,12 @@
         }
         .reveal pre {
             width: 100%;
-            font-size: 0.5em;
+            font-size: 0.55em;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         .reveal pre code {
             max-height: 500px;
-            padding: 15px;
+            background: #f6f8fa; color: #24292e; padding: 1em;
         }
         .reveal ul, .reveal ol {
             display: block;
@@ -146,6 +146,7 @@
                 <h2>Compute Grid</h2>
                 <p>Apache Ignite Distributed Computing</p>
                 <p class="small-text">Duration: 45 minutes</p>
+                <aside class="notes">Welcome to the Compute Grid module. This is one of Ignite's most powerful features, allowing you to run computations directly on the cluster nodes where data resides. Emphasize that this module shifts thinking from "move data to code" to "move code to data." Plan for about 45 minutes of lecture plus lab time.</aside>
             </section>
 
             <!-- Agenda -->
@@ -161,6 +162,7 @@
                     <li>Load Balancing</li>
                     <li>Async Execution</li>
                 </ul>
+                <aside class="notes">Walk through the agenda so students know what to expect. The module builds progressively from simple task execution to more advanced patterns like MapReduce and async. Affinity-aware computing is the key concept that ties compute and data grids together.</aside>
             </section>
 
             <!-- Section 1: Distributed Computing Concepts -->
@@ -168,6 +170,7 @@
                 <section>
                     <h2>Distributed Computing Concepts</h2>
                     <p class="accent">Harnessing the Power of the Cluster</p>
+                    <aside class="notes">This section introduces the fundamental idea behind compute grids. Ask students if they have experience with distributed computing frameworks like Hadoop MapReduce or Spark. Ignite's compute grid is similar in concept but tightly integrated with the in-memory data grid.</aside>
                 </section>
 
                 <section>
@@ -181,6 +184,7 @@
                         <li>Failover support</li>
                         <li>Parallel processing</li>
                     </ul>
+                    <aside class="notes">Stress that the compute grid lets you send code to execute where the data lives, rather than pulling data to a central location. This is the fundamental paradigm shift. The automatic load balancing and failover mean developers get distributed computing without managing the complexity themselves.</aside>
                 </section>
 
                 <section>
@@ -212,6 +216,7 @@
     +------------------+
                         </pre>
                     </div>
+                    <aside class="notes">Walk through this diagram step by step. The application submits a task, IgniteCompute acts as coordinator to split and distribute work across nodes, each node processes its portion, and results are aggregated back. Point out that this happens transparently to the developer.</aside>
                 </section>
 
                 <section>
@@ -234,6 +239,7 @@
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">Data locality is the biggest performance win. When you run computation on the same node that holds the data, you eliminate network transfer entirely. On the reliability side, if a node fails mid-computation, Ignite can automatically retry the task on another node without the application needing to handle it.</aside>
                 </section>
 
                 <section>
@@ -264,6 +270,7 @@
                             </tr>
                         </tbody>
                     </table>
+                    <aside class="notes">This comparison helps students understand when to use compute vs regular cache operations. The key insight is the "Data Flow" row: with cache ops, data travels over the network to the client; with compute, the code travels to where data already resides. Use compute when you need to process large amounts of data without transferring it all.</aside>
                 </section>
             </section>
 
@@ -272,6 +279,7 @@
                 <section>
                     <h2>IgniteCompute API</h2>
                     <p class="accent">Your Gateway to Distributed Execution</p>
+                    <aside class="notes">Now we dive into the actual API. IgniteCompute is the main entry point for all distributed computation. Make sure students understand they can scope compute operations to specific subsets of the cluster using cluster groups.</aside>
                 </section>
 
                 <section>
@@ -288,6 +296,7 @@ IgniteCompute serverCompute = ignite.compute(serverNodes);
 ClusterGroup remoteNodes = ignite.cluster().forRemotes();
 IgniteCompute remoteCompute = ignite.compute(remoteNodes);
                     </code></pre>
+                    <aside class="notes">Show that ignite.compute() targets all nodes by default. In production, you almost always want to target server nodes only, since client nodes are typically lightweight and not meant for heavy computation. The forRemotes() variant excludes the local node, which is useful when you want to offload work.</aside>
                 </section>
 
                 <section>
@@ -326,6 +335,7 @@ IgniteCompute remoteCompute = ignite.compute(remoteNodes);
                             </tr>
                         </tbody>
                     </table>
+                    <aside class="notes">This table summarizes the six primary methods. Point out the pattern: run/call for single tasks, broadcast for all nodes, execute for MapReduce, and affinity variants for data-colocated execution. Each has both synchronous and async versions (with Async suffix).</aside>
                 </section>
 
                 <section>
@@ -346,6 +356,7 @@ ClusterGroup oldest = ignite.cluster().forOldest();
 // Execute on random node
 ClusterGroup random = ignite.cluster().forRandom();
                     </code></pre>
+                    <aside class="notes">Cluster groups give you fine-grained control over where tasks execute. The forAttribute approach is particularly useful in production where you tag nodes with capabilities like "high memory" or "GPU enabled." The oldest node is often used as a singleton coordinator since it is the most stable node in the topology.</aside>
                 </section>
             </section>
 
@@ -354,6 +365,7 @@ ClusterGroup random = ignite.cluster().forRandom();
                 <section>
                     <h2>Runnable and Callable Tasks</h2>
                     <p class="accent">Simple Task Execution</p>
+                    <aside class="notes">These are the simplest forms of distributed compute. If students are familiar with Java's Runnable and Callable interfaces, they will feel right at home. Ignite's versions are serializable so they can be sent over the network to remote nodes.</aside>
                 </section>
 
                 <section>
@@ -377,6 +389,7 @@ compute.run(new IgniteRunnable() {
 });
                     </code></pre>
                     <p class="small-text">No return value - use for side effects</p>
+                    <aside class="notes">IgniteRunnable is the simplest compute primitive. The lambda form is concise but the explicit class form is useful when you need resource injection. Note that run() is synchronous and blocks until the remote node completes execution. The output appears on the remote node's console, not the caller's.</aside>
                 </section>
 
                 <section>
@@ -397,6 +410,7 @@ Integer square = compute.call(() -> {
     return value * value;  // Returns 100
 });
                     </code></pre>
+                    <aside class="notes">IgniteCallable is like Runnable but returns a value. The result is serialized on the remote node and sent back over the network. Make sure students understand the serialization requirement: both the callable and its return type must be serializable. This is a common source of errors.</aside>
                 </section>
 
                 <section>
@@ -412,6 +426,7 @@ for (int i = 1; i &lt;= 5; i++) {
 Collection&lt;Integer&gt; results = compute.call(calls);
 // Results: [1, 4, 9, 16, 25]
                     </code></pre>
+                    <aside class="notes">When you pass a collection of callables, Ignite distributes them across the cluster using the configured load balancer. Each callable runs on a different node if possible. The results are collected and returned in order. This is an easy way to parallelize independent computations.</aside>
                 </section>
 
                 <section>
@@ -428,6 +443,7 @@ compute.run(new IgniteRunnable() {
     }
 });
                     </code></pre>
+                    <aside class="notes">Resource injection is critical for accessing the local Ignite instance inside a compute task. The @IgniteInstanceResource annotation tells Ignite to inject the local Ignite instance before the task executes. Without this, you would need to call Ignition.ignite() which is less clean. This pattern is especially important for accessing caches and services from within tasks.</aside>
                 </section>
             </section>
 
@@ -436,6 +452,7 @@ compute.run(new IgniteRunnable() {
                 <section>
                     <h2>Broadcast Operations</h2>
                     <p class="accent">Execute on All Nodes</p>
+                    <aside class="notes">Broadcast is used when you need every node in the cluster to execute the same task. This is fundamentally different from run/call which target a single node. Common real-world uses include cache warming, configuration updates, and cluster-wide diagnostics.</aside>
                 </section>
 
                 <section>
@@ -456,6 +473,7 @@ ignite.compute(servers).broadcast(() -> {
     System.out.println("Running on server node");
 });
                     </code></pre>
+                    <aside class="notes">The first example broadcasts to every node including clients. The second example scopes the broadcast to server nodes only using a cluster group. In production you typically broadcast only to servers. The call blocks until all nodes have completed execution.</aside>
                 </section>
 
                 <section>
@@ -479,6 +497,7 @@ for (NodeInfo info : nodeInfos) {
         ", CPUs: " + info.getCpus());
 }
                     </code></pre>
+                    <aside class="notes">This pattern is extremely useful for building monitoring dashboards or health checks. Each node reports its own local information, and the caller collects all responses. The NodeInfo class must be serializable. This is a great way to build cluster-wide diagnostic tools.</aside>
                 </section>
 
                 <section>
@@ -505,6 +524,7 @@ compute.broadcast(() -> {
                             </code></pre>
                         </div>
                     </div>
+                    <aside class="notes">Cache warm-up via broadcast ensures every node loads its local partition data from the persistent store into memory. Configuration refresh is useful when you change external configs and need all nodes to re-read them. Log level changes via broadcast let you dynamically adjust logging across the entire cluster without restarts.</aside>
                 </section>
             </section>
 
@@ -513,6 +533,7 @@ compute.broadcast(() -> {
                 <section>
                     <h2>Affinity-Aware Computing</h2>
                     <p class="accent">Colocate Compute with Data</p>
+                    <aside class="notes">This is arguably the most important concept in this module. Affinity-aware computing is what makes Ignite's compute grid truly powerful compared to generic distributed computing frameworks. The key idea is sending computation to the node that already owns the data, avoiding network transfers entirely.</aside>
                 </section>
 
                 <section>
@@ -538,6 +559,7 @@ Without Affinity:                    With Affinity:
     NETWORK OVERHEAD!                    NO DATA TRANSFER!
                         </pre>
                     </div>
+                    <aside class="notes">This diagram is the key visual for this concept. On the left, the task lands on a node that does not own the data, so a network fetch is required. On the right, using affinity routing, the task is sent directly to the node that owns the data, so all access is local. In a large cluster with lots of data, this difference can be dramatic -- often 2 to 10 times faster.</aside>
                 </section>
 
                 <section>
@@ -561,6 +583,7 @@ ignite.compute().affinityRun("dataCache", 42, () -> {
     }
 });
                     </code></pre>
+                    <aside class="notes">The three arguments are: cache name, key, and the runnable. Ignite uses the cache name and key to determine which node is the primary owner, then sends the task there. Inside the task, localPeek() reads directly from local memory with zero network overhead. Note that cache.put() still goes through the normal path to ensure consistency with backup nodes.</aside>
                 </section>
 
                 <section>
@@ -586,6 +609,7 @@ Integer result = ignite.compute().affinityCall(
     }
 );
                     </code></pre>
+                    <aside class="notes">This is the callable variant that returns a result. The explicit class form is shown here to demonstrate @IgniteInstanceResource injection. The result is computed locally and then sent back to the caller. This pattern is ideal for read-heavy operations where you need to process data and return a derived value.</aside>
                 </section>
 
                 <section>
@@ -613,6 +637,7 @@ long affinityTime = System.currentTimeMillis() - start;
 
 // Affinity is typically 2-10x faster!
                     </code></pre>
+                    <aside class="notes">This benchmark is something students will run in the lab. The non-affinity version has two potential network hops: one to send the task and one for cache.get() to fetch the data. The affinity version has only one hop to send the task, and the data access is local. With 1000 iterations, the difference becomes very visible. Results vary by network latency and cluster size.</aside>
                 </section>
 
                 <section>
@@ -628,6 +653,7 @@ long affinityTime = System.currentTimeMillis() - start;
                     <div class="warning-box">
                         <strong>Note:</strong> Affinity compute only helps when processing data. For pure computation, use regular compute.
                     </div>
+                    <aside class="notes">Emphasize the warning: affinity routing adds overhead to determine the target node. If your task does not actually access cache data, regular compute with round-robin is simpler and equally fast. Also mention affinity colocation keys, which let you group related entries on the same node so a single affinity task can access multiple related records locally.</aside>
                 </section>
             </section>
 
@@ -636,6 +662,7 @@ long affinityTime = System.currentTimeMillis() - start;
                 <section>
                     <h2>MapReduce Pattern</h2>
                     <p class="accent">Distributed Data Processing</p>
+                    <aside class="notes">MapReduce is the most sophisticated compute pattern in Ignite. It gives you full control over how work is split (mapped) across nodes and how results are combined (reduced). This is Ignite's equivalent of Hadoop MapReduce but runs entirely in-memory.</aside>
                 </section>
 
                 <section>
@@ -676,6 +703,7 @@ long affinityTime = System.currentTimeMillis() - start;
          +-------------+
                         </pre>
                     </div>
+                    <aside class="notes">The MapReduce flow is: input data is split, map phase processes each split on its respective node producing partial results, and the reduce phase aggregates all partial results into the final answer. In Ignite, the map runs on the coordinator node to create the job assignments, the jobs execute on worker nodes, and reduce runs back on the coordinator.</aside>
                 </section>
 
                 <section>
@@ -702,6 +730,7 @@ public class WordCountTask
     }
 }
                     </code></pre>
+                    <aside class="notes">ComputeTaskAdapter is the base class for MapReduce tasks. The two type parameters are the input argument type and the final result type. The map method receives the list of available nodes and the input argument, and returns a mapping of which job runs on which node. The reduce method receives all job results and produces the final output.</aside>
                 </section>
 
                 <section>
@@ -729,6 +758,7 @@ public Map&lt;ClusterNode, ComputeJob&gt; map(
     return map;
 }
                     </code></pre>
+                    <aside class="notes">The map phase uses affinity to ensure each job runs on the node that owns the data. The ScanQuery iterates all cache entries, and mapKeyToNode determines the primary owner. Note that if multiple entries map to the same node, only the last job assignment is kept in this simplified example. In production, you would batch entries per node.</aside>
                 </section>
 
                 <section>
@@ -759,6 +789,7 @@ public class WordCountJob implements ComputeJob {
     public void cancel() { /* Handle cancellation */ }
 }
                     </code></pre>
+                    <aside class="notes">Each ComputeJob processes its portion of the data independently. The text field is passed during construction and serialized to the target node. The execute method returns partial results (word counts for this chunk). The cancel method should clean up resources if the task is cancelled. Keep jobs lightweight and focused on a single unit of work.</aside>
                 </section>
 
                 <section>
@@ -787,6 +818,7 @@ public Map&lt;String, Integer&gt; reduce(
     return totalCounts;  // Final aggregated result
 }
                     </code></pre>
+                    <aside class="notes">The reduce phase runs on the originating node after all jobs complete. It merges all partial word count maps into a single total. The merge method with Integer::sum is a clean way to combine counts. Note that result.getData() returns the object from the job's execute method. You should also check result.getException() for failed jobs.</aside>
                 </section>
 
                 <section>
@@ -811,6 +843,7 @@ wordCounts.entrySet().stream()
         System.out.println(e.getKey() + ": " + e.getValue()));
 // Output: hello: 3, world: 3, computing: 3, ignite: 2, ...
                     </code></pre>
+                    <aside class="notes">This ties together the complete MapReduce example. The execute method takes the task class and the argument (cache name). Ignite instantiates the task, calls map to create jobs, distributes them, waits for completion, then calls reduce. The sorted stream output shows the final aggregated word counts. Students will implement a similar example in the lab.</aside>
                 </section>
             </section>
 
@@ -819,6 +852,7 @@ wordCounts.entrySet().stream()
                 <section>
                     <h2>Load Balancing</h2>
                     <p class="accent">Distribute Work Efficiently</p>
+                    <aside class="notes">Load balancing determines how tasks are distributed across cluster nodes. Ignite provides several built-in strategies and also lets you implement custom ones. Good load balancing is crucial for maximizing cluster utilization and avoiding hotspots.</aside>
                 </section>
 
                 <section>
@@ -837,6 +871,7 @@ for (int i = 0; i < 10; i++) {
 }
 // Output: Tasks distributed to Node1, Node2, Node3, Node1, ...
                     </code></pre>
+                    <aside class="notes">Round-robin is simple and works well when all nodes have similar capacity and tasks have similar cost. The output shows tasks cycling through nodes sequentially. For heterogeneous clusters or variable task sizes, more sophisticated strategies may be needed.</aside>
                 </section>
 
                 <section>
@@ -871,6 +906,7 @@ for (int i = 0; i < 10; i++) {
                             </tr>
                         </tbody>
                     </table>
+                    <aside class="notes">Weighted balancing is good when nodes have different hardware specs. Adaptive balancing uses real-time CPU metrics to send tasks to the least loaded node, which handles variable task durations well. Custom SPI lets you implement any strategy, for example routing certain task types to specialized nodes.</aside>
                 </section>
 
                 <section>
@@ -895,6 +931,7 @@ adaptiveSpi.setLoadProbe(new AdaptiveCpuLoadProbe());
 
 cfg.setLoadBalancingSpi(adaptiveSpi);
                     </code></pre>
+                    <aside class="notes">The weighted example assigns higher weight to nodes with more memory, so they receive more tasks proportionally. The adaptive example uses CPU load as the probe, meaning tasks are routed to nodes with the lowest current CPU utilization. Both are configured via the SPI mechanism on IgniteConfiguration before starting the node.</aside>
                 </section>
 
                 <section>
@@ -919,6 +956,7 @@ compute.run(() -> {
                     <div class="concept-box">
                         <p>Failover ensures high availability - tasks are never lost!</p>
                     </div>
+                    <aside class="notes">AlwaysFailoverSpi retries failed tasks on another node up to the configured maximum attempts. This is critical for long-running computations where a node crash would otherwise lose work. Be aware that tasks must be idempotent for failover to work correctly, since a task may have partially completed before the failure.</aside>
                 </section>
             </section>
 
@@ -927,6 +965,7 @@ compute.run(() -> {
                 <section>
                     <h2>Async Execution</h2>
                     <p class="accent">Non-Blocking Distributed Computing</p>
+                    <aside class="notes">All the compute methods we have seen so far are synchronous. The async variants return immediately with a future object, letting you continue other work while the task executes remotely. This is essential for high-throughput applications and complex workflows.</aside>
                 </section>
 
                 <section>
@@ -954,6 +993,7 @@ doOtherWork();
 runFuture.get();  // Wait for completion
 String result = callFuture.get();  // Get result
                     </code></pre>
+                    <aside class="notes">The pattern is simple: append Async to any compute method to get the non-blocking version. The returned IgniteFuture lets you check completion status, get results, or register callbacks. The get() call blocks until the result is available. Submit multiple async tasks to achieve parallelism without managing threads yourself.</aside>
                 </section>
 
                 <section>
@@ -977,6 +1017,7 @@ try {
     future.cancel();  // Cancel the task
 }
                     </code></pre>
+                    <aside class="notes">Timeouts prevent your application from blocking indefinitely on slow or stuck tasks. The get() with timeout throws IgniteFutureTimeoutException if the task does not complete in time. Always cancel the future after a timeout to free cluster resources. Consider what timeout values make sense for your use case and set them accordingly.</aside>
                 </section>
 
                 <section>
@@ -1003,6 +1044,7 @@ future.listen(f -> {
 // Continue immediately - callback will be invoked later
 System.out.println("Callback registered, continuing...");
                     </code></pre>
+                    <aside class="notes">The listen method registers a callback that fires when the task completes, either successfully or with an error. This is the event-driven approach that avoids blocking entirely. The callback runs on the Ignite system thread pool, so keep it lightweight. For heavy post-processing, submit another async task from within the callback.</aside>
                 </section>
 
                 <section>
@@ -1028,6 +1070,7 @@ IgniteFuture&lt;String&gt; future = compute.callAsync(() -> {
 // Get with timeout
 String result = future.get(2, TimeUnit.SECONDS);
                     </code></pre>
+                    <aside class="notes">There are two ways to set timeouts. The withTimeout method sets a timeout on the synchronous call itself, so it throws if the remote task exceeds the limit. The async approach with future.get(timeout) gives you more control since you can choose to wait longer or cancel. The withTimeout approach is simpler but less flexible.</aside>
                 </section>
 
                 <section>
@@ -1056,6 +1099,7 @@ for (IgniteFuture&lt;Long&gt; future : futures) {
 }
 System.out.println("All tasks completed: " + results.size());
                     </code></pre>
+                    <aside class="notes">This pattern submits all tasks first without blocking, then collects results. All 10 tasks run in parallel across the cluster. This is much faster than submitting them synchronously one at a time. The load balancer distributes the tasks across available nodes. For very large numbers of tasks, consider batching to avoid overwhelming the cluster.</aside>
                 </section>
 
                 <section>
@@ -1069,6 +1113,7 @@ System.out.println("All tasks completed: " + results.size());
                             <li>Consider cancellation scenarios</li>
                         </ul>
                     </div>
+                    <aside class="notes">Recap the key async principles. Always set timeouts to prevent resource leaks from tasks that never complete. Monitor the public thread pool size to avoid exhausting it with too many concurrent tasks. Cancellation is important for user-facing applications where requests may be abandoned. Test your error handling paths thoroughly.</aside>
                 </section>
             </section>
 
@@ -1077,6 +1122,7 @@ System.out.println("All tasks completed: " + results.size());
                 <section>
                     <h2>Advanced Compute Patterns</h2>
                     <p class="accent">Production-Ready Techniques</p>
+                    <aside class="notes">This section covers patterns you will use in real production deployments. Targeted execution and cluster group chaining give you precise control over where tasks run, which is essential in multi-tenant or geographically distributed clusters.</aside>
                 </section>
 
                 <section>
@@ -1098,6 +1144,7 @@ ClusterGroup oldest = ignite.cluster().forOldest();
 // Execute on random node
 ClusterGroup random = ignite.cluster().forRandom();
                     </code></pre>
+                    <aside class="notes">Node attributes are set in IgniteConfiguration and can represent any capability or characteristic. The oldest node is stable because it has been running the longest without crashing. Use forRandom() when you want simple load distribution without round-robin state tracking. These targeting mechanisms can be combined as shown in the next slide.</aside>
                 </section>
 
                 <section>
@@ -1117,6 +1164,7 @@ ignite.compute(targetNodes).broadcast(() -> {
     System.out.println("Executing on target node");
 });
                     </code></pre>
+                    <aside class="notes">Chaining cluster group filters creates increasingly specific node selections. This example targets only server nodes in the US West region that have less than 80% heap utilization. The forPredicate method uses real-time node metrics for dynamic filtering. This is powerful for geographic routing, resource-aware scheduling, and avoiding overloaded nodes.</aside>
                 </section>
 
                 <section>
@@ -1143,6 +1191,7 @@ ignite.compute(targetNodes).broadcast(() -> {
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">Review each point briefly. Large task payloads slow serialization; keep data in the cache and reference it by key instead. Blocking I/O ties up the compute thread pool. Infinite loops can make a task unfailable. Storing mutable state in task objects causes concurrency bugs since tasks may be reused or serialized. These are the most common mistakes in production compute grid usage.</aside>
                 </section>
             </section>
 
@@ -1151,6 +1200,7 @@ ignite.compute(targetNodes).broadcast(() -> {
                 <section>
                     <h2>Lab 09: Compute Grid</h2>
                     <p class="accent">Hands-on Exercises</p>
+                    <aside class="notes">Now transition to the lab overview. Students will implement the concepts covered in this module hands-on. The lab is divided into three parts of increasing complexity. Make sure everyone has their Ignite cluster running before starting.</aside>
                 </section>
 
                 <section>
@@ -1182,6 +1232,7 @@ ignite.compute(targetNodes).broadcast(() -> {
                             <li>Async execution</li>
                         </ul>
                     </div>
+                    <aside class="notes">Part 1 covers the basics and should be straightforward. Part 2 is where students see the real performance benefit of affinity computing. Part 3 requires implementing the full MapReduce pattern, which is the most challenging exercise. Encourage students to refer back to the slides for the code structure. Circulate and help with common issues like serialization errors.</aside>
                 </section>
 
                 <section>
@@ -1195,6 +1246,7 @@ ignite.compute(targetNodes).broadcast(() -> {
                         <li>Async execution works properly</li>
                         <li>Timeout handling functions correctly</li>
                     </ul>
+                    <aside class="notes">Use this checklist to verify student progress. The affinity performance gain should be clearly visible in the timing output. For MapReduce, verify the word counts match the expected values. Async timeout handling should demonstrate both the timeout exception and successful cancellation. Help students who get stuck on serialization issues, which are the most common problem.</aside>
                 </section>
             </section>
 
@@ -1202,6 +1254,7 @@ ignite.compute(targetNodes).broadcast(() -> {
             <section>
                 <section>
                     <h2>Module Summary</h2>
+                    <aside class="notes">Time to wrap up the module. Review the key concepts and make sure students understand when to use each compute pattern. The most important takeaway is the shift from moving data to moving computation.</aside>
                 </section>
 
                 <section>
@@ -1244,6 +1297,7 @@ ignite.compute(targetNodes).broadcast(() -> {
                             </tr>
                         </tbody>
                     </table>
+                    <aside class="notes">Go through each row briefly. IgniteCompute is the entry point. Runnable/Callable are the simplest patterns. Broadcast is for cluster-wide operations. Affinity is the performance optimization for data-bound tasks. MapReduce handles complex multi-step aggregations. Load balancing and async are cross-cutting concerns that apply to all patterns.</aside>
                 </section>
 
                 <section>
@@ -1257,6 +1311,7 @@ ignite.compute(targetNodes).broadcast(() -> {
                             <li><strong>Async</strong> - Long-running operations</li>
                         </ul>
                     </div>
+                    <aside class="notes">This is a quick decision guide. If you need to run something once, use run/call. If every node needs to do it, use broadcast. If you are processing specific cached data, use affinity. If you need to split-process-aggregate, use MapReduce. If any of these would block too long, add async. Students should bookmark this slide as a reference.</aside>
                 </section>
 
                 <section>
@@ -1271,12 +1326,14 @@ ignite.compute(targetNodes).broadcast(() -> {
                             <li>Client vs server nodes</li>
                         </ul>
                     </div>
+                    <aside class="notes">The next module covers how Ignite integrates with the broader application ecosystem. After learning the core data and compute grid features, students will see how to connect Ignite to REST APIs, Spring applications, Kafka streams, and use it as a Hibernate second-level cache. This brings everything together for real-world application architectures.</aside>
                 </section>
 
                 <section>
                     <h2>Questions?</h2>
                     <p class="accent">Module 09: Compute Grid</p>
                     <p>Let's discuss distributed computing concepts!</p>
+                    <aside class="notes">Open the floor for questions. Common questions include: how does serialization work for lambdas, what happens if a task throws an exception, and how to debug compute tasks running on remote nodes. If time permits, demonstrate the Ignite Visor or monitoring tools to show compute task execution in real time.</aside>
                 </section>
             </section>
         </div>

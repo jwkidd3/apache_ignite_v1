@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
 
     <!-- Highlight.js for code syntax highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
 
     <style>
         .reveal .slides section { overflow: hidden; }
@@ -169,6 +169,7 @@
                 <p class="subtitle">Master the fundamentals of data operations</p>
                 <p><span class="duration">Duration: 60 minutes</span></p>
                 <p class="small-text">Module 3</p>
+                <aside class="notes">This module is where students start writing code. After the conceptual foundation of Modules 1 and 2, this module focuses on practical cache operations. By the end, students will be comfortable with CRUD operations, cache modes, and performance optimization techniques.</aside>
             </section>
 
             <!-- Module Objectives -->
@@ -182,6 +183,7 @@
                     <li>Compare synchronous vs asynchronous operations</li>
                     <li>Implement batch operations effectively</li>
                 </ul>
+                <aside class="notes">Walk through the five objectives. The Cache API fundamentals are the starting point. CRUD operations are what every application needs. Cache modes determine data distribution strategy. Sync vs async affects throughput. Batch operations are the key performance optimization. Students will practice all of these in Lab 3.</aside>
             </section>
 
             <!-- Cache API Overview -->
@@ -205,6 +207,7 @@ IgniteCache&lt;K, V&gt; cache = ignite.getOrCreateCache(cfg);</code></pre>
                         <li>Thread-safe operations</li>
                     </ul>
                 </div>
+                <aside class="notes">The IgniteCache interface is the primary API students will use. Show the three ways to get a cache reference: by name, getOrCreate, and with configuration. Emphasize that it is similar to java.util.Map which most Java developers already know. JCache compliance means code written for Ignite can work with other JCache implementations. Thread safety means no external synchronization is needed.</aside>
             </section>
 
             <!-- Basic CRUD Operations -->
@@ -227,6 +230,7 @@ V value = cache.get(key);
 // Check existence
 boolean exists = cache.containsKey(key);</code></pre>
                     <p class="small-text">(Press down arrow for DELETE operations)</p>
+                    <aside class="notes">Walk through each operation. The put method is straightforward -- if the key exists, the value is overwritten. putIfAbsent is atomic and returns false if the key already exists. getAndPut returns the previous value, which is useful for logging or audit trails. The get method returns null if the key does not exist. These are the bread-and-butter operations students will use most.</aside>
                 </section>
 
                 <section>
@@ -240,6 +244,7 @@ boolean removed = cache.remove(key, value);
 
 // Get and remove
 V value = cache.getAndRemove(key);</code></pre>
+                    <aside class="notes">The remove operations mirror the put operations. Simple remove returns a boolean indicating whether the key existed. Conditional remove only removes if the current value matches -- this is a compare-and-swap pattern useful for optimistic concurrency. getAndRemove returns the value before deletion, useful when you need to process data before removing it.</aside>
                 </section>
             </section>
 
@@ -263,6 +268,7 @@ V oldValue = cache.getAndReplace(key, newValue);</code></pre>
                         <li>Atomic updates</li>
                         <li>Race condition prevention</li>
                     </ul>
+                    <aside class="notes">Replace operations are essential for concurrent programming. The conditional replace with oldValue and newValue is the compare-and-swap (CAS) pattern -- it only succeeds if the current value matches what you expect. This prevents lost updates in multi-threaded or multi-node scenarios. Optimistic locking with replace is more efficient than pessimistic locking with transactions for simple updates.</aside>
                 </section>
 
                 <section>
@@ -276,6 +282,7 @@ while (true) {
     }
     // Retry if another thread modified it
 }</code></pre>
+                    <aside class="notes">This counter example is a classic CAS loop pattern. Read the current value, attempt to replace it with current+1, and retry if another thread modified it concurrently. This is lock-free and scales well. The while(true) loop is safe because contention is typically low and the loop resolves quickly. Students will implement a similar pattern in the lab.</aside>
                 </section>
             </section>
 
@@ -308,6 +315,7 @@ while (true) {
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">These three cache modes are fundamental. PARTITIONED is the default and most commonly used -- data is split across nodes for scalability. REPLICATED copies all data to every node, giving fast local reads but at the cost of memory and slower writes. LOCAL is rarely used but appropriate for node-specific temporary data. The choice of cache mode is one of the most important design decisions.</aside>
             </section>
 
             <!-- PARTITIONED Cache Mode -->
@@ -340,6 +348,7 @@ Total Memory Usage = Data Size x (1 + Backups) / Nodes</code></pre>
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">Walk through the memory formula: with 3 nodes and 1 backup, total memory usage is Data Size times 2 divided by 3 per node. Each node stores roughly one-third of the primary data plus one-third of backup data. The benefits of horizontal scaling and parallel processing are significant for large datasets. The trade-off is network hops when accessing data owned by another node.</aside>
             </section>
 
             <!-- REPLICATED Cache Mode -->
@@ -374,6 +383,7 @@ Total Memory Usage = Data Size x Number of Nodes</code></pre>
                     </div>
                 </div>
                 <p class="small-text"><strong>Best For:</strong> Reference data, Configuration, Small datasets (&lt; 10 GB), Read-heavy workloads</p>
+                <aside class="notes">Emphasize the memory formula: total memory is Data Size times Number of Nodes. This is expensive. A 1GB dataset replicated across 10 nodes uses 10GB total. This is why REPLICATED mode is only appropriate for small datasets. The read speed advantage is significant -- every read is local with no network hop. Use it for lookup tables, configuration data, and reference data like country codes or product categories.</aside>
             </section>
 
             <!-- LOCAL Cache Mode -->
@@ -407,6 +417,7 @@ No sharing, no backups</code></pre>
                     </div>
                 </div>
                 <p class="small-text"><strong>Best For:</strong> Session data, Thread-local caches, Node-specific computations, Temporary data</p>
+                <aside class="notes">LOCAL mode is the simplest but most limited. Data is not shared between nodes at all -- each node has its own independent copy. There is no fault tolerance since data is not replicated. This is useful for node-specific scratch space, session data that is sticky to a server, or intermediate computation results. Students rarely use this mode in practice but should understand it exists.</aside>
             </section>
 
             <!-- Choosing Cache Mode -->
@@ -470,6 +481,7 @@ No sharing, no backups</code></pre>
                 <div class="key-point small-text">
                     <strong>Rule of Thumb:</strong> User data, transactions &rarr; PARTITIONED | Reference data, lookups &rarr; REPLICATED | Temporary, node-specific &rarr; LOCAL
                 </div>
+                <aside class="notes">This decision matrix is a reference students should bookmark. Walk through each row. For data size: PARTITIONED handles large datasets efficiently, REPLICATED is only for small data. For memory efficiency, PARTITIONED is the clear winner. For read speed, REPLICATED gives local reads. The rule of thumb at the bottom is the quick answer for most decisions. In the lab, students will experiment with all three modes.</aside>
             </section>
 
             <!-- Synchronous Operations -->
@@ -490,6 +502,7 @@ V value = cache.get(key); // Blocks until value retrieved</code></pre>
                     <li class="tradeoffs">Can't do other work while waiting</li>
                 </ul>
                 <p><strong>When to Use:</strong> Single operations, Need immediate confirmation, Sequential logic, Error handling critical</p>
+                <aside class="notes">Synchronous operations are the default and the simplest to understand. The thread blocks until the operation completes, which makes error handling straightforward -- exceptions are thrown immediately. For single operations or sequential logic, synchronous is fine. The performance limitation appears when you need to do many independent operations -- each one blocks, creating a sequential bottleneck.</aside>
             </section>
 
             <!-- Asynchronous Operations -->
@@ -508,6 +521,7 @@ processOtherData();
 
 // Wait for completion when needed
 future.get();</code></pre>
+                    <aside class="notes">The async API uses the withAsync() wrapper to create a non-blocking version of the cache. After calling an operation, you get an IgniteFuture that represents the pending result. You can continue doing other work while the operation completes in the background. Call future.get() when you actually need the result. This pattern enables parallelism within a single thread.</aside>
                 </section>
 
                 <section>
@@ -528,6 +542,7 @@ future.listen(f -> {
                         <li>Better resource utilization</li>
                     </ul>
                     <p><strong>When to Use:</strong> Multiple independent operations, High-throughput scenarios, Can do useful work while waiting</p>
+                    <aside class="notes">Callbacks with listen() are useful when you want to process results as they arrive rather than waiting for all operations to complete. The lambda runs when the future completes, allowing event-driven processing. This is more complex than synchronous code but enables higher throughput. The when-to-use guidelines help students decide: if operations are independent, async wins.</aside>
                 </section>
             </section>
 
@@ -563,6 +578,7 @@ long time = System.currentTimeMillis() - start;
                 <div class="key-point center-text">
                     <strong class="highlight">Speedup: 5x faster!</strong>
                 </div>
+                <aside class="notes">This side-by-side comparison makes the performance difference concrete. Synchronous: 1000 sequential puts, each waiting for acknowledgment before the next starts. Asynchronous: all 1000 puts fired off immediately, then wait for all to complete. The 5x speedup comes from overlapping network latency. In a multi-node cluster with network round trips, the speedup can be even larger. This is a key optimization students should apply in their own code.</aside>
             </section>
 
             <!-- Batch Operations -->
@@ -582,6 +598,7 @@ Map&lt;K, V&gt; values = cache.getAll(keys);</code></pre>
                     <p><strong>Batch Remove:</strong></p>
                     <pre><code class="java">Set&lt;K&gt; keys = new HashSet&lt;&gt;(Arrays.asList(1, 2, 3));
 cache.removeAll(keys);</code></pre>
+                    <aside class="notes">Batch operations are the single most impactful performance optimization. putAll sends all entries in one network call, which is dramatically faster than individual puts. The entries are automatically routed to the correct nodes based on key affinity. getAll similarly retrieves multiple values in one round trip. Students should always prefer batch operations when working with multiple entries.</aside>
                 </section>
 
                 <section>
@@ -593,6 +610,7 @@ cache.removeAll(keys);</code></pre>
                         <li>Lower protocol overhead</li>
                         <li>Efficient serialization</li>
                     </ul>
+                    <aside class="notes">The 10-100x improvement is not an exaggeration. Each individual put requires a network round trip, serialization, and deserialization. With 1000 individual puts, that is 1000 round trips. With putAll, it is just one round trip per node in the cluster. The reduced protocol overhead and efficient serialization of batch entries add up to massive savings. This is the number one performance tip for new Ignite developers.</aside>
                 </section>
             </section>
 
@@ -626,6 +644,7 @@ cache.removeAll(keys);</code></pre>
                         <li>Adjust based on entry size</li>
                         <li>Consider memory constraints</li>
                     </ul>
+                    <aside class="notes">Finding the optimal batch size requires balancing. Too small and you do not get enough benefit from batching. Too large and you risk memory pressure from building the batch in memory, plus timeout risk if the operation takes too long. 500-1000 entries is a good starting point for typical entry sizes. Adjust based on your entry size: smaller entries can use larger batches, larger entries need smaller batches.</aside>
                 </section>
 
                 <section>
@@ -641,6 +660,7 @@ for (int i = 0; i &lt; allData.size(); i += batchSize) {
     }
     cache.putAll(batch);
 }</code></pre>
+                    <aside class="notes">This code pattern is one students should memorize. It iterates through a large dataset in chunks of the specified batch size, building a HashMap for each batch and calling putAll. The Math.min prevents an IndexOutOfBoundsException on the last batch. This pattern works for data loading, migration, and bulk updates. Students will implement this pattern in the lab.</aside>
                 </section>
             </section>
 
@@ -671,6 +691,7 @@ cache.getAndReplace(key, value);</code></pre>
                     </div>
                 </div>
                 <p><strong>Use Cases:</strong> Counters, Flags, Resource allocation, Distributed locks</p>
+                <aside class="notes">The side-by-side comparison of non-atomic vs atomic code is critical. The non-atomic version has a race condition: between containsKey and put, another thread could insert the same key. putIfAbsent eliminates this race in a single atomic operation. Emphasize that this is a distributed system -- race conditions can happen across nodes, not just threads. Always use the atomic variants when concurrent access is possible.</aside>
             </section>
 
             <!-- Cache Iteration -->
@@ -695,6 +716,7 @@ try (QueryCursor&lt;Cache.Entry&lt;K, V&gt;&gt; cursor = cache.query(scan)) {
     }
 }</code></pre>
                 <p class="small-text tradeoffs"><strong>Caution:</strong> Iteration can be expensive on large datasets. Consider SQL queries or scan queries for filtering.</p>
+                <aside class="notes">Three iteration approaches with different trade-offs. forEach is the simplest but pulls all data to the client. The iterator approach using for-each loop is similar. ScanQuery is the most efficient because it can push filtering to the server side -- only matching entries are transferred over the network. Emphasize the caution: iterating a large distributed cache transfers all data across the network. SQL queries or ScanQueries with predicates are much more efficient for filtering.</aside>
             </section>
 
             <!-- Cache Size and Metrics -->
@@ -719,6 +741,7 @@ System.out.println("Puts: " + metrics.getCachePuts());
 System.out.println("Hits: " + metrics.getCacheHits());
 System.out.println("Misses: " + metrics.getCacheMisses());
 System.out.println("Hit %: " + metrics.getCacheHitPercentage());</code></pre>
+                <aside class="notes">Monitoring cache metrics is essential for production. The localSize vs size distinction matters: localSize shows entries on this node, size aggregates across the cluster. CachePeekMode lets you see primary vs backup counts separately. CacheMetrics provides hit/miss ratios, operation counts, and timing. The hit percentage is the most important metric -- below 90% usually indicates a problem with your caching strategy.</aside>
             </section>
 
             <!-- Clear vs Destroy -->
@@ -754,6 +777,7 @@ System.out.println("Hit %: " + metrics.getCacheHitPercentage());</code></pre>
                 <div class="key-point small-text">
                     <strong>Use Cases:</strong> Clear = Reset data for new test | RemoveAll = Clear with event notifications | Destroy = Remove cache entirely
                 </div>
+                <aside class="notes">The distinction between clear, removeAll, and destroy is a common source of confusion. Clear removes all entries but keeps the cache structure -- useful for resetting between test runs. RemoveAll is similar but fires cache entry events, which matters if you have event listeners. Destroy completely removes the cache including its configuration -- the cache name becomes invalid. A common mistake is calling destroy when clear was intended.</aside>
             </section>
 
             <!-- Error Handling -->
@@ -775,6 +799,7 @@ System.out.println("Hit %: " + metrics.getCacheHitPercentage());</code></pre>
                     <pre><code class="java">IgniteCache&lt;K, V&gt; cacheWithTimeout = cache.withExpiryPolicy(
     new CreatedExpiryPolicy(new Duration(TimeUnit.SECONDS, 10))
 );</code></pre>
+                    <aside class="notes">Error handling in a distributed system requires understanding the exception hierarchy. CacheException is the generic wrapper for most cache errors. TransactionException occurs during transactional operations. ClusterTopologyException means the cluster changed during the operation -- this is retriable. The expiry policy example shows how to set automatic TTL on cache entries, which helps prevent stale data.</aside>
                 </section>
 
                 <section>
@@ -790,6 +815,7 @@ for (int i = 0; i &lt; maxRetries; i++) {
         Thread.sleep(100); // Wait and retry
     }
 }</code></pre>
+                    <aside class="notes">The retry pattern is essential for production code. ClusterTopologyException is transient -- it occurs when a node joins or leaves during an operation. Retrying after a short delay usually succeeds. The maximum retry count prevents infinite loops. In production, consider using exponential backoff instead of fixed 100ms delays. Students should add retry logic to all critical cache operations in their applications.</aside>
                 </section>
             </section>
 
@@ -815,6 +841,7 @@ for (K key : keys) {
     async.get(key);
     futures.add(async.future());
 }</code></pre>
+                    <aside class="notes">These two best practices are the most impactful optimizations. The code examples show the slow way (individual operations) versus the fast way (batch and async). Encourage students to always think about whether they are doing one operation or many. If many, use putAll/getAll or async. These simple changes can make orders-of-magnitude performance differences in production.</aside>
                 </section>
 
                 <section>
@@ -832,6 +859,7 @@ for (K key : keys) {
                     </ul>
                     <p><strong>5. Enable Statistics</strong></p>
                     <pre><code class="java">cfg.setStatisticsEnabled(true); // Monitor performance</code></pre>
+                    <aside class="notes">Tips 3-5 are configuration-level optimizations. Choosing the right cache mode (covered earlier) is a design decision that affects everything. One backup is sufficient for most workloads -- more backups use proportionally more memory. Enabling statistics adds a small overhead but is invaluable for monitoring and troubleshooting. Always enable statistics in production.</aside>
                 </section>
             </section>
 
@@ -844,6 +872,7 @@ cfg.setCacheMode(CacheMode.PARTITIONED);
 cfg.setBackups(1);
 cfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
 cfg.setStatisticsEnabled(true);</code></pre>
+                <aside class="notes">This summary shows a complete cache configuration with all the important settings. Walk through each line: name, cache mode, backups, atomicity mode, and statistics. ATOMIC mode is faster than TRANSACTIONAL because it does not require two-phase commit. Use TRANSACTIONAL only when you need cross-key consistency. PRIMARY_SYNC write mode is a good balance of speed and safety -- not shown here but covered in Module 4.</aside>
             </section>
 
             <!-- Common Patterns -->
@@ -855,6 +884,7 @@ if (val == null) { val = db.query(key); cache.put(key, val); }</code></pre>
                 <p><strong>Distributed Counter</strong></p>
                 <pre><code class="java">cache.putIfAbsent("counter", 0);
 cache.replace("counter", current, current + 1);</code></pre>
+                <aside class="notes">These two patterns appear in almost every Ignite application. Cache-aside is the most common caching pattern: check the cache first, fall back to the database on a miss, and populate the cache for next time. The distributed counter uses putIfAbsent for initialization and replace for atomic increments. Both patterns will be practiced in the lab exercises.</aside>
             </section>
 
             <!-- Troubleshooting -->
@@ -878,6 +908,7 @@ cache.replace("counter", current, current + 1);</code></pre>
                         <td>Verify cache name and key type</td>
                     </tr>
                 </table>
+                <aside class="notes">These three troubleshooting scenarios are the most common issues students encounter. Slow operations usually mean network latency or too many individual operations -- switch to batch or async. High memory usage often means too many backups or no eviction policy. Data not found is frequently a cache name typo or key type mismatch -- Ignite uses exact type matching, so Integer 1 and Long 1 are different keys.</aside>
             </section>
 
             <!-- Key Takeaways -->
@@ -902,6 +933,7 @@ cache.replace("counter", current, current + 1);</code></pre>
                     <li><strong>Atomic operations prevent races</strong> - putIfAbsent, replace, etc.</li>
                     <li><strong>Monitor with metrics</strong> - Hit ratios, operation times, cache sizes</li>
                 </ol>
+                <aside class="notes">These five takeaways are the core of this module. Cache modes determine your data distribution strategy and should match your access patterns. Batch operations are the single biggest performance win. Async operations enable parallelism. Atomic operations prevent race conditions in distributed systems. Metrics are essential for understanding and optimizing cache performance. Students should be able to apply all five in the upcoming lab.</aside>
             </section>
 
             <!-- Questions -->
@@ -915,6 +947,7 @@ cache.replace("counter", current, current + 1);</code></pre>
                     <li>Performance expectations</li>
                 </ul>
                 <p style="margin-top: 2em;"><strong>Next:</strong> Lab 3 - Basic Cache Operations</p>
+                <aside class="notes">Open for questions before the lab. Common questions include: "When should I use transactions instead of atomic operations?" and "How do I choose between async and batch?" The lab will have students implement CRUD operations, experiment with cache modes, compare sync vs async performance, and use batch operations. This is the most hands-on lab so far.</aside>
             </section>
 
         </div>

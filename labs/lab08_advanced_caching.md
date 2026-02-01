@@ -121,6 +121,53 @@ public class Lab08NearCache {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab08NearCache" -Dexec.args="server"
+```
+
+**Expected Output (your numbers may vary):**
+
+Server mode:
+
+```
+=== Near Cache Lab ===
+Mode: SERVER
+
+Server: Populating cache with 1000 entries...
+Server: Data loaded
+```
+
+Client mode:
+
+```
+=== Near Cache Lab ===
+Mode: CLIENT
+
+Client: Near cache created (max 100 entries)
+
+=== First Access (from server) ===
+Value: Value-100
+Time: 5 ms
+
+=== Second Access (from near cache) ===
+Value: Value-100
+Time: 0 ms
+Speedup: 5.0x faster
+
+=== Accessing Multiple Entries ===
+50 entries now in near cache
+
+Near cache size: 51
+
+=== Near Cache Benefits ===
+- Reduced network latency
+- Lower load on server nodes
+- Better performance for frequently accessed data
+- Automatic invalidation on updates
+```
+
 ## Part 2: Expiry Policies and Eviction (15 minutes)
 
 ### Exercise 2: Configure Expiry Policies
@@ -255,6 +302,51 @@ public class Lab08ExpiryPolicies {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab08ExpiryPolicies"
+```
+
+**Expected Output:**
+
+```
+=== Expiry Policies Lab ===
+
+=== 1. Created Expiry Policy ===
+Entry expires 5 seconds after creation
+
+Entry created: Will expire in 5 seconds
+Waiting 6 seconds...
+After expiry: null (null expected)
+
+=== 2. Modified Expiry Policy ===
+Entry expires 3 seconds after last update
+
+Entry created
+Entry updated (timer reset)
+After 2 seconds: Updated value
+After 4 seconds: null (null expected)
+
+=== 3. Touched Expiry Policy ===
+Entry expires 4 seconds after last access
+
+Entry created
+After 2 seconds: Touched expiry value (read resets timer)
+After 4 seconds: Touched expiry value (read resets timer)
+After 6 seconds: Touched expiry value (read resets timer)
+After no access for 5 seconds: null (null expected)
+
+=== 4. Per-Entry Expiry Policy ===
+Entry 1 (2sec TTL): null (null)
+Entry 2 (5sec TTL): Expires in 5 seconds (still there)
+
+=== Expiry Policy Use Cases ===
+- CreatedExpiryPolicy: Session data, temporary tokens
+- ModifiedExpiryPolicy: Frequently updated data
+- TouchedExpiryPolicy: Recently accessed data (LRU-like)
+```
+
 ### Exercise 3: Eviction Policies
 
 Create `Lab08Eviction.java`:
@@ -319,6 +411,32 @@ public class Lab08Eviction {
         }
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab08Eviction"
+```
+
+**Expected Output:**
+
+```
+=== Eviction Policies Lab ===
+
+Cache created with LRU eviction (max 100 entries on-heap)
+Adding 200 entries...
+
+Total cache size: 200
+On-heap size: 100
+(Others moved to off-heap or disk)
+
+Accessing entries 0-9 to make them recent...
+
+=== Eviction Strategy ===
+LRU: Least Recently Used entries evicted first
+Keeps frequently accessed data in memory
+Balances memory usage and performance
 ```
 
 ## Part 3: Cache Entry Processors (15 minutes)
@@ -486,6 +604,51 @@ public class Lab08EntryProcessors {
 }
 ```
 
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab08EntryProcessors"
+```
+
+**Expected Output (your numbers may vary):**
+
+```
+=== Cache Entry Processors Lab ===
+
+=== Scenario 1: Atomic Increment ===
+
+1. Without Entry Processor (3 operations):
+   Result: 10
+   Time: 3 ms
+   Network round trips: 2 (get + put)
+
+2. With Entry Processor (1 operation):
+   Result: 10
+   Time: 1 ms
+   Network round trips: 1 (invoke)
+   Atomic: Yes
+
+=== Scenario 2: Conditional Update ===
+Withdraw $30: Success
+New balance: $70
+
+Withdraw $100: Failed
+Balance: $70
+
+=== Scenario 3: Batch Processing ===
+Batch increment results:
+  metric1: 5
+  metric2: 10
+  metric3: 15
+
+=== Entry Processor Benefits ===
+- Atomic operations
+- Reduced network overhead
+- Server-side processing
+- Better performance for read-modify-write
+- Avoid race conditions
+```
+
 ## Part 4: Event Handling and Continuous Queries (20 minutes)
 
 ### Exercise 5: Cache Events
@@ -581,6 +744,58 @@ public class Lab08CacheEvents {
         }
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab08CacheEvents"
+```
+
+**Expected Output:**
+
+```
+=== Cache Events Lab ===
+
+Event listener registered
+
+=== Performing Cache Operations ===
+(Watch for events below)
+
+1. Putting value...
+
+[EVENT] Type: CACHE_OBJECT_PUT
+  Cache: eventCache
+  Key: 1
+  Value: Hello
+
+2. Reading value...
+
+[EVENT] Type: CACHE_OBJECT_READ
+  Cache: eventCache
+  Key: 1
+  Value: Hello
+
+3. Updating value...
+
+[EVENT] Type: CACHE_OBJECT_PUT
+  Cache: eventCache
+  Key: 1
+  Value: Hello Updated
+
+4. Removing value...
+
+[EVENT] Type: CACHE_OBJECT_REMOVED
+  Cache: eventCache
+  Key: 1
+  Value: null
+
+=== Event Use Cases ===
+- Audit logging
+- Cache statistics
+- Triggering workflows
+- Replication to other systems
+- Monitoring and alerting
 ```
 
 ### Exercise 6: Continuous Queries
@@ -680,6 +895,45 @@ public class Lab08ContinuousQueries {
         }
     }
 }
+```
+
+**Run:**
+
+```bash
+mvn compile exec:java -Dexec.mainClass="com.example.ignite.Lab08ContinuousQueries"
+```
+
+**Expected Output:**
+
+```
+=== Continuous Queries Lab ===
+
+Starting continuous query (stocks > $100)...
+
+=== Simulating Stock Price Updates ===
+
+1. Setting initial prices...
+[ALERT] Stock 2 price changed: $null -> $150.0
+
+2. Updating prices...
+[ALERT] Stock 1 price changed: $null -> $120.0
+[ALERT] Stock 2 price changed: $150.0 -> $160.0
+
+3. Price drops...
+
+=== Continuous Query Benefits ===
+- Real-time notifications
+- Server-side filtering
+- Low latency
+- Reduced network traffic
+- Event-driven architecture
+
+=== Use Cases ===
+- Real-time dashboards
+- Alert systems
+- Cache invalidation
+- Data synchronization
+- Streaming analytics
 ```
 
 ## Verification Steps

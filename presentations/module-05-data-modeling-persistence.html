@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reset.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/idea.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <style>
         .reveal .slides section { overflow: hidden; }
         .reveal section { max-height: 100%; }
@@ -259,6 +259,7 @@
                 <h2>Data Modeling and Persistence</h2>
                 <p>Apache Ignite Training</p>
                 <div class="duration-badge">Duration: 60 minutes</div>
+                <aside class="notes">Welcome to Module 05 on Data Modeling and Persistence. This module covers two critical topics: how to structure your data in Ignite and how to make it durable. Emphasize that data modeling decisions made early have a huge impact on performance. This module connects directly to Lab 05 where students will implement these concepts hands-on.</aside>
             </section>
 
             <!-- Agenda -->
@@ -285,6 +286,7 @@
                         </ul>
                     </div>
                 </div>
+                <aside class="notes">Walk through the agenda quickly so students know what to expect. The first half covers data modeling patterns and the second half covers persistence. Mention that affinity and colocation is arguably the most important design concept in the entire course for distributed performance.</aside>
             </section>
 
             <!-- Section 1: Data Models -->
@@ -293,6 +295,7 @@
                     <h1>Section 1</h1>
                     <h2>Data Models in Apache Ignite</h2>
                     <div class="duration-badge">15 minutes</div>
+                    <aside class="notes">This section introduces the three primary ways to model data in Ignite. Students often come from a relational background, so connect each model to concepts they already know. The key takeaway is that Ignite is flexible and you choose the model that fits your use case.</aside>
                 </section>
 
                 <!-- Data Model Overview -->
@@ -325,6 +328,7 @@
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">Emphasize that all three models coexist in Ignite and can even be used on the same data simultaneously. Key-Value is the simplest and fastest, Binary Objects add flexibility without class deployment, and SQL provides a familiar query interface. Ask students which model they think fits their projects.</aside>
                 </section>
 
                 <!-- Key-Value Data Model -->
@@ -353,6 +357,7 @@ Customer c = cache.get(1);
 cache.putIfAbsent(2, newCustomer);</code></pre>
                         </div>
                     </div>
+                    <aside class="notes">The Key-Value model is the foundation of Ignite. Highlight that it is JCache compliant so students with JSR-107 experience will find it familiar. The code shows basic put/get and atomic putIfAbsent operations. Mention that keys determine data placement across the cluster, which leads into the affinity discussion later.</aside>
                 </section>
 
                 <!-- Domain Class Example -->
@@ -375,6 +380,7 @@ cache.putIfAbsent(2, newCustomer);</code></pre>
                     <div class="warning-box">
                         <strong>Important:</strong> Domain classes must implement <code>Serializable</code>
                     </div>
+                    <aside class="notes">Walk through the domain class structure. Stress the Serializable requirement as students frequently forget it and get confusing errors. Also mention that equals() and hashCode() should be implemented on key classes. A common student question is whether they need a no-arg constructor -- yes, for deserialization.</aside>
                 </section>
 
                 <!-- Binary Objects -->
@@ -404,6 +410,7 @@ BinaryObject obj = ignite.binary()
 cache.put(1, obj);</code></pre>
                         </div>
                     </div>
+                    <aside class="notes">Binary Objects are powerful for schema evolution scenarios. The key advantage is that you do not need to deploy classes to server nodes. Highlight the withKeepBinary() call which switches the cache view to binary mode. This is commonly used in compute tasks running on server nodes that do not have the domain classes on their classpath.</aside>
                 </section>
 
                 <!-- SQL Tables -->
@@ -422,6 +429,7 @@ cache.put(1, obj);</code></pre>
                     <div class="info-box">
                         <code>@QuerySqlField</code> exposes fields to SQL. Add <code>index = true</code> for indexed columns.
                     </div>
+                    <aside class="notes">This shows the annotation-based approach to making fields queryable via SQL. Students should understand that without @QuerySqlField, the field exists in the cache but is invisible to SQL queries. The index=true parameter creates a B+ tree index which is critical for query performance. This will be explored further in Module 06.</aside>
                 </section>
 
                 <!-- SQL Table Creation via DDL -->
@@ -438,6 +446,7 @@ SELECT * FROM Customer WHERE name = 'John';</code></pre>
                     <div class="info-box">
                         <strong>Access via:</strong> JDBC, ODBC, thin client, REST API
                     </div>
+                    <aside class="notes">DDL-based table creation is the alternative to annotation-based configuration. This approach is useful when you want to create tables dynamically or when using Ignite primarily as a SQL database. The WITH clause controls partitioning and backup settings. You can demo this in the Ignite SQL command line tool if time permits.</aside>
                 </section>
 
                 <!-- Choosing a Data Model -->
@@ -473,6 +482,7 @@ SELECT * FROM Customer WHERE name = 'John';</code></pre>
                             </tr>
                         </tbody>
                     </table>
+                    <aside class="notes">Use this comparison table to help students decide which model to use. The most common choice is Key-Value with SQL annotations for querying. Binary Objects shine in polyglot environments or when schema changes frequently. Ask students about their production scenarios and help them map to the right model.</aside>
                 </section>
             </section>
 
@@ -482,6 +492,7 @@ SELECT * FROM Customer WHERE name = 'John';</code></pre>
                     <h1>Section 2</h1>
                     <h2>Affinity and Colocation</h2>
                     <div class="duration-badge">10 minutes</div>
+                    <aside class="notes">Affinity and colocation is arguably the most important concept in this entire course for production performance. If students take away one thing from the data modeling module, it should be this section. Everything about distributed joins, compute tasks, and query performance depends on getting colocation right.</aside>
                 </section>
 
                 <!-- What is Affinity? -->
@@ -519,6 +530,7 @@ SELECT * FROM Customer WHERE name = 'John';</code></pre>
 </pre>
                         </div>
                     </div>
+                    <aside class="notes">Walk through the affinity diagram step by step. The key hash determines a partition number between 0 and 1023, and each partition is assigned to a primary node. This is how Ignite knows exactly where every piece of data lives without scanning. Students often ask if they can control the affinity function -- yes, but the default RendezvousAffinityFunction works well for most cases.</aside>
                 </section>
 
                 <!-- Why Colocation Matters -->
@@ -545,6 +557,7 @@ Without Colocation:                    With Colocation:
                             <li>Reduced latency for related data access</li>
                         </ul>
                     </div>
+                    <aside class="notes">This diagram is critical for understanding why colocation matters. Without colocation, a join between Customer and Order requires network hops. With colocation, both records are on the same node so the join is local and fast. Draw this on a whiteboard if possible. Ask students what happens to performance when every query requires network round-trips across nodes.</aside>
                 </section>
 
                 <!-- Colocation: THE Design Decision -->
@@ -576,6 +589,7 @@ Without Colocation:                    With Colocation:
                     <div class="warning-box">
                         <strong>Get colocation wrong = network latency on every query.</strong>
                     </div>
+                    <aside class="notes">This slide reinforces that colocation is a universal distributed systems concept, not just an Ignite thing. Students coming from Redis, Cassandra, or DynamoDB will recognize the parallel. The key point is that every distributed data system requires you to think about data placement. Getting it wrong means every query pays a network penalty.</aside>
                 </section>
 
                 <!-- AffinityKeyMapped Annotation -->
@@ -593,6 +607,7 @@ Without Colocation:                    With Colocation:
                     <div class="info-box">
                         <code>@AffinityKeyMapped</code> uses customerId for node placement.
                     </div>
+                    <aside class="notes">This is the most practical slide in the colocation section. The @AffinityKeyMapped annotation tells Ignite to use the customerId field for partition assignment, so Orders land on the same node as their parent Customer. Highlight that without this annotation, Orders would be distributed by their own orderId and likely land on different nodes.</aside>
                 </section>
 
                 <!-- Verifying Colocation -->
@@ -606,6 +621,7 @@ ClusterNode orderNode = orderAff.mapKeyToNode(101);
 
 boolean colocated = custNode.equals(orderNode);
 System.out.println("Colocated: " + colocated);</code></pre>
+                    <aside class="notes">This code demonstrates how to programmatically verify colocation using the Affinity API. This is a great technique for unit tests and debugging. In the lab, students will implement similar verification. Emphasize that verifying colocation should be part of integration testing before going to production.</aside>
                 </section>
 
                 <!-- AffinityKey Wrapper Class -->
@@ -621,6 +637,7 @@ cache.put(key, order);</code></pre>
                         <strong>@AffinityKeyMapped</strong> - affinity in value class<br>
                         <strong>AffinityKey</strong> - composite keys
                     </div>
+                    <aside class="notes">AffinityKey is the wrapper class approach for when you need composite keys. The first parameter is the actual key, the second is the affinity key used for partition assignment. Use @AffinityKeyMapped when the affinity field is inside your domain object, and AffinityKey when you need an explicit composite key outside the object.</aside>
                 </section>
 
                 <!-- Colocation Best Practices -->
@@ -644,6 +661,7 @@ cache.put(key, order);</code></pre>
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">Review these best practices with the class. The most common mistake is changing affinity keys after deployment, which causes data to redistribute. Also caution against using complex objects as keys since hashCode behavior must be consistent. Over-colocating means forcing too many unrelated caches to colocate, which creates hotspots.</aside>
                 </section>
             </section>
 
@@ -653,6 +671,7 @@ cache.put(key, order);</code></pre>
                     <h1>Section 3</h1>
                     <h2>Native Persistence Configuration</h2>
                     <div class="duration-badge">15 minutes</div>
+                    <aside class="notes">Now we shift from data modeling to persistence. This section covers how Ignite stores data durably on disk. Students should understand this is optional -- Ignite works perfectly as an in-memory-only cache. Persistence is for when Ignite is your primary data store or when you cannot tolerate cold-start data loading times.</aside>
                 </section>
 
                 <!-- Native Persistence Overview -->
@@ -692,6 +711,7 @@ cache.put(key, order);</code></pre>
 </pre>
                         </div>
                     </div>
+                    <aside class="notes">Walk through the tiered architecture diagram. Data lives in RAM for fast access and is also persisted to disk. The key benefit is instant cluster restarts -- data does not need to be reloaded from an external source. Mention that Ignite can store datasets larger than available RAM by paging data in and out from disk automatically.</aside>
                 </section>
 
                 <!-- When NOT to Use Native Persistence -->
@@ -726,6 +746,7 @@ cache.put(key, order);</code></pre>
                     <div class="info-box">
                         <strong>Use Persistence when:</strong> Ignite IS your primary store, or warm-up time is unacceptable.
                     </div>
+                    <aside class="notes">This is an important slide because students often enable persistence when they do not need it. If their data already lives in an OLTP database and Ignite is just a caching layer, persistence adds unnecessary complexity and disk I/O. Walk through each scenario and ask students which applies to their use case. The Kubernetes point is especially relevant for modern deployments.</aside>
                 </section>
 
                 <!-- Persistence Configuration -->
@@ -751,6 +772,7 @@ storageCfg.setWalPath("./ignite-wal");
 storageCfg.setWalArchivePath("./ignite-wal-archive");
 
 cfg.setDataStorageConfiguration(storageCfg);</code></pre>
+                    <aside class="notes">Walk through each configuration option in this code. The three path settings are critical: storagePath for data files, walPath for the active write-ahead log, and walArchivePath for archived WAL segments. In production, these should be on separate physical disks for performance. The initial and max size settings control the off-heap memory region.</aside>
                 </section>
 
                 <!-- XML Configuration -->
@@ -776,6 +798,7 @@ cfg.setDataStorageConfiguration(storageCfg);</code></pre>
         &lt;/bean&gt;
     &lt;/property&gt;
 &lt;/bean&gt;</code></pre>
+                    <aside class="notes">This shows the same persistence configuration in XML format. Some organizations prefer XML configuration for operations teams who do not write Java code. Both approaches are equivalent. Point out the SpEL expression syntax for memory sizes. Students will use the Java API approach in the lab exercises.</aside>
                 </section>
 
                 <!-- Cluster Activation -->
@@ -805,6 +828,7 @@ cfg.setDataStorageConfiguration(storageCfg);</code></pre>
                             <li><code>ACTIVE_READ_ONLY</code> - Read operations only</li>
                         </ul>
                     </div>
+                    <aside class="notes">Cluster activation is a common gotcha for students. When persistence is enabled, the cluster starts in INACTIVE state and you must explicitly activate it before any cache operations work. Explain the three states: INACTIVE blocks everything, ACTIVE enables full operations, and ACTIVE_READ_ONLY is useful for maintenance. In the lab, students will see the activation step firsthand.</aside>
                 </section>
 
                 <!-- Data Recovery Demo -->
@@ -830,6 +854,7 @@ if (cache.size() > 0) {
     System.out.println("Added 100 entries to persistent cache");
     System.out.println("Restart the application to see data recovery!");
 }</code></pre>
+                    <aside class="notes">This is a great demo opportunity. Run the code once to populate data, stop the application, then run it again to show data recovery from disk. The cache.size() check determines whether data already exists. Students will do exactly this in the lab. Emphasize that the data survives a full JVM restart without any external database.</aside>
                 </section>
 
                 <!-- Persistence Features -->
@@ -864,6 +889,7 @@ if (cache.size() > 0) {
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">Summarize the three pillars of native persistence: durability through ACID compliance and crash recovery, performance through memory-speed reads with async disk writes, and scalability for datasets larger than RAM. The instant restarts feature is a major selling point compared to solutions that require full data reload on startup.</aside>
                 </section>
             </section>
 
@@ -873,6 +899,7 @@ if (cache.size() > 0) {
                     <h1>Section 4</h1>
                     <h2>Write-Ahead Log (WAL)</h2>
                     <div class="duration-badge">10 minutes</div>
+                    <aside class="notes">The WAL is a foundational concept in database systems. If students have experience with PostgreSQL, MySQL, or any RDBMS, they will recognize the concept. The WAL is what makes persistence durable -- without it, a crash between memory updates and disk writes would lose data.</aside>
                 </section>
 
                 <!-- WAL Overview -->
@@ -914,6 +941,7 @@ if (cache.size() > 0) {
 </pre>
                         </div>
                     </div>
+                    <aside class="notes">Walk through the write operation flow diagram. The key insight is that the WAL write is sequential and fast, while the actual disk page update happens asynchronously during checkpointing. This means write latency is determined by WAL speed, not random disk I/O. This is why placing WAL on a fast SSD is so important for write performance.</aside>
                 </section>
 
                 <!-- WAL Modes -->
@@ -960,6 +988,7 @@ storageCfg.setWalMode(WALMode.LOG_ONLY);     // Recommended for most cases
 storageCfg.setWalMode(WALMode.FSYNC);        // Maximum durability
 storageCfg.setWalMode(WALMode.BACKGROUND);   // Higher performance
 storageCfg.setWalMode(WALMode.NONE);         // No WAL (dangerous!)</code></pre>
+                    <aside class="notes">This is a critical decision point. LOG_ONLY is the recommended default for most production systems. FSYNC gives maximum durability but at a performance cost. BACKGROUND offers a middle ground. NONE should only be used for bulk data loading and then switched back. A common student question is the difference between LOG_ONLY and FSYNC -- LOG_ONLY writes to the OS buffer cache, while FSYNC forces a physical disk write.</aside>
                 </section>
 
                 <!-- WAL Configuration -->
@@ -986,6 +1015,7 @@ storageCfg.setWalArchivePath("./ignite-wal-archive");
 // WAL compaction (reduces archive size)
 storageCfg.setWalCompactionEnabled(true);
 storageCfg.setWalCompactionLevel(Deflater.BEST_SPEED);</code></pre>
+                    <aside class="notes">Walk through each configuration parameter. The segment size and count determine how much WAL data is kept in the active directory before archiving. WAL compaction reduces archive disk usage at the cost of CPU. The walHistorySize controls how far back point-in-time recovery can go. For the lab, students will use default values, but production tuning requires understanding these settings.</aside>
                 </section>
 
                 <!-- WAL Architecture -->
@@ -1014,6 +1044,7 @@ storageCfg.setWalCompactionLevel(Deflater.BEST_SPEED);</code></pre>
                         <strong>WAL Segment Lifecycle:</strong> Active segment receives writes, filled segments move to work directory,
                         then get archived and optionally compressed.
                     </div>
+                    <aside class="notes">This diagram shows the lifecycle of WAL segments. The active segment receives writes sequentially, then rolls over to a new segment when full. Filled segments move to the archive for crash recovery and point-in-time restore. Emphasize the sequential write pattern -- this is why WAL is much faster than random disk updates. The archive grows over time so monitoring and cleanup are important.</aside>
                 </section>
 
                 <!-- WAL Tuning Tips -->
@@ -1043,6 +1074,7 @@ storageCfg.setWalCompactionLevel(Deflater.BEST_SPEED);</code></pre>
                         <strong>Warning:</strong> Disabling WAL (NONE mode) means data loss on crash.
                         Only use for initial bulk loading, then re-enable!
                     </div>
+                    <aside class="notes">These tuning tips come from real production experience. The most impactful optimization is separating the WAL disk from the data disk to avoid I/O contention. For write-heavy workloads, larger segments reduce the overhead of segment rotation. The warning about NONE mode is critical -- students may be tempted to use it for speed, but it means certain data loss on crash.</aside>
                 </section>
             </section>
 
@@ -1052,6 +1084,7 @@ storageCfg.setWalCompactionLevel(Deflater.BEST_SPEED);</code></pre>
                     <h1>Section 5</h1>
                     <h2>Checkpointing</h2>
                     <div class="duration-badge">5 minutes</div>
+                    <aside class="notes">Checkpointing completes the persistence picture. While WAL captures individual changes, checkpointing flushes accumulated dirty pages to disk. This keeps recovery time bounded and allows old WAL segments to be freed. Keep this section brief as it is supplementary to the WAL discussion.</aside>
                 </section>
 
                 <!-- Checkpointing Overview -->
@@ -1088,6 +1121,7 @@ storageCfg.setWalCompactionLevel(Deflater.BEST_SPEED);</code></pre>
 </pre>
                         </div>
                     </div>
+                    <aside class="notes">Explain the dirty page concept: when data is modified in memory but not yet written to disk, the page is marked dirty. Checkpointing writes these dirty pages to their correct locations in data files. This is a background process that does not block normal operations. The more frequently you checkpoint, the less WAL replay is needed during recovery.</aside>
                 </section>
 
                 <!-- Checkpoint Configuration -->
@@ -1112,6 +1146,7 @@ storageCfg.setLockWaitTime(60000);  // 60 seconds</code></pre>
                     <div class="info-box">
                         <strong>Checkpoint triggers:</strong> Time-based (frequency), WAL size, dirty pages ratio
                     </div>
+                    <aside class="notes">The default 3-minute checkpoint frequency works for most workloads. For write-heavy systems, you may need to increase checkpoint threads. The page buffer size determines how much write buffering is available during checkpointing. Mention that checkpoints can also be triggered by WAL size thresholds, not just timers.</aside>
                 </section>
 
                 <!-- Checkpoint Process -->
@@ -1144,6 +1179,7 @@ storageCfg.setLockWaitTime(60000);  // 60 seconds</code></pre>
 </pre>
                     </div>
                     <p><strong>Key insight:</strong> More frequent checkpoints = faster recovery but more I/O overhead</p>
+                    <aside class="notes">This flow diagram shows checkpointing is a multi-step process. The key point is step 3 where disk writes happen in parallel with new application writes. The recovery time formula at the bottom is important: recovery time equals the time since the last checkpoint plus WAL replay. This is the fundamental tradeoff between checkpoint frequency and I/O overhead.</aside>
                 </section>
             </section>
 
@@ -1153,6 +1189,7 @@ storageCfg.setLockWaitTime(60000);  // 60 seconds</code></pre>
                     <h1>Section 6</h1>
                     <h2>Data Regions</h2>
                     <div class="duration-badge">5 minutes</div>
+                    <aside class="notes">Data regions let you create isolated memory pools with different configurations. This is useful when you have different types of data with different persistence and eviction requirements in the same cluster. Keep this section concise as it builds on the persistence concepts already covered.</aside>
                 </section>
 
                 <!-- Data Regions Overview -->
@@ -1187,6 +1224,7 @@ storageCfg.setLockWaitTime(60000);  // 60 seconds</code></pre>
 </pre>
                         </div>
                     </div>
+                    <aside class="notes">The diagram shows a typical production setup with three regions: a persistent default region for critical data, an in-memory-only region for sessions or temporary data, and an analytics region with eviction for large datasets. Each region has independent memory limits so one workload cannot starve another. This is similar to resource pools in traditional databases.</aside>
                 </section>
 
                 <!-- Multiple Data Regions -->
@@ -1218,6 +1256,7 @@ analyticsRegion.setMaxSize(1024L * 1024 * 1024);
 analyticsRegion.setPageEvictionMode(DataPageEvictionMode.RANDOM_2_LRU);
 
 storageCfg.setDataRegionConfigurations(inMemoryRegion, analyticsRegion);</code></pre>
+                    <aside class="notes">This code shows how to create multiple data regions with different settings. Note that one region is set as the default using setDefaultDataRegionConfiguration, while additional regions are added via setDataRegionConfigurations. The analytics region demonstrates page eviction mode which allows it to handle datasets larger than its allocated memory by evicting least recently used pages.</aside>
                 </section>
 
                 <!-- Assigning Caches to Regions -->
@@ -1242,6 +1281,7 @@ analyticsCfg.setDataRegionName("Analytics_Region");
 IgniteCache&lt;Integer, Customer&gt; customers = ignite.getOrCreateCache(customerCfg);
 IgniteCache&lt;String, Session&gt; sessions = ignite.getOrCreateCache(sessionCfg);
 IgniteCache&lt;Long, AnalyticsData&gt; analytics = ignite.getOrCreateCache(analyticsCfg);</code></pre>
+                    <aside class="notes">This shows the practical step of assigning caches to specific data regions via setDataRegionName. If you do not specify a region, the cache uses the default region. This is a common pattern: customer data in the persistent region, user sessions in the in-memory region, and analytics data in the evictable region. Students will configure this in the lab.</aside>
                 </section>
 
                 <!-- Data Region Eviction -->
@@ -1278,6 +1318,7 @@ DataRegionConfiguration region = new DataRegionConfiguration();
 region.setName("Evictable_Region");
 region.setPageEvictionMode(DataPageEvictionMode.RANDOM_2_LRU);
 region.setEvictionThreshold(0.9);  // Start evicting at 90% full</code></pre>
+                    <aside class="notes">RANDOM_2_LRU is the recommended eviction policy for most cases. It samples two random pages and evicts the least recently used one, giving a good approximation of true LRU with minimal overhead. The eviction threshold of 0.9 means eviction starts when the region is 90% full. A common question is whether eviction causes data loss -- with persistence enabled, evicted pages can be read back from disk.</aside>
                 </section>
             </section>
 
@@ -1287,6 +1328,7 @@ region.setEvictionThreshold(0.9);  // Start evicting at 90% full</code></pre>
                     <h1>Section 7</h1>
                     <h2>Persistence Best Practices</h2>
                     <div class="duration-badge">10 minutes</div>
+                    <aside class="notes">This final section pulls together all the persistence concepts into actionable best practices. These recommendations come from real production deployments. Students should take notes here as these tips will save them significant troubleshooting time when deploying Ignite in production.</aside>
                 </section>
 
                 <!-- Storage Best Practices -->
@@ -1318,6 +1360,7 @@ region.setEvictionThreshold(0.9);  // Start evicting at 90% full</code></pre>
 /wal/ignite-wal        - Active WAL (Fast SSD)
 /archive/ignite-wal    - WAL archive (Can be slower storage)</pre>
                     </div>
+                    <aside class="notes">The disk layout recommendation is crucial for production. Separating WAL from data files eliminates I/O contention between sequential WAL writes and random data page writes. SSD for WAL is a high-impact investment. The sizing guidelines help prevent running out of disk space, which is a common production incident. Show the recommended layout at the bottom of the slide.</aside>
                 </section>
 
                 <!-- Memory Configuration -->
@@ -1345,6 +1388,7 @@ region.setEvictionThreshold(0.9);  // Evict at 90%</code></pre>
                     <div class="warning-box">
                         <strong>Rule of thumb:</strong> JVM Heap + Off-Heap + 2GB (OS) should not exceed total RAM
                     </div>
+                    <aside class="notes">Memory sizing is one of the most common sources of production issues. Walk through the calculation: total RAM minus JVM heap minus OS reserve equals available off-heap. The rule of thumb formula at the bottom is critical. If you exceed total RAM, the OS will swap and performance will collapse. Enable metrics so you can monitor actual usage and adjust over time.</aside>
                 </section>
 
                 <!-- WAL Best Practices -->
@@ -1379,6 +1423,7 @@ region.setEvictionThreshold(0.9);  // Evict at 90%</code></pre>
                             </ul>
                         </div>
                     </div>
+                    <aside class="notes">These three cards summarize WAL best practices across performance, durability, and maintenance dimensions. The most actionable items are using LOG_ONLY mode with fast SSD storage for performance, keeping 24 hours of WAL archive for recovery, and testing recovery procedures regularly. Remind students that untested backups are not backups.</aside>
                 </section>
 
                 <!-- Production Configuration -->
@@ -1416,6 +1461,7 @@ region.setEvictionThreshold(0.9);  // Evict at 90%</code></pre>
     cfg.setDataStorageConfiguration(storage);
     return cfg;
 }</code></pre>
+                    <aside class="notes">This is a production-ready configuration template that students can use as a starting point. Walk through each setting and explain why it was chosen. The absolute paths, LOG_ONLY WAL mode, 128MB segments, and 4-16GB memory range represent sensible defaults for a medium-sized deployment. Students should adjust the memory sizes based on their actual hardware and data volume.</aside>
                 </section>
 
                 <!-- Common Issues -->
@@ -1457,6 +1503,7 @@ region.setEvictionThreshold(0.9);  // Evict at 90%</code></pre>
                             </tr>
                         </tbody>
                     </table>
+                    <aside class="notes">Walk through each common issue and its solution. These are real problems students will encounter. The most frequent ones are forgetting cluster activation and missing @AffinityKeyMapped annotations. The slow writes issue often surprises teams who default to FSYNC mode. Disk full from WAL archive growth can take down a production cluster if not monitored.</aside>
                 </section>
 
                 <!-- Monitoring -->
@@ -1482,6 +1529,7 @@ System.out.println("Checkpoint buffer size: " +
                         <strong>Key metrics to monitor:</strong> Dirty pages ratio, checkpoint duration, WAL archive size,
                         page reads/writes, memory usage percentage
                     </div>
+                    <aside class="notes">Monitoring is essential for production persistence. The code shows how to enable metrics on a data region and then query them at runtime. The key metrics to watch are dirty pages ratio (indicates checkpoint pressure), pages read/written (indicates I/O load), and memory usage percentage (indicates when you need to scale). These metrics can be exported to Prometheus or other monitoring systems.</aside>
                 </section>
 
                 <!-- Cache Store Patterns -->
@@ -1515,6 +1563,7 @@ cfg.setWriteBehindBatchSize(100);</code></pre>
                             <li><strong>Write-Behind:</strong> High-throughput writes, eventual consistency</li>
                         </ul>
                     </div>
+                    <aside class="notes">Cache store patterns are the alternative to native persistence for integrating with external databases. Write-through synchronously updates the database on every cache write, ensuring consistency. Write-behind batches writes asynchronously for much higher throughput but with eventual consistency. The choice depends on consistency requirements. Native persistence is for when Ignite is the primary store with no external DB.</aside>
                 </section>
 
                 <!-- Read-Through: The Safety Net -->
@@ -1542,6 +1591,7 @@ cfg.setWriteBehindBatchSize(100);</code></pre>
                     <div class="info-box">
                         <strong>Best Practice:</strong> Use CDC for proactive sync. Read-through catches what slips through.
                     </div>
+                    <aside class="notes">This is a common misconception to address: read-through does NOT keep the cache in sync with the database. It only loads data on a cache miss. If the database is updated externally, the cache will serve stale data until the entry is evicted or expires. For proactive synchronization, you need Change Data Capture (CDC) or explicit invalidation. Read-through is a safety net, not a sync mechanism.</aside>
                 </section>
             </section>
 
@@ -1549,6 +1599,7 @@ cfg.setWriteBehindBatchSize(100);</code></pre>
             <section>
                 <section class="section-title">
                     <h1>Module Summary</h1>
+                    <aside class="notes">Transition to the summary section. Use this as an opportunity to ask students what they found most surprising or what they want to revisit. The module covered a lot of ground from data modeling through persistence internals.</aside>
                 </section>
 
                 <section>
@@ -1578,6 +1629,7 @@ cfg.setWriteBehindBatchSize(100);</code></pre>
                         <p style="margin: 10px 0 0 0;">Proper data modeling and persistence configuration are crucial for
                         production-grade Ignite deployments!</p>
                     </div>
+                    <aside class="notes">Reinforce the two key takeaways: first, choose the right data model and get colocation right from the start since it is hard to change later. Second, configure persistence appropriately for your use case -- not every deployment needs native persistence. The remember box emphasizes that these are not optional considerations but critical for production success.</aside>
                 </section>
 
                 <!-- Lab Preview -->
@@ -1595,6 +1647,7 @@ cfg.setWriteBehindBatchSize(100);</code></pre>
                         <strong>Duration:</strong> 45 minutes<br>
                         <strong>Prerequisites:</strong> Completed Labs 1-4, understanding of cache operations
                     </div>
+                    <aside class="notes">Preview the lab so students know what to expect. The lab covers all the major topics from this module: domain classes with affinity keys, colocation verification, persistence configuration, data recovery after restart, and cache store patterns. Suggest students focus on the colocation verification step as it builds intuition for distributed data placement. Allow 45 minutes and circulate to help with common issues.</aside>
                 </section>
 
                 <!-- Q&A -->
@@ -1604,6 +1657,7 @@ cfg.setWriteBehindBatchSize(100);</code></pre>
                     <div class="accent-box" style="display: inline-block; margin-top: 30px;">
                         <p style="margin: 0;">Next: Module 06 - SQL and Distributed Queries</p>
                     </div>
+                    <aside class="notes">Open the floor for questions. Common questions include: How does persistence interact with rebalancing? What happens if a disk fails? How do you migrate data between versions? If no questions, preview Module 06 which builds on the SQL annotations introduced here and covers distributed query execution in depth.</aside>
                 </section>
             </section>
 

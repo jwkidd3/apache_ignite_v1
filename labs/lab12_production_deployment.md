@@ -73,6 +73,37 @@ public class Lab12SecurityOverview {
 }
 ```
 
+**Expected Output:**
+
+```
+=== Production Security Overview ===
+
+=== Security Configuration Layers ===
+1. Network Security - Firewall rules, port restrictions
+2. Transport Security - SSL/TLS encryption
+3. Authentication - User credentials verification
+4. Authorization - Permission-based access control
+5. Audit Logging - Track security events
+
+=== Security Best Practices ===
+- Use strong passwords (min 12 characters)
+- Enable SSL/TLS for all communication
+- Implement role-based access control
+- Audit security events
+- Rotate credentials regularly (every 90 days)
+- Use secure communication between nodes
+- Keep Ignite version updated
+
+=== Production Security Checklist ===
+[ ] Authentication enabled
+[ ] SSL/TLS configured
+[ ] Firewall rules in place
+[ ] Audit logging enabled
+[ ] Regular security updates
+[ ] Encrypted communication
+[ ] Secure credential storage
+```
+
 ## Part 2: Production Configuration (5 minutes)
 
 ### Exercise 2: Production-Ready Configuration
@@ -231,6 +262,23 @@ public class Lab12ClusterSetup {
         return cfg;
     }
 }
+```
+
+**Expected Output:**
+
+```
+=== Production Cluster Setup ===
+
+Node started: production-node
+Activating cluster...
+
+=== Cluster Information ===
+Cluster state: ACTIVE
+Total nodes: 1
+Baseline topology: [BaselineNode [consistentId=production-node]]
+
+Cache created and tested successfully
+Cache size: 1
 ```
 
 ## Part 4: SSL/TLS Configuration (15 minutes)
@@ -392,6 +440,27 @@ rm -f *.csr *-signed.cer
 ls -la
 ```
 
+**Expected Output (generate-certs.sh):**
+
+```
+=== Apache Ignite SSL Certificate Generation ===
+
+Step 1: Creating Certificate Authority (CA)
+Step 2: Creating Node Certificates
+Creating certificate for node1...
+Creating certificate for node2...
+Creating certificate for node3...
+Step 3: Creating Truststore
+
+=== Certificate Generation Complete ===
+Files created in ./ssl:
+  - ca-keystore.jks (CA keystore)
+  - node1-keystore.jks, node2-keystore.jks, node3-keystore.jks
+  - truststore.jks (shared truststore)
+
+Password for all stores: ignite-secure-password
+```
+
 Create `ssl-config.xml`:
 
 ```xml
@@ -533,6 +602,33 @@ public class Lab12SSLConfiguration {
 }
 ```
 
+**Expected Output:**
+
+```
+=== SSL/TLS Configuration Lab ===
+
+=== SSL Configuration Summary ===
+Keystore: ssl/node1-keystore.jks
+Truststore: ssl/truststore.jks
+Protocol: TLSv1.3
+Client authentication: Required
+Connector SSL: Enabled
+Thin client SSL: Enabled
+
+=== SSL Components Secured ===
+1. Discovery (node-to-node)
+2. Communication (data transfer)
+3. REST API
+4. Thin client connections
+5. JDBC/ODBC connections
+
+=== Verification Steps ===
+1. Check SSL handshake in logs
+2. Verify certificate chain
+3. Test connection rejection without cert
+4. Monitor SSL metrics
+```
+
 ## Part 5: Authentication Setup (10 minutes)
 
 ### Exercise 5: Enable Authentication and User Management
@@ -645,6 +741,56 @@ public class Lab12Authentication {
         return cfg;
     }
 }
+```
+
+**Expected Output:**
+
+```
+=== Authentication Setup Lab ===
+
+=== Authentication Configuration ===
+Authentication: ENABLED
+Persistence: REQUIRED for auth
+Default user: ignite / ignite
+
+Node started with authentication enabled
+
+=== User Management Commands (via SQL) ===
+
+-- Create new user with password
+CREATE USER admin WITH PASSWORD 'AdminPass123!';
+
+-- Create read-only user
+CREATE USER readonly WITH PASSWORD 'ReadOnly123!';
+
+-- Create application service account
+CREATE USER app_service WITH PASSWORD 'AppService123!';
+
+-- Change user password
+ALTER USER admin WITH PASSWORD 'NewAdminPass456!';
+
+-- Drop user
+DROP USER readonly;
+
+=== Permission Configuration ===
+
+Permissions can be configured for:
+  - CACHE_READ: Read cache data
+  - CACHE_PUT: Write cache data
+  - CACHE_REMOVE: Delete cache data
+  - CACHE_CREATE: Create new caches
+  - CACHE_DESTROY: Delete caches
+  - ADMIN_OPS: Administrative operations
+  - JOIN_AS_SERVER: Join as server node
+
+=== Best Practices ===
+1. Change default password immediately
+2. Use strong passwords (min 12 chars, mixed case, numbers, symbols)
+3. Create separate users for applications
+4. Grant minimum required permissions
+5. Rotate passwords regularly
+6. Audit user activities
+7. Disable or remove unused accounts
 ```
 
 Create `authentication-config.xml`:

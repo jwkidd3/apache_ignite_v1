@@ -1,6 +1,13 @@
 package com.example.ignite.solutions.lab13;
 
 import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.network.ClusterNode;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.Collection;
 
 /**
  * Lab 13 Exercises 1-2: Ignite 3.x Discovery and Cluster Lifecycle
@@ -8,7 +15,7 @@ import org.apache.ignite.client.IgniteClient;
  * Demonstrates:
  * - Connecting to an Ignite 3.x cluster via thin client
  * - Listing cluster connections and topology info
- * - SWIM gossip discovery (explained)
+ * - SWIM gossip discovery with live REST queries
  * - RAFT consensus (explained)
  * - Cluster lifecycle: init, topology, state via CLI/REST
  *
@@ -37,7 +44,7 @@ public class Lab13Discovery {
     }
 
     /**
-     * Exercise 1: Connect and inspect cluster connections
+     * Exercise 1: Connect and inspect cluster connections and enumerate nodes
      */
     private static void demonstrateConnection(IgniteClient client) {
         System.out.println("=== Exercise 1: Client Connection ===\n");
@@ -54,19 +61,36 @@ public class Lab13Discovery {
             System.out.println();
         });
 
+        // Enumerate cluster nodes via client.clusterNodes()
+        System.out.println("Cluster Node Enumeration (client.clusterNodes()):");
+        Collection<ClusterNode> nodes = client.clusterNodes();
+        System.out.println("  Total nodes in cluster: " + nodes.size());
+        System.out.println();
+        for (ClusterNode node : nodes) {
+            System.out.println("  Node: " + node.name());
+            System.out.println("    ID:      " + node.id());
+            System.out.println("    Address: " + node.address());
+            System.out.println();
+        }
+
         System.out.println("Key Difference from 2.x:");
         System.out.println("  - No TcpDiscoverySpi configuration needed");
         System.out.println("  - No IP finder configuration");
         System.out.println("  - Client connects to known addresses via builder pattern");
         System.out.println("  - All clients are thin (no thick/embedded client distinction)");
+        System.out.println("  - client.clusterNodes() provides full cluster membership");
         System.out.println();
     }
 
+    /**
+     * Queries the cluster REST API to show live physical topology,
+     * demonstrating SWIM-based discovery results.
+     */
     private static void explainSwimDiscovery() {
         System.out.println("=== SWIM Gossip Discovery Protocol (3.x) ===\n");
 
         System.out.println("Ignite 3.x uses SWIM (Scalable Weakly-consistent");
-        System.out.println("Infection-style Process Group Membership) protocol:\n");
+        System.out.println("Infection-style Process Group Membership) protocol.\n");
 
         System.out.println("  How SWIM Works:");
         System.out.println("  1. Each node periodically pings random cluster members");
@@ -75,15 +99,33 @@ public class Lab13Discovery {
         System.out.println("  4. Membership updates propagate in O(log N) rounds");
         System.out.println();
 
-        System.out.println("  Comparison with Ignite 2.x (Ring Topology):");
-        System.out.println("  | Aspect        | Ignite 2.x (Ring)           | Ignite 3.x (SWIM)         |");
-        System.out.println("  |---------------|-----------------------------|-----------------------------|");
-        System.out.println("  | Topology      | Ring with coordinator       | Peer-to-peer gossip         |");
-        System.out.println("  | Failure detect | Sequential heartbeats      | Random probing + indirect   |");
-        System.out.println("  | Scalability   | O(N) detection time         | O(log N) detection time     |");
-        System.out.println("  | Network port  | 47500 (discovery)           | 3344 (network)              |");
-        System.out.println("  | Single point  | Coordinator is bottleneck   | No single point of failure  |");
-        System.out.println("  | Config        | TcpDiscoverySpi + IpFinder  | Node network config (HOCON) |");
+        // Query the REST API for live physical topology
+        System.out.println("  Live Physical Topology (via REST API):");
+        System.out.println("  GET http://localhost:10300/management/v1/cluster/topology/physical\n");
+
+        try {
+            HttpClient httpClient = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:10300/management/v1/cluster/topology/physical"))
+                    .header("Accept", "application/json")
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                System.out.println("  Response (status " + response.statusCode() + "):");
+                System.out.println("  " + response.body());
+            } else {
+                System.out.println("  REST API returned status: " + response.statusCode());
+                System.out.println("  Body: " + response.body());
+            }
+        } catch (Exception e) {
+            System.out.println("  Could not reach REST API at localhost:10300.");
+            System.out.println("  Error: " + e.getMessage());
+            System.out.println("  (Ensure the cluster REST endpoint is accessible.)");
+        }
+
         System.out.println();
     }
 
